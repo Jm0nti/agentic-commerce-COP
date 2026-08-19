@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.agentic-fraud-venv/
+
+# Llaves de API. Nunca versionar.
+.env
+.env.*
+
+# Llave de firma del titular, estado de consumo y fuentes de pago vivas.
+boveda/secretos/
+
+# Artefactos de corrida: fuentes de pago, recibos, ledgers.
+wompi_lab/source.json
+wompi_lab/ledger*.jsonl
+boveda/recibos.jsonl
+boveda/ledger_mandatos.jsonl
+boveda/mnd-*.json
+
+# Cache de fuentes fuera de la boveda. Un payment_source_id de produccion
+# es tan sensible como una credencial: quien lo tiene puede cobrar.
+data/private/*.json
