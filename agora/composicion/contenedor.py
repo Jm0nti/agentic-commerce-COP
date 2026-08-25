@@ -32,6 +32,7 @@ from ..adaptadores.sistema import (
     RelojDelSistema,
     VerificadorEd25519,
 )
+from ..aplicacion.conciliar_evento import ConciliarEvento
 from ..aplicacion.ejecutar_intencion import EjecutarIntencion
 from ..dominio.mandato.modelo import Verificador
 from ..dominio.pago.topes import TopesDuros
@@ -43,7 +44,8 @@ from .configuracion import ConfiguracionAgora
 
 @dataclass(frozen=True)
 class Contenedor:
-    """Todo lo que un punto de entrada (`entradas/`, etapa 5) va a necesitar.
+    """Todo lo que un punto de entrada (`entradas/`, etapa 4 en adelante) va
+    a necesitar -- `entradas/webhooks/wompi.py` solo usa `conciliar_evento`.
 
     Se expone como un solo objeto, no como variables sueltas, para que
     agregar una dependencia nueva no obligue a tocar la firma de cada punto
@@ -52,6 +54,7 @@ class Contenedor:
 
     config: ConfiguracionAgora
     ejecutar_intencion: EjecutarIntencion
+    conciliar_evento: ConciliarEvento
     mandatos: RepositorioMandatos
     medios: RepositorioMedios
     consumo: LibroDeConsumo
@@ -116,10 +119,12 @@ def construir(
         correo_pagador=config.correo_pagador,
         datos_pagador=config.datos_pagador,
     )
+    conciliar_evento = ConciliarEvento(consumo=consumo, pasarela=pasarela, bitacora=bitacora)
 
     return Contenedor(
         config=config,
         ejecutar_intencion=ejecutar_intencion,
+        conciliar_evento=conciliar_evento,
         mandatos=mandatos,
         medios=medios,
         consumo=consumo,

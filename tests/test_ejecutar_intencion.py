@@ -180,14 +180,12 @@ def test_monto_sobre_mandato_bloquea_y_libera_la_reserva():
     assert consumo.consumo_de(m.mandato_id).usos == 0
 
 
-def test_confirmar_tambien_detiene_y_libera_pero_no_es_un_bloqueo():
-    """Hoy `CONFIRMAR` se comporta como `BLOQUEAR` (se detiene, se libera la
-    reserva): todavia no existe el mecanismo de retomar tras preguntarle al
-    humano (etapas 4-5). Lo que si distingue un caso del otro es el
-    `Dictamen.decision` que queda en el recibo -- por eso importa que este
-    caso no pierda su propia senal."""
+def test_confirmar_deja_la_reserva_viva_esperando_confirmacion():
+    """Desde la etapa 4, `CONFIRMAR` ya no se comporta como `BLOQUEAR`: la
+    reserva se queda viva (el cupo diario la sigue contando) mientras se
+    espera una decision humana. `retomar()` la resuelve mas tarde."""
     sk = Ed25519PrivateKey.generate()
-    ejecutar, mandatos, consumo, _, _ = _armar()
+    ejecutar, mandatos, consumo, _, bitacora = _armar()
     m = _mandato(sk, monto_max=Dinero.de_pesos(8_000), tope_total=Dinero.de_pesos(8_000), usos_max=1)
     mandatos.guardar(m, Ambiente.SANDBOX)
 
@@ -195,10 +193,107 @@ def test_confirmar_tambien_detiene_y_libera_pero_no_es_un_bloqueo():
     recibo = ejecutar(_intencion(8_000))
 
     assert not recibo.ejecutado
+    assert recibo.esperando_confirmacion
     assert recibo.dictamen.decision is Decision.CONFIRMAR
     assert recibo.dictamen.violaciones == []
     assert recibo.dictamen.senales
+    # A diferencia de BLOQUEAR: el cupo sigue apartado, no se libero.
+    assert consumo.gastado_hoy(Ambiente.SANDBOX) == Dinero.de_pesos(8_000)
+    assert consumo.reserva_pendiente_de("int_1") is not None
+    assert bitacora.eventos[-1][0] == "esperando_confirmacion"
+
+
+def test_bloquear_sigue_liberando_la_reserva_y_no_espera_confirmacion():
+    sk = Ed25519PrivateKey.generate()
+    ejecutar, mandatos, consumo, _, _ = _armar()
+    m = _mandato(sk)  # monto_max = 8.000
+
+    mandatos.guardar(m, Ambiente.SANDBOX)
+    recibo = ejecutar(_intencion(15_000))
+
+    assert not recibo.ejecutado
+    assert not recibo.esperando_confirmacion
+    assert recibo.dictamen.decision is Decision.BLOQUEAR
     assert consumo.gastado_hoy(Ambiente.SANDBOX) == Dinero.de_pesos(0)
+
+
+def test_retomar_aprobado_cobra_y_confirma():
+    sk = Ed25519PrivateKey.generate()
+    ejecutar, mandatos, consumo, _, _ = _armar()
+    m = _mandato(sk, monto_max=Dinero.de_pesos(8_000), tope_total=Dinero.de_pesos(8_000), usos_max=1)
+    mandatos.guardar(m, Ambiente.SANDBOX)
+    intencion = _intencion(8_000)
+    primero = ejecutar(intencion)
+    assert primero.esperando_confirmacion
+
+    recibo = ejecutar.retomar(intencion, aprueba=True)
+
+    assert recibo.ejecutado
+    assert consumo.consumo_de(m.mandato_id).usos == 1
+    assert consumo.reserva_pendiente_de("int_1") is None
+
+
+def test_retomar_rechazado_libera_la_reserva():
+    sk = Ed25519PrivateKey.generate()
+    ejecutar, mandatos, consumo, _, _ = _armar()
+    m = _mandato(sk, monto_max=Dinero.de_pesos(8_000), tope_total=Dinero.de_pesos(8_000), usos_max=1)
+    mandatos.guardar(m, Ambiente.SANDBOX)
+    intencion = _intencion(8_000)
+    ejecutar(intencion)
+
+    recibo = ejecutar.retomar(intencion, aprueba=False)
+
+    assert not recibo.ejecutado
+    assert recibo.motivo == "rechazado_por_humano"
+    assert not recibo.esperando_confirmacion
+    assert consumo.consumo_de(m.mandato_id).usos == 0
+    assert consumo.gastado_hoy(Ambiente.SANDBOX) == Dinero.de_pesos(0)
+    assert consumo.reserva_pendiente_de("int_1") is None
+
+
+def test_retomar_sin_reserva_pendiente_levanta():
+    from agora.dominio.comun.errores import ReservaNoEncontrada
+
+    sk = Ed25519PrivateKey.generate()
+    ejecutar, mandatos, _, _, _ = _armar()
+    m = _mandato(sk)
+    mandatos.guardar(m, Ambiente.SANDBOX)
+
+    with pytest.raises(ReservaNoEncontrada):
+        ejecutar.retomar(_intencion(2_000, intencion_id="int_nunca_reservada"), aprueba=True)
+
+
+def test_retomar_revalida_la_politica_y_bloquea_si_el_mandato_vencio_mientras_esperaba():
+    """Un humano que aprueba no puede saltarse un `BLOQUEAR` que aparecio
+    despues de que se pidio la confirmacion: el tiempo paso, y el mandato
+    pudo vencerse mientras se esperaba la respuesta."""
+    sk = Ed25519PrivateKey.generate()
+    reloj = _RelojFijo(AHORA)
+    ids = GeneradorIdsUuid()
+    mandatos = RepositorioMandatosEnMemoria()
+    consumo = LibroDeConsumoEnMemoria(reloj, ids)
+    pasarela = AdaptadorSimulado(ids, Ambiente.SANDBOX)
+    bitacora = _BitacoraEnLista()
+    ejecutar = EjecutarIntencion(
+        mandatos=mandatos, consumo=consumo, pasarela=pasarela, topes=TopesDuros(),
+        reloj=reloj, bitacora=bitacora, verificador=VerificadorEd25519(),
+        ambiente=Ambiente.SANDBOX, correo_pagador="juan@correo-real.com", datos_pagador={},
+    )
+    m = _mandato(
+        sk, monto_max=Dinero.de_pesos(8_000), tope_total=Dinero.de_pesos(8_000), usos_max=1,
+        expira_en=AHORA + timedelta(minutes=30),
+    )
+    mandatos.guardar(m, Ambiente.SANDBOX)
+    intencion = _intencion(8_000)
+    primero = ejecutar(intencion)
+    assert primero.esperando_confirmacion
+
+    reloj.cuando = AHORA + timedelta(hours=1)  # el mandato ya vencio cuando el humano contesta
+    recibo = ejecutar.retomar(intencion, aprueba=True)
+
+    assert not recibo.ejecutado
+    assert recibo.dictamen.decision is Decision.BLOQUEAR
+    assert consumo.reserva_pendiente_de("int_1") is None  # se libero al retomar
 
 
 def test_sin_exigir_mandato_deja_pasar_un_cobro_que_el_mandato_no_autorizaba():

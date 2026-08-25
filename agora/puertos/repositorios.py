@@ -62,6 +62,20 @@ class LibroDeConsumo(Protocol):
 
     def liberar(self, reserva: Reserva) -> None: ...
 
+    def reserva_pendiente_de(self, intencion_id: str) -> Reserva | None:
+        """La reserva viva de esta intencion, o `None`.
+
+        `None` cubre dos casos que a quien llama no le importa distinguir:
+        nunca hubo una reserva con este `intencion_id`, o la hubo pero ya se
+        resolvio (confirmada o liberada). Es lo que usa `ConciliarEvento`
+        (etapa 4) para encontrar, desde un webhook que llega sin memoria de
+        haber llamado a `reservar`, cual reserva cerrar -- y lo que usa
+        `EjecutarIntencion.retomar` para recuperar una reserva que se dejo
+        viva a proposito mientras se esperaba una decision humana
+        (`Decision.CONFIRMAR`).
+        """
+        ...
+
     def consumo_de(self, mandato_id: str) -> Consumo: ...
 
     def gastado_hoy(self, ambiente: Ambiente) -> Dinero: ...

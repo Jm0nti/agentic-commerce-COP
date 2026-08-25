@@ -143,3 +143,41 @@ def test_desenlace_es_un_value_object_comparable():
     a = Desenlace(EstadoCobro.APROBADO, "x", "ACCEPT")
     b = Desenlace(EstadoCobro.APROBADO, "x", "ACCEPT")
     assert a == b
+
+
+# --------------------------------------------------------------------------- #
+# resultado_desde_evento / evento_de (etapa 4)
+# --------------------------------------------------------------------------- #
+
+
+def test_evento_de_y_resultado_desde_evento_hacen_el_viaje_completo():
+    """`evento_de` empaqueta el cobro como lo haria el webhook de Wompi;
+    `resultado_desde_evento` lo desempaqueta. Juntos son lo que le permite a
+    una demo ejercitar `ConciliarEvento` sin un servidor de Wompi real."""
+    pasarela = _pasarela()
+    r = pasarela.cobrar(_orden("cliente.pendiente@correo-real.com"))
+    pasarela.resolver_pendiente(r.id_externo, APROBADO)
+
+    evento = pasarela.evento_de(r.id_externo)
+    traduccion = pasarela.resultado_desde_evento(evento)
+
+    assert traduccion is not None
+    intencion_id, resultado = traduccion
+    assert intencion_id == "int_1"  # la simulada no antepone "agora-"
+    assert resultado.estado is EstadoCobro.APROBADO
+
+
+def test_resultado_desde_evento_ignora_otro_tipo_de_evento():
+    pasarela = _pasarela()
+    assert pasarela.resultado_desde_evento({"event": "algo.distinto", "data": {}}) is None
+
+
+def test_resultado_desde_evento_ignora_evento_sin_referencia():
+    pasarela = _pasarela()
+    evento = {"event": "transaction.updated", "data": {"transaction": {"status": "APPROVED"}}}
+    assert pasarela.resultado_desde_evento(evento) is None
+
+
+def test_evento_de_cobro_desconocido_levanta():
+    with pytest.raises(ErrorDePasarela):
+        _pasarela().evento_de("sim_no_existe")

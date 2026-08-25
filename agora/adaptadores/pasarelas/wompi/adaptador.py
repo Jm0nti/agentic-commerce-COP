@@ -44,6 +44,13 @@ def _estado_cobro(bruto: str) -> EstadoCobro:
     return _ESTADOS_WOMPI.get(bruto, EstadoCobro.ERROR)
 
 
+# ADR-6: la referencia sale de `intencion_id`. El prefijo es propio de este
+# adaptador -- la v1 (`boveda/nucleo.py:364`) nunca lo uso -- asi que tambien
+# es lo que separa un evento de `agora/` de uno viejo de `boveda/` si algun
+# dia los dos comparten el mismo webhook de Wompi.
+_PREFIJO_REFERENCIA = "agora-"
+
+
 class AdaptadorWompi:
     """Implementa `puertos.pasarela.PasarelaDePagos`."""
 
@@ -93,7 +100,7 @@ class AdaptadorWompi:
         # deja de poder duplicar un cobro: si el POST llega a Wompi pero la
         # respuesta se pierde, el reintento reusa la misma referencia y Wompi
         # rechaza el duplicado en vez de cobrar dos veces.
-        referencia = f"agora-{orden.intencion_id}"
+        referencia = f"{_PREFIJO_REFERENCIA}{orden.intencion_id}"
         data = self._cliente.crear_transaccion(
             id_externo_fuente=orden.medio.id_externo,
             centavos=orden.monto.centavos,
@@ -173,3 +180,23 @@ class AdaptadorWompi:
             raise ErrorDePasarela("el checksum del evento no coincide", detalle_proveedor=evento)
 
         return evento
+
+    def resultado_desde_evento(self, evento: dict[str, Any]) -> tuple[str, ResultadoCobro] | None:
+        """`evento` ya paso por `validar_evento`: el checksum es de fiar.
+
+        Solo traduce `transaction.updated` con una referencia que empiece con
+        `agora-` -- el prefijo que `cobrar()` le puso. Cualquier otra cosa
+        (otro tipo de evento, o una referencia sin ese prefijo -- por ejemplo
+        de la v1, que nunca lo uso) no es un cobro de esta app: `None`, no un
+        error. Wompi manda todos los eventos de un comercio al mismo webhook,
+        asi que un dia podria convivir trafico de `boveda/` y de `agora/` en
+        el mismo buzon.
+        """
+        if evento.get("event") != "transaction.updated":
+            return None
+        tx = ((evento.get("data") or {}).get("transaction")) or {}
+        referencia = tx.get("reference", "")
+        if not referencia.startswith(_PREFIJO_REFERENCIA):
+            return None
+        intencion_id = referencia[len(_PREFIJO_REFERENCIA):]
+        return intencion_id, self._resultado_desde(tx, referencia)

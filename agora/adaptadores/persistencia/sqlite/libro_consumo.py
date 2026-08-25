@@ -17,6 +17,7 @@ valor ya actualizado.
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 from ....dominio.comun.dinero import CERO, Dinero
@@ -156,6 +157,27 @@ class LibroDeConsumoSQLite:
                 con.execute("COMMIT")
         finally:
             con.close()
+
+    def reserva_pendiente_de(self, intencion_id: str) -> Reserva | None:
+        con = abrir_conexion(self._ruta)
+        try:
+            fila = con.execute(
+                "SELECT reserva_id, mandato_id, monto_centavos, monto_moneda, dia "
+                "FROM reserva WHERE intencion_id = ? AND estado = 'pendiente'",
+                (intencion_id,),
+            ).fetchone()
+        finally:
+            con.close()
+        if fila is None:
+            return None
+        reserva_id, mandato_id, monto_centavos, monto_moneda, dia = fila
+        return Reserva(
+            reserva_id=reserva_id,
+            intencion_id=intencion_id,
+            mandato_id=mandato_id,
+            monto=Dinero.de_centavos(monto_centavos, monto_moneda),
+            dia=date.fromisoformat(dia),
+        )
 
     # -- consultas -------------------------------------------------------------- #
 

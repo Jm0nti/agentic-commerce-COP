@@ -83,6 +83,49 @@ def test_confirmar_dos_veces_no_duplica_el_consumo(tmp_path):
     assert consumo.acumulado == Dinero.de_pesos(2_050)
 
 
+def test_reserva_pendiente_de_encuentra_una_reserva_viva(tmp_path):
+    libro = _libro(tmp_path)
+    m = _mandato()
+    reserva = libro.reservar(m, "int_1", Dinero.de_pesos(2_050), Dinero.de_pesos(100_000))
+
+    assert libro.reserva_pendiente_de("int_1") == reserva
+
+
+def test_reserva_pendiente_de_es_none_tras_confirmar(tmp_path):
+    libro = _libro(tmp_path)
+    m = _mandato()
+    reserva = libro.reservar(m, "int_1", Dinero.de_pesos(2_050), Dinero.de_pesos(100_000))
+    libro.confirmar(reserva)
+
+    assert libro.reserva_pendiente_de("int_1") is None
+
+
+def test_reserva_pendiente_de_es_none_tras_liberar(tmp_path):
+    libro = _libro(tmp_path)
+    m = _mandato()
+    reserva = libro.reservar(m, "int_1", Dinero.de_pesos(2_050), Dinero.de_pesos(100_000))
+    libro.liberar(reserva)
+
+    assert libro.reserva_pendiente_de("int_1") is None
+
+
+def test_reserva_pendiente_de_intencion_desconocida_es_none(tmp_path):
+    libro = _libro(tmp_path)
+    assert libro.reserva_pendiente_de("int_fantasma") is None
+
+
+def test_reserva_pendiente_de_sobrevive_una_reconexion(tmp_path):
+    ruta = tmp_path / "agora.db"
+    m = _mandato()
+
+    libro_1 = LibroDeConsumoSQLite(ruta, _RelojFijo(HOY), GeneradorIdsUuid())
+    reserva = libro_1.reservar(m, "int_1", Dinero.de_pesos(2_050), Dinero.de_pesos(100_000))
+    del libro_1
+
+    libro_2 = LibroDeConsumoSQLite(ruta, _RelojFijo(HOY), GeneradorIdsUuid())
+    assert libro_2.reserva_pendiente_de("int_1") == reserva
+
+
 def test_liberar_no_deja_rastro_en_el_consumo(tmp_path):
     libro = _libro(tmp_path)
     m = _mandato()

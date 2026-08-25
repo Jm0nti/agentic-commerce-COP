@@ -300,3 +300,53 @@ def test_validar_evento_sin_checksum_levanta():
     adaptador = _adaptador(lambda req: httpx.Response(404, json={}))
     with pytest.raises(ErrorDePasarela):
         adaptador.validar_evento(cuerpo, {})
+
+
+# --------------------------------------------------------------------------- #
+# resultado_desde_evento (etapa 4)
+# --------------------------------------------------------------------------- #
+
+
+def _evento_transaccion(reference: str, status: str = "APPROVED", tipo: str = "transaction.updated") -> dict:
+    return {
+        "event": tipo,
+        "data": {
+            "transaction": {
+                "id": "tx1",
+                "reference": reference,
+                "status": status,
+                "status_message": "ok",
+                "payment_method": {"afe_decision": "ACCEPT"},
+            }
+        },
+    }
+
+
+def test_resultado_desde_evento_traduce_una_referencia_propia():
+    adaptador = _adaptador(lambda req: httpx.Response(404, json={}))
+    evento = _evento_transaccion("agora-int_1")
+
+    traduccion = adaptador.resultado_desde_evento(evento)
+
+    assert traduccion is not None
+    intencion_id, resultado = traduccion
+    assert intencion_id == "int_1"
+    assert resultado.estado is EstadoCobro.APROBADO
+    assert resultado.id_externo == "tx1"
+
+
+def test_resultado_desde_evento_ignora_una_referencia_ajena():
+    """Una referencia sin el prefijo `agora-` no es de esta app -- por
+    ejemplo, trafico de `boveda/` (v1) si algun dia comparten el mismo
+    webhook de Wompi."""
+    adaptador = _adaptador(lambda req: httpx.Response(404, json={}))
+    evento = _evento_transaccion("referencia-vieja-de-la-v1")
+
+    assert adaptador.resultado_desde_evento(evento) is None
+
+
+def test_resultado_desde_evento_ignora_otro_tipo_de_evento():
+    adaptador = _adaptador(lambda req: httpx.Response(404, json={}))
+    evento = _evento_transaccion("agora-int_1", tipo="transaction.created")
+
+    assert adaptador.resultado_desde_evento(evento) is None

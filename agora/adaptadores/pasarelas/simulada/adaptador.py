@@ -21,6 +21,7 @@ from typing import Any
 from ....dominio.comun.errores import ErrorDePasarela
 from ....dominio.pago.modelo import (
     Ambiente,
+    EstadoCobro,
     MedioDePagoRef,
     OrdenDeCobro,
     Proveedor,
@@ -29,6 +30,17 @@ from ....dominio.pago.modelo import (
 from ....puertos.pasarela import EstadoMedio, MedioEnProceso, SolicitudEnrolamiento
 from ....puertos.sistema import GeneradorIds
 from .guion import Desenlace, GuionSimulado
+
+
+def _estado_cobro(bruto: str) -> EstadoCobro:
+    """Los valores de `EstadoCobro` ya son el mismo vocabulario que usa Wompi
+    (`PENDING`, `APPROVED`, ...) -- ver `dominio/pago/modelo.py`. Un valor
+    que no reconoce es `ERROR`, nunca una excepcion: un evento con un status
+    raro no deberia tumbar la conciliacion."""
+    try:
+        return EstadoCobro(bruto)
+    except ValueError:
+        return EstadoCobro.ERROR
 
 
 class AdaptadorSimulado:
@@ -142,3 +154,54 @@ class AdaptadorSimulado:
         porque contra dinero real un checksum sin validar es la superficie de
         ataque mas barata del sistema (ver `boveda/eventos.py`)."""
         return json.loads(cuerpo)
+
+    def resultado_desde_evento(self, evento: dict[str, Any]) -> tuple[str, ResultadoCobro] | None:
+        """Espera la misma forma que produce Wompi (`event`, `data.
+        transaction`) -- ver `evento_de` -- para que `ConciliarEvento` no
+        necesite saber contra que pasarela esta corriendo."""
+        if evento.get("event") != "transaction.updated":
+            return None
+        tx = ((evento.get("data") or {}).get("transaction")) or {}
+        referencia = tx.get("reference", "")
+        if not referencia:
+            return None
+        metodo = tx.get("payment_method") or {}
+        resultado = ResultadoCobro(
+            estado=_estado_cobro(tx.get("status", "ERROR")),
+            id_externo=str(tx.get("id", "")),
+            referencia=referencia,
+            status_message=tx.get("status_message") or "",
+            afe_decision=metodo.get("afe_decision") or "",
+            detalle=tx,
+        )
+        # ADR-6: a diferencia de Wompi (que antepone "agora-", ver
+        # `adaptadores/pasarelas/wompi/adaptador.py`), `cobrar()` usa
+        # `intencion_id` como referencia tal cual -- la simulada no necesita
+        # distinguir su trafico del de la v1 porque nunca hablo con Wompi.
+        return referencia, resultado
+
+    def evento_de(self, id_externo: str) -> dict[str, Any]:
+        """Empaqueta el cobro actual como el `transaction.updated` que Wompi
+        mandaria por webhook, para ejercitar `ConciliarEvento` o
+        `entradas/webhooks/` en una demo o una prueba sin un servidor de
+        Wompi real. Igual que `resolver_pendiente`: solo para demos y
+        pruebas, no existe en el `Protocol`."""
+        with self._lock:
+            resultado = self._cobros.get(id_externo)
+        if resultado is None:
+            raise ErrorDePasarela(f"la simulada no conoce el cobro '{id_externo}'")
+        return {
+            "event": "transaction.updated",
+            "environment": "test",
+            "data": {
+                "transaction": {
+                    "id": resultado.id_externo,
+                    "reference": resultado.referencia,
+                    "status": resultado.estado.value,
+                    "status_message": resultado.status_message,
+                    "payment_method": (
+                        {"afe_decision": resultado.afe_decision} if resultado.afe_decision else {}
+                    ),
+                }
+            },
+        }

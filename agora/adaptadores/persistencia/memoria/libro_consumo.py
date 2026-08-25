@@ -95,6 +95,16 @@ class LibroDeConsumoEnMemoria:
             gastado = self._gastado_dia.get(clave, CERO)
             self._gastado_dia[clave] = gastado - reserva.monto
 
+    def reserva_pendiente_de(self, intencion_id: str) -> Reserva | None:
+        """Barrido lineal: a esta escala (demo, pruebas) es mas simple que un
+        segundo indice `intencion_id -> reserva_id`, y `_reservas` solo
+        contiene reservas vivas (confirmar/liberar ya las sacan del dict)."""
+        with self._lock:
+            for reserva, _ambiente in self._reservas.values():
+                if reserva.intencion_id == intencion_id:
+                    return reserva
+            return None
+
     # -- consultas -------------------------------------------------------------- #
 
     def consumo_de(self, mandato_id: str) -> Consumo:

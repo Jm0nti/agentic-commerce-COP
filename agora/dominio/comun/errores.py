@@ -111,3 +111,18 @@ class RechazadoPorAntifraude(CobroRechazado):
 
 class MedioDePagoRevocado(ErrorDePasarela):
     """La fuente ya no sirve. Hay que volver a enrolar."""
+
+
+# -- consumo ------------------------------------------------------------ #
+
+
+class ErrorDeConsumo(ErrorDeDominio):
+    pass
+
+
+class ReservaNoEncontrada(ErrorDeConsumo):
+    """`EjecutarIntencion.retomar` (etapa 4) sobre una intencion sin una
+    reserva pendiente viva -- ya se resolvio (por `ConciliarEvento`, o por un
+    `retomar` anterior), o nunca existio. No es reintentable con los mismos
+    datos: retomar de nuevo la misma intencion no hace aparecer una reserva
+    que ya no esta."""

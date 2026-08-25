@@ -77,6 +77,37 @@ def test_liberar_no_deja_rastro_en_el_consumo():
     assert libro.gastado_hoy(Ambiente.SANDBOX) == Dinero.de_pesos(0)
 
 
+def test_reserva_pendiente_de_encuentra_una_reserva_viva():
+    libro = _libro()
+    m = _mandato()
+    reserva = libro.reservar(m, "int_1", Dinero.de_pesos(2_050), Dinero.de_pesos(100_000))
+
+    assert libro.reserva_pendiente_de("int_1") == reserva
+
+
+def test_reserva_pendiente_de_es_none_tras_confirmar():
+    libro = _libro()
+    m = _mandato()
+    reserva = libro.reservar(m, "int_1", Dinero.de_pesos(2_050), Dinero.de_pesos(100_000))
+    libro.confirmar(reserva)
+
+    assert libro.reserva_pendiente_de("int_1") is None
+
+
+def test_reserva_pendiente_de_es_none_tras_liberar():
+    libro = _libro()
+    m = _mandato()
+    reserva = libro.reservar(m, "int_1", Dinero.de_pesos(2_050), Dinero.de_pesos(100_000))
+    libro.liberar(reserva)
+
+    assert libro.reserva_pendiente_de("int_1") is None
+
+
+def test_reserva_pendiente_de_intencion_desconocida_es_none():
+    libro = _libro()
+    assert libro.reserva_pendiente_de("int_fantasma") is None
+
+
 def test_reservar_ya_descuenta_del_cupo_antes_de_confirmar():
     """El punto de reservar: el cupo se aparta ANTES de saber si el cobro se
     aprueba. Si solo se descontara al confirmar, dos cobros PENDIENTE podrian

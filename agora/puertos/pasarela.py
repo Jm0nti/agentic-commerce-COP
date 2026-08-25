@@ -17,7 +17,6 @@ from typing import Any, Protocol
 
 from ..dominio.pago.modelo import (
     Ambiente,
-    EstadoCobro,
     MedioDePagoRef,
     OrdenDeCobro,
     ResultadoCobro,
@@ -84,5 +83,20 @@ class PasarelaDePagos(Protocol):
         Va en el puerto y no en un modulo aparte porque la forma de verificar es
         propia de cada pasarela. Sin verificar, cualquiera que conozca la URL
         puede inventar un APPROVED.
+        """
+        ...
+
+    def resultado_desde_evento(self, evento: dict[str, Any]) -> tuple[str, ResultadoCobro] | None:
+        """Traduce un evento YA VERIFICADO (`validar_evento`) a
+        `(intencion_id, ResultadoCobro)`, o `None` si el evento no es un
+        cobro que le pertenezca a esta app -- otro tipo de evento, o una
+        referencia que esta pasarela no reconoce como propia.
+
+        `None` no es un error: `ConciliarEvento` (etapa 4) lo trata como "nada
+        que hacer aqui", no como algo que reintentar. Igual que
+        `validar_evento`, la forma del evento es propia de cada pasarela (la
+        manera de recuperar el `intencion_id` a partir de la referencia que
+        Wompi devuelve, por ejemplo), asi que la traduccion vive aqui y no en
+        `aplicacion/`.
         """
         ...
