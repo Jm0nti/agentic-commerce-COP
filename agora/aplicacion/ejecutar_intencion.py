@@ -93,7 +93,7 @@ class EjecutarIntencion:
         # 2. Reserva atomica del cupo diario. Si no cabe, nadie se entera afuera.
         try:
             reserva = self._consumo.reservar(
-                mandato, intencion.monto, self._topes.por_dia
+                mandato, intencion.intencion_id, intencion.monto, self._topes.por_dia
             )
         except TopeAgotado as exc:
             return self._detenido(intencion, str(exc), Dictamen(Decision.BLOQUEAR))

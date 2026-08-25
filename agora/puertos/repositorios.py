@@ -55,7 +55,7 @@ class LibroDeConsumo(Protocol):
     """
 
     def reservar(
-        self, mandato: Mandato, monto: Dinero, tope_dia: Dinero
+        self, mandato: Mandato, intencion_id: str, monto: Dinero, tope_dia: Dinero
     ) -> Reserva: ...
 
     def confirmar(self, reserva: Reserva) -> None: ...
