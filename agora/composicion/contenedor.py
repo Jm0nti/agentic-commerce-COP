@@ -21,6 +21,11 @@ from ..adaptadores.persistencia.memoria import (
     RepositorioMandatosEnMemoria,
     RepositorioMediosEnMemoria,
 )
+from ..adaptadores.persistencia.sqlite import (
+    LibroDeConsumoSQLite,
+    RepositorioMandatosSQLite,
+    RepositorioMediosSQLite,
+)
 from ..adaptadores.sistema import (
     BitacoraJsonl,
     GeneradorIdsUuid,
@@ -67,19 +72,29 @@ def construir(
     (por ejemplo, para mostrar el rechazo por antifraude a voluntad) sin
     tocar variables de entorno.
 
-    Persistencia: hoy siempre en memoria (`adaptadores/persistencia/
-    memoria/`). Eso es correcto para `pasarela="simulada"` y para pruebas; NO
-    lo es para `pasarela="wompi"` en `produccion` sin la etapa 3 (SQLite) --
-    un restart pierde el consumo acumulado y el mandato que se creyo agotado
-    vuelve a estar fresco. Ver el docstring de `LibroDeConsumoEnMemoria`.
+    Persistencia: `config.persistencia` decide entre memoria (pruebas y
+    `pasarela="simulada"`) y SQLite (etapa 3: reserva/confirmacion atomica
+    que sobrevive un reinicio). `ConfiguracionAgora.__post_init__` ya rechaza
+    la combinacion `pasarela="wompi"` + `ambiente=produccion` +
+    `persistencia="memoria"` antes de que `construir` se llame -- ver el
+    docstring de `LibroDeConsumoEnMemoria` para el porque.
     """
     reloj = RelojDelSistema()
     ids = GeneradorIdsUuid()
     bitacora = BitacoraJsonl(config.bitacora_path, reloj)
     verificador = VerificadorEd25519()
-    mandatos = RepositorioMandatosEnMemoria()
-    medios = RepositorioMediosEnMemoria()
-    consumo = LibroDeConsumoEnMemoria(reloj, ids)
+
+    mandatos: RepositorioMandatos
+    medios: RepositorioMedios
+    consumo: LibroDeConsumo
+    if config.persistencia == "sqlite":
+        mandatos = RepositorioMandatosSQLite(config.sqlite_path)
+        medios = RepositorioMediosSQLite(config.sqlite_path, reloj)
+        consumo = LibroDeConsumoSQLite(config.sqlite_path, reloj, ids)
+    else:
+        mandatos = RepositorioMandatosEnMemoria()
+        medios = RepositorioMediosEnMemoria()
+        consumo = LibroDeConsumoEnMemoria(reloj, ids)
     topes = TopesDuros()
 
     pasarela: PasarelaDePagos

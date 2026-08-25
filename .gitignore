@@ -21,3 +21,12 @@ boveda/mnd-*.json
 # Cache de fuentes fuera de la boveda. Un payment_source_id de produccion
 # es tan sensible como una credencial: quien lo tiene puede cobrar.
 data/private/*.json
+
+# `agora/` (etapa 2+): bitacora .jsonl y, desde la etapa 3, la base SQLite --
+# mandatos, medios de pago y consumo real, igual de sensible que
+# `boveda/secretos/`.
+agora_datos/
+*.db
+*.db-wal
+*.db-shm
+*.db.bak-*

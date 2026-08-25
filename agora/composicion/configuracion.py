@@ -9,9 +9,12 @@ despues como objetos inmutables.
 Variables reconocidas (ver tambien `docs/variables-de-entorno.md`, que documenta
 las de Wompi):
 
-    AGORA_AMBIENTE    sandbox | produccion     (default: sandbox)
-    AGORA_PASARELA    simulada | wompi         (default: simulada)
-    AGORA_BITACORA    ruta del .jsonl propio de agora/ (default: agora_datos/recibos.jsonl)
+    AGORA_AMBIENTE      sandbox | produccion     (default: sandbox)
+    AGORA_PASARELA      simulada | wompi         (default: simulada)
+    AGORA_BITACORA      ruta del .jsonl propio de agora/ (default: agora_datos/recibos.jsonl)
+    AGORA_PERSISTENCIA  memoria | sqlite         (default: memoria)
+    AGORA_SQLITE_PATH   ruta del archivo SQLite (default: agora_datos/agora.db).
+        Solo se lee si AGORA_PERSISTENCIA=sqlite.
 
     WOMPI_PUBLIC_KEY / WOMPI_PRIVATE_KEY / WOMPI_INTEGRITY_SECRET / WOMPI_EVENTS_SECRET
         Solo se leen si AGORA_PASARELA=wompi. Son las mismas variables que
@@ -36,6 +39,7 @@ from ..dominio.pago.modelo import Ambiente
 
 RAIZ_REPO = Path(__file__).resolve().parent.parent.parent
 BITACORA_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "recibos.jsonl"
+SQLITE_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "agora.db"
 
 # A proposito NO en un dominio reservado (a diferencia del viejo default de
 # `boveda/nucleo.py:perfil_pagador`, `boveda+poc@example.com`): ese fue el
@@ -59,6 +63,8 @@ class ConfiguracionAgora:
     datos_pagador: dict[str, str] = field(default_factory=dict)
     bitacora_path: Path = BITACORA_POR_DEFECTO
     wompi: ConfiguracionWompi | None = None
+    persistencia: str = "memoria"  # "memoria" | "sqlite"
+    sqlite_path: Path = SQLITE_POR_DEFECTO
 
     def __post_init__(self) -> None:
         if self.pasarela not in ("simulada", "wompi"):
@@ -69,6 +75,28 @@ class ConfiguracionAgora:
             raise ConfiguracionInvalida(
                 "AGORA_PASARELA=wompi exige las credenciales de Wompi "
                 "(WOMPI_PUBLIC_KEY / WOMPI_PRIVATE_KEY / WOMPI_INTEGRITY_SECRET)"
+            )
+        if self.persistencia not in ("memoria", "sqlite"):
+            raise ConfiguracionInvalida(
+                f"AGORA_PERSISTENCIA='{self.persistencia}' invalido: use 'memoria' o 'sqlite'"
+            )
+        if (
+            self.pasarela == "wompi"
+            and self.ambiente is Ambiente.PRODUCCION
+            and self.persistencia == "memoria"
+        ):
+            # `LibroDeConsumoEnMemoria` pierde el consumo acumulado si el
+            # proceso reinicia -- un mandato que se creia agotado vuelve a
+            # estar fresco. Contra dinero real (wompi + produccion) eso no es
+            # aceptable (docs/etapa-2-completa.md, "Decision importante").
+            # No es un guardarrail que se pueda saltar con una bandera: quien
+            # necesite reproducir ese estado lo hace explicitamente
+            # instanciando los adaptadores en memoria a mano, no a traves de
+            # `leer_configuracion`.
+            raise ConfiguracionInvalida(
+                "AGORA_PASARELA=wompi en AGORA_AMBIENTE=produccion exige "
+                "AGORA_PERSISTENCIA=sqlite: la persistencia en memoria no "
+                "sobrevive un reinicio y permitiria reusar un mandato agotado"
             )
 
 
@@ -97,6 +125,10 @@ def leer_configuracion(entorno: Mapping[str, str]) -> ConfiguracionAgora:
         datos_pagador.pop("legal_id_type", None)
 
     bitacora = Path(entorno["AGORA_BITACORA"]) if "AGORA_BITACORA" in entorno else BITACORA_POR_DEFECTO
+    persistencia = entorno.get("AGORA_PERSISTENCIA", "memoria")
+    sqlite_path = (
+        Path(entorno["AGORA_SQLITE_PATH"]) if "AGORA_SQLITE_PATH" in entorno else SQLITE_POR_DEFECTO
+    )
 
     wompi = None
     if pasarela == "wompi":
@@ -125,4 +157,6 @@ def leer_configuracion(entorno: Mapping[str, str]) -> ConfiguracionAgora:
         datos_pagador=datos_pagador,
         bitacora_path=bitacora,
         wompi=wompi,
+        persistencia=persistencia,
+        sqlite_path=sqlite_path,
     )
