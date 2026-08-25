@@ -1,0 +1,86 @@
+sequenceDiagram
+    autonumber
+    actor T as Titular
+    participant UI as App de chat
+    participant AG as Agente<br/>DeepSeek V4
+    participant CAT as RepositorioCatalogo<br/>comercios simulados
+    participant FIR as Firmante<br/>llave del titular
+    participant EJ as EjecutarIntencion
+    participant LC as LibroDeConsumo
+    participant PAS as PasarelaDePagos
+    participant WO as Wompi / Nequi
+
+    rect rgb(232, 244, 253)
+    Note over T,WO: FASE A · enrolamiento · una sola vez · HUMANO PRESENTE
+    T->>UI: quiero conectar mi Nequi
+    UI->>PAS: preparar_medio(telefono)
+    PAS->>WO: POST /tokens/nequi
+    WO-->>T: push a la app Nequi
+    T->>WO: acepta la suscripcion
+    PAS->>WO: POST /payment_sources
+    WO-->>PAS: MedioDePagoRef, AVAILABLE
+    Note right of PAS: desde aqui se puede cobrar<br/>sin el titular. Ese es el hueco.
+    end
+
+    rect rgb(253, 245, 235)
+    Note over T,CAT: NAVEGACION · el agente trabaja solo
+    T->>UI: busco unos audifonos bluetooth
+    UI->>AG: turno de conversacion
+    AG->>CAT: buscar_productos("audifonos bluetooth")
+    CAT-->>AG: 12 productos de 3 comercios
+    AG-->>UI: te encontre estas opciones...
+    T->>UI: el segundo, dos unidades
+    AG->>AG: armar_carrito(items)
+    AG-->>UI: carrito_id + PROPUESTA de mandato<br/>SIN FIRMAR
+    end
+
+    rect rgb(255, 235, 235)
+    Note over T,FIR: LA FRONTERA · el agente no puede cruzarla
+    UI-->>T: vas a autorizar hasta 45.000 COP<br/>en TiendaX, 1 uso, 30 minutos
+    T->>FIR: firma
+    FIR-->>UI: Mandato ed25519 firmado
+    UI-->>AG: mandato_id  (opaco)
+    Note over AG: el agente nunca vio la llave,<br/>ni el medio de pago, ni el monto real
+    end
+
+    rect rgb(233, 247, 239)
+    Note over AG,WO: FASE B · el cobro · HUMANO AUSENTE
+    AG->>EJ: pagar(mandato_id, carrito_id)
+    EJ->>EJ: TopesDuros  (nunca se apagan)
+    EJ->>LC: reservar(mandato, monto, tope_dia)
+    alt tope agotado o concurrencia
+        LC-->>EJ: TopeAgotado
+        EJ-->>AG: BLOQUEADO
+    else reserva concedida
+        LC-->>EJ: Reserva
+        EJ->>EJ: PoliticaDeMandato -> Dictamen
+        alt BLOQUEAR
+            EJ->>LC: liberar(reserva)
+            EJ-->>AG: violaciones del mandato
+        else CONFIRMAR
+            EJ-->>UI: hace falta que lo confirmes
+            UI-->>T: el agente pide algo inusual
+        else PERMITIR
+            EJ->>PAS: cobrar(orden)
+            PAS->>WO: POST /transactions
+            WO-->>PAS: PENDING
+            PAS-->>EJ: PENDIENTE
+            EJ-->>AG: en proceso
+            Note over EJ,WO: no se bloquea esperando.<br/>El desenlace llega por webhook.
+        end
+    end
+    end
+
+    rect rgb(240, 240, 245)
+    Note over WO,UI: CONCILIACION
+    WO->>EJ: transaction.updated  (X-Event-Checksum)
+    EJ->>EJ: ConciliarEvento: valida checksum
+    alt APPROVED
+        EJ->>LC: confirmar(reserva)
+    else DECLINED
+        EJ->>LC: liberar(reserva)
+        Note right of EJ: afe_decision: DECLINE<br/>lo detuvo el antifraude,<br/>no el mandato
+    end
+    EJ-->>UI: SSE con el desenlace
+    UI-->>T: listo / rechazado y por que
+    end

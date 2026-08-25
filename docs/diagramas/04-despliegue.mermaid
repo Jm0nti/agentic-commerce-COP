@@ -1,0 +1,62 @@
+flowchart LR
+    subgraph NAV["Navegador"]
+        CHAT["Chat<br/>SSE para el desenlace"]
+        FIRMA["Firma del mandato<br/>WebCrypto o PIN"]
+    end
+
+    subgraph PROC["Proceso Python · uvicorn"]
+        direction TB
+
+        subgraph WEB["entradas/api"]
+            REST["REST<br/>/conversacion /mandatos /cobros"]
+            SSE["SSE<br/>/eventos/{conversacion_id}"]
+            HOOK["POST /webhooks/wompi<br/>valida X-Event-Checksum"]
+        end
+
+        subgraph NUCLEO["aplicacion + dominio"]
+            CASOS["casos de uso"]
+            TOPES["TopesDuros<br/>20.000/tx · 100.000/dia"]
+        end
+
+        subgraph AGT["agente"]
+            LOOP["loop de turnos"]
+            TOOLS["6 herramientas<br/>ninguna firma ni revela credenciales"]
+        end
+    end
+
+    DB[("SQLite · WAL<br/>mandatos · consumo<br/>cobros · catalogo")]
+
+    subgraph EXT["Fuera"]
+        DS["DeepSeek V4<br/>API compatible con OpenAI"]
+        WOMPI["Wompi<br/>produccion"]
+        NEQUI["Nequi<br/>cuenta real del titular"]
+        SIM["Pasarela simulada<br/>en proceso"]
+    end
+
+    CHAT -->|HTTP| REST
+    SSE -->|push| CHAT
+    FIRMA -->|mandato firmado| REST
+    REST --> AGT
+    AGT -->|"mandato_id opacos"| CASOS
+    LOOP -->|puerto ModeloDeLenguaje| DS
+    CASOS --> TOPES
+    CASOS --> DB
+    CASOS -->|"puerto PasarelaDePagos"| WOMPI
+    CASOS -->|"mismo puerto"| SIM
+    WOMPI -->|debita| NEQUI
+    WOMPI -->|transaction.updated| HOOK
+    HOOK --> CASOS
+
+    AGT x-.-x|"sin credenciales de pago"| WOMPI
+
+    classDef nav fill:#1e3a5f,stroke:#4a90d9,color:#e8f0f8
+    classDef nucleo fill:#2f4f3d,stroke:#6fbf8f,color:#e8f8ee
+    classDef agente fill:#5c3d2f,stroke:#d99a6f,color:#f8f0e8
+    classDef ext fill:#3d2f5c,stroke:#9b7fc4,color:#f0e8f8
+    classDef datos fill:#5c2f3d,stroke:#d96f8f,color:#f8e8ee
+
+    class CHAT,FIRMA nav
+    class CASOS,TOPES,REST,SSE,HOOK nucleo
+    class LOOP,TOOLS agente
+    class DS,WOMPI,NEQUI,SIM ext
+    class DB datos

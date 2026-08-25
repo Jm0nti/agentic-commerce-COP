@@ -39,6 +39,7 @@ import argparse
 import json
 import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
@@ -54,6 +55,7 @@ from .nucleo import (
     Boveda,
     BovedaError,
     ClienteWompi,
+    perfil_pagador,
 )
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -155,6 +157,33 @@ def cmd_preflight(a) -> int:
         "  deja de ser un detalle: es la diferencia entre un consentimiento y una\n"
         "  casilla marcada por software."
     )
+
+    # El perfil del pagador no es cosmetico: es casi todo lo que el motor
+    # antifraude tiene para decidir si un cobro sin titular presente es
+    # legitimo. Vacio, el AFE decide a ciegas -- y a ciegas rechaza.
+    email, pagador = perfil_pagador()
+    print("\nPerfil del pagador (lo que ve el antifraude)")
+    print(f"  correo             {email}")
+    if pagador:
+        for k, v in pagador.items():
+            print(f"  {k:18} {v}")
+    else:
+        print("  customer_data      (vacio)")
+
+    problemas = []
+    if email.endswith(("example.com", "example.org", "example.net")):
+        problemas.append(
+            "el correo esta en un dominio reservado por la RFC 2606: no existe y\n"
+            "      nunca va a entregar. Defina PAGADOR_EMAIL en el .env"
+        )
+    if not pagador:
+        problemas.append(
+            "sin customer_data el antifraude no tiene con que distinguir este\n"
+            "      cobro de uno automatizado por un tercero. Defina PAGADOR_NOMBRE,\n"
+            "      PAGADOR_TELEFONO y PAGADOR_DOCUMENTO en el .env"
+        )
+    for prob in problemas:
+        print(f"\n  [!] {prob}")
 
     fs = registro().listar(a.modo)
     vivas = [f for f in fs if f["estado"] == "AVAILABLE"]
@@ -376,7 +405,7 @@ def cmd_emitir(a) -> int:
     print(f"  fuente       {m.fuente_pago}  ({a.modo})")
     print(f"  por tx       {m.monto_max_cop:,} COP")
     print(f"  tope total   {m.tope_total_cop:,} COP")
-    print(f"  usos         {m.usos_max}")
+    print(f"  usos max     {m.usos_max}")
     print(f"  expira       {m.expira_en[:19]}")
     print(f"  firma        {m.firma[:32]}...")
     return 0
@@ -431,6 +460,19 @@ def cmd_ejecutar(a) -> int:
     if r.transaction_id:
         print(f"  transaccion  {r.transaction_id}")
         print(f"  estado       {r.estado_wompi}")
+    if r.afe_decision:
+        print(f"  antifraude   {r.afe_decision}")
+    if r.status_message:
+        print(f"  mensaje      {r.status_message}")
+
+    if r.detenido_por_antifraude:
+        print(
+            "\n  Lo detuvo el motor antifraude de la pasarela (AFE), no el mandato.\n"
+            "  El mandato se cumplio: no hubo violaciones y la boveda dejo pasar el\n"
+            "  cobro. El unico control que actuo es el que el comercio no puede ver,\n"
+            "  ni configurar, ni explicarle al titular.\n"
+            "\n  Anotelo como hallazgo, no como bug. Detalle en docs/decline-afe.md"
+        )
     if r.aprobado_pese_a_violacion:
         print(
             "\n  La pasarela aprobo un cobro que el mandato firmado no autorizaba.\n"
@@ -439,22 +481,122 @@ def cmd_ejecutar(a) -> int:
     return 0
 
 
+def cmd_diagnostico(a) -> int:
+    """Lo que Wompi dice de una transaccion, sin recortes.
+
+    Existe porque el recibo resumia demasiado: un DECLINED sin `status_message`
+    ni `afe_decision` obliga a abrir el debugger del dashboard para leer algo
+    que la API ya habia contestado.
+    """
+    try:
+        cliente = ClienteWompi(a.modo)
+        d = cliente.consultar(a.transaction_id)
+    except BovedaError as exc:
+        print(f"[x] {exc}")
+        return 1
+
+    metodo = d.get("payment_method") or {}
+    centavos = d.get("amount_in_cents") or 0
+
+    print(f"Transaccion {d.get('id')}  ({a.modo})")
+    print(f"  estado             {d.get('status')}")
+    print(f"  mensaje            {d.get('status_message')}")
+    print(f"  antifraude (AFE)   {metodo.get('afe_decision')}")
+    print(f"  monto              {centavos // 100:,} COP")
+    print(f"  referencia         {d.get('reference')}")
+    print(f"  metodo             {d.get('payment_method_type')}")
+    print(f"  fuente de pago     {d.get('payment_source_id')}")
+    print(f"  creada             {d.get('created_at')}")
+    print(f"  finalizada         {d.get('finalized_at')}")
+
+    print("\nLo que la pasarela recibio del comercio")
+    for campo in ("customer_email", "customer_data", "billing_data", "redirect_url"):
+        valor = d.get(campo)
+        marca = "" if valor else "   <-- vacio"
+        print(f"  {campo:18} {valor}{marca}")
+
+    correo = d.get("customer_email") or ""
+    if correo.endswith(("example.com", "example.org", "example.net")):
+        print(
+            "\n[!] El correo esta en un dominio reservado por la RFC 2606: no existe\n"
+            "    y nunca va a entregar. Para un motor antifraude es indistinguible\n"
+            "    de un correo desechable. Ponga PAGADOR_EMAIL en el .env."
+        )
+    if not d.get("customer_data"):
+        print(
+            "\n[!] Sin customer_data el motor antifraude no tiene con que distinguir\n"
+            "    este cobro de uno automatizado por un tercero. Llene PAGADOR_NOMBRE,\n"
+            "    PAGADOR_TELEFONO y PAGADOR_DOCUMENTO en el .env.\n"
+            "    (billing_data lo llena la pasarela, no el comercio: que este vacio\n"
+            "     en un cobro contra fuente de pago es normal.)"
+        )
+
+    if (metodo.get("afe_decision") or "").upper() == "DECLINE":
+        print(
+            "\n  Veredicto: lo rechazo el antifraude de Wompi, no Nequi ni el saldo.\n"
+            "  Ese motor no es visible ni configurable por el comercio; solo Wompi\n"
+            "  puede decir que regla salto. Ver docs/decline-afe.md"
+        )
+
+    if a.json:
+        print("\n" + json.dumps(d, indent=2, ensure_ascii=False))
+    return 0
+
+
 def cmd_listar(a) -> int:
+    """Que mandatos hay y cual sirve todavia.
+
+    Los defaults de `emitir` son estrechos a proposito -- un uso, una hora --
+    asi que la respuesta a "cual puedo ejecutar" casi siempre es "ninguno,
+    emita otro". Mejor que lo diga la herramienta a que lo diga un DECLINED.
+    """
     bov = abrir(a.modo, True)
     mandatos = bov.estado.get("mandatos", {})
+    modos = bov.estado.get("modos") or {}
     if not mandatos:
         print("Sin mandatos.")
         return 0
+
+    ahora = datetime.now(timezone.utc)
+    usables = 0
     for mid, crudo in mandatos.items():
         c = bov.estado["consumo"].get(mid, {})
+        emitido_en = modos.get(mid)
+        usos, tope_usos = c.get("usos", 0), crudo["usos_max"]
+        acum = c.get("acumulado_cop", 0)
+
+        if emitido_en and emitido_en != a.modo:
+            estado = f"otro ambiente ({emitido_en})"
+        elif datetime.fromisoformat(crudo["expira_en"]) < ahora:
+            estado = "vencido"
+        elif usos >= tope_usos:
+            estado = "usos agotados"
+        elif acum >= crudo["tope_total_cop"]:
+            estado = "tope agotado"
+        else:
+            estado = "usable"
+            usables += 1
+
+        marca = "  " if estado == "usable" else "x "
         print(
-            f"  {mid}  {crudo['comercio']:20} "
-            f"{crudo['monto_max_cop']:>9,}/tx  "
-            f"usos {c.get('usos', 0)}/{crudo['usos_max']}  "
-            f"acum {c.get('acumulado_cop', 0):,}/{crudo['tope_total_cop']:,}"
+            f"  {marca}{mid}  {crudo['comercio']:16} "
+            f"{crudo['monto_max_cop']:>8,}/tx  "
+            f"usos {usos}/{tope_usos}  "
+            f"acum {acum:,}/{crudo['tope_total_cop']:,}  {estado}"
+        )
+
+    print(f"\n  {usables} usable(s) en modo '{a.modo}'")
+    if not usables:
+        print(
+            f"    Emita uno nuevo:  python -m boveda.cli --modo {a.modo} "
+            "emitir --monto 2000"
         )
     print(f"\n  gastado hoy  {bov.estado.get('gastado_dia_cop', 0):,} COP")
     print(f"  topes duros  {LIMITE_DURO_TX_COP:,}/tx  {LIMITE_DURO_DIA_COP:,}/dia")
+    print(
+        "    (el gasto diario es compartido entre sandbox y produccion: una\n"
+        "     corrida de pruebas consume el cupo real. Es conservador a proposito.)"
+    )
     return 0
 
 
@@ -465,11 +607,23 @@ def cmd_recibos() -> int:
     filas = [json.loads(l) for l in RECIBOS.read_text(encoding="utf-8").splitlines() if l]
     print(f"{len(filas)} recibos\n")
     for f in filas:
-        marca = "  <-- aprobado con violacion" if f["aprobado_pese_a_violacion"] else ""
+        if f["aprobado_pese_a_violacion"]:
+            marca = "  <-- aprobado con violacion"
+        elif (f.get("afe_decision") or "").upper() == "DECLINE":
+            marca = "  <-- lo detuvo el antifraude, no el mandato"
+        else:
+            marca = ""
         modo = f.get("modo", "?")[:4]
         print(
             f"  [{modo}] {f['intencion']['monto_cop']:>9,} COP  {f['motivo']:20} "
             f"{f.get('transaction_id') or '':28}{marca}"
+        )
+
+    afe = sum(1 for f in filas if (f.get("afe_decision") or "").upper() == "DECLINE")
+    if afe:
+        print(
+            f"\n  {afe} de {len(filas)} detenidos por el antifraude de la pasarela.\n"
+            "  Ese control no lo puso la boveda y no se puede medir su umbral."
         )
     return 0
 
@@ -521,6 +675,10 @@ def main() -> int:
     px.add_argument("--categoria", default="")
     px.add_argument("--sin-mandato", action="store_true")
 
+    pd = sub.add_parser("diagnostico", help="lo que Wompi dice de una transaccion")
+    pd.add_argument("transaction_id")
+    pd.add_argument("--json", action="store_true", help="ademas, el objeto crudo")
+
     sub.add_parser("listar")
     sub.add_parser("recibos")
 
@@ -543,6 +701,8 @@ def main() -> int:
         return cmd_emitir(a)
     if a.cmd == "ejecutar":
         return cmd_ejecutar(a)
+    if a.cmd == "diagnostico":
+        return cmd_diagnostico(a)
     if a.cmd == "listar":
         return cmd_listar(a)
     if a.cmd == "recibos":

@@ -1,0 +1,142 @@
+erDiagram
+    TITULAR ||--o{ MEDIO_DE_PAGO : "enrola"
+    TITULAR ||--o{ CONVERSACION : "sostiene"
+    MEDIO_DE_PAGO ||--o{ MANDATO : "respalda"
+    CONVERSACION ||--o{ TURNO : "contiene"
+    TURNO ||--o{ CARRITO : "produce"
+    CARRITO ||--|| PROPUESTA_MANDATO : "sugiere"
+    PROPUESTA_MANDATO ||--o| MANDATO : "el humano firma"
+    MANDATO ||--o{ INTENCION : "autoriza"
+    INTENCION ||--o| RESERVA : "toma"
+    INTENCION ||--o| COBRO : "genera"
+    COBRO ||--o{ EVENTO_PASARELA : "recibe"
+    COMERCIO ||--o{ PRODUCTO : "vende"
+    PRODUCTO ||--o{ ITEM_CARRITO : "aparece en"
+    CARRITO ||--o{ ITEM_CARRITO : "agrupa"
+
+    TITULAR {
+        uuid id PK
+        string correo
+        string nombre
+        string documento
+        string llave_publica "ed25519, verifica sus mandatos"
+    }
+
+    MEDIO_DE_PAGO {
+        uuid id PK
+        string proveedor "wompi | simulada"
+        string id_externo "payment_source_id, opaco al agente"
+        string tipo "NEQUI | CARD"
+        string modo "sandbox | produccion"
+        string referencia_publica "300****567"
+        string estado "AVAILABLE | VOIDED"
+        datetime creado_en
+    }
+
+    MANDATO {
+        string id PK "mnd_..."
+        int version "1 legado, 2 con MedioDePagoRef"
+        uuid medio_id FK
+        string comercio_id
+        int monto_max_centavos
+        int tope_total_centavos
+        int usos_max
+        datetime expira_en
+        string categorias "lista, vacio = sin restriccion"
+        string firma "ed25519 sobre el canonico"
+        string modo "no va dentro de la firma"
+    }
+
+    INTENCION {
+        uuid id PK "deriva la referencia: idempotencia"
+        string mandato_id FK
+        uuid carrito_id FK
+        uuid turno_id FK "el hilo hasta el chat"
+        int monto_centavos
+        string dictamen "PERMITIR | CONFIRMAR | BLOQUEAR"
+        string violaciones "las que sustentan el dictamen"
+        bool mandato_exigido "false = brazo sin control"
+    }
+
+    RESERVA {
+        uuid id PK
+        uuid intencion_id FK
+        int monto_centavos
+        string estado "ACTIVA | CONFIRMADA | LIBERADA"
+        date dia "para el tope diario"
+    }
+
+    COBRO {
+        uuid id PK
+        uuid intencion_id FK
+        string referencia UK "derivada de intencion_id"
+        string id_externo "transaction_id de la pasarela"
+        string estado "PENDIENTE | APROBADO | RECHAZADO"
+        string detalle_proveedor "status_message, afe_decision"
+        bool aprobado_pese_a_violacion "la metrica de la PoC"
+        datetime creado_en
+        datetime finalizado_en
+    }
+
+    EVENTO_PASARELA {
+        uuid id PK
+        uuid cobro_id FK
+        string tipo "transaction.updated"
+        bool checksum_valido
+        string cuerpo_crudo "la evidencia, sin recortar"
+        datetime recibido_en
+    }
+
+    CONVERSACION {
+        uuid id PK
+        uuid titular_id FK
+        datetime iniciada_en
+    }
+
+    TURNO {
+        uuid id PK
+        uuid conversacion_id FK
+        string rol "usuario | agente | herramienta"
+        string contenido
+        string herramienta_usada
+        int orden
+    }
+
+    COMERCIO {
+        uuid id PK
+        string nombre
+        string categoria
+        bool simulado
+    }
+
+    PRODUCTO {
+        uuid id PK
+        uuid comercio_id FK
+        string nombre
+        string descripcion
+        int precio_centavos
+        string categoria
+    }
+
+    CARRITO {
+        uuid id PK
+        uuid turno_id FK
+        uuid comercio_id FK
+        int total_centavos
+        string hash_canonico "ata el mandato a ESTE carrito"
+    }
+
+    ITEM_CARRITO {
+        uuid id PK
+        uuid carrito_id FK
+        uuid producto_id FK
+        int cantidad
+        int precio_unitario_centavos "congelado al armar"
+    }
+
+    PROPUESTA_MANDATO {
+        uuid id PK
+        uuid carrito_id FK
+        int monto_max_centavos "lo que el AGENTE pidio"
+        string estado "PENDIENTE | FIRMADA | RECHAZADA"
+    }

@@ -1,0 +1,80 @@
+flowchart TB
+    subgraph ENTRADAS["entradas/ · adaptadores primarios"]
+        direction LR
+        CLI["cli/<br/>operacion y experimentos"]
+        API["api/<br/>FastAPI · REST + SSE"]
+        WH["webhooks/<br/>transaction.updated"]
+    end
+
+    subgraph AGENTE["agente/ · FRONTERA DURA"]
+        direction LR
+        HERR["herramientas.py<br/>lo que el LLM puede llamar"]
+        CONV["conversacion.py<br/>el loop de turnos"]
+        POL["politica.py<br/>system prompt y limites"]
+    end
+
+    subgraph APP["aplicacion/ · casos de uso"]
+        direction LR
+        EJ["EjecutarIntencion"]
+        EM["EmitirMandato"]
+        EN["EnrolarMedio"]
+        CE["ConciliarEvento"]
+        NC["NavegarCatalogo"]
+    end
+
+    subgraph PUERTOS["puertos/ · interfaces · typing.Protocol"]
+        direction LR
+        PP["PasarelaDePagos"]
+        PR["LibroDeConsumo<br/>RepositorioMandatos<br/>RepositorioMedios"]
+        PC["RepositorioCatalogo"]
+        PL["ModeloDeLenguaje"]
+        PS["Reloj · GeneradorIds<br/>Firmante · Bitacora"]
+    end
+
+    subgraph DOM["dominio/ · PURO · sin IO"]
+        direction LR
+        MAN["Mandato · Intencion<br/>Violacion · Dictamen"]
+        DIN["Dinero · identidades"]
+        TOP["TopesDuros<br/>NO configurable"]
+        CAT["Comercio · Producto<br/>Carrito"]
+    end
+
+    subgraph ADAP["adaptadores/ · adaptadores secundarios"]
+        direction LR
+        AW["pasarelas/wompi<br/>dinero real"]
+        AS["pasarelas/simulada<br/>demo y pruebas"]
+        AQ["persistencia/sqlite"]
+        AM["persistencia/memoria"]
+        AD["llm/deepseek<br/>V4-Pro · V4-Flash"]
+        AC["catalogo/semilla"]
+    end
+
+    COMP["composicion/contenedor.py<br/>composition root · el unico que lee el entorno"]
+
+    ENTRADAS --> APP
+    AGENTE -->|"solo mandato_id opacos"| APP
+    AGENTE -.->|usa| PL
+    APP --> PUERTOS
+    APP --> DOM
+    PUERTOS --> DOM
+    ADAP -.->|implementan| PUERTOS
+    ADAP --> DOM
+    COMP -->|inyecta| ENTRADAS
+    COMP -->|inyecta| APP
+    COMP -->|construye| ADAP
+
+    AGENTE x-.-x|"prohibido: sin credenciales<br/>test_fronteras.py falla el build"| ADAP
+
+    classDef dominio fill:#1e3a5f,stroke:#4a90d9,color:#e8f0f8
+    classDef puerto fill:#3d2f5c,stroke:#9b7fc4,color:#f0e8f8
+    classDef adaptador fill:#2f4f3d,stroke:#6fbf8f,color:#e8f8ee
+    classDef agente fill:#5c3d2f,stroke:#d99a6f,color:#f8f0e8
+    classDef entrada fill:#4a4a4a,stroke:#999,color:#eee
+    classDef raiz fill:#5c2f3d,stroke:#d96f8f,color:#f8e8ee
+
+    class MAN,DIN,TOP,CAT dominio
+    class PP,PR,PC,PL,PS puerto
+    class AW,AS,AQ,AM,AD,AC adaptador
+    class HERR,CONV,POL agente
+    class CLI,API,WH entrada
+    class COMP raiz
