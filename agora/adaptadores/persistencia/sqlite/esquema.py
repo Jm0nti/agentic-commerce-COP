@@ -89,6 +89,54 @@ CREATE TABLE IF NOT EXISTS medio_de_pago (
     creado_en                  TEXT,
     PRIMARY KEY (proveedor, ambiente, id_externo)
 );
+
+-- Etapa 5: el carrito que `NavegarCatalogo.armar_carrito` arma y que
+-- `EmitirMandato`/`EjecutarIntencion` vuelven a buscar por `carrito_id`.
+-- Tiene que sobrevivir entre procesos igual que `mandato` -- si no,
+-- `entradas/cli/` (donde "armar y firmar" y "pagar" son comandos separados,
+-- cada uno su propio proceso) nunca podria completar una compra con
+-- `AGORA_PERSISTENCIA=sqlite`. `items` va como JSON por el mismo motivo que
+-- `categorias` en `mandato`: una tabla aparte seria mas ceremonia de la que
+-- vale a esta escala.
+CREATE TABLE IF NOT EXISTS carrito (
+    carrito_id                TEXT PRIMARY KEY,
+    comercio_id                TEXT NOT NULL,
+    turno_id                    TEXT,
+    items                        TEXT NOT NULL
+);
+
+-- Etapa 6: la `PropuestaDeMandato` que `NavegarCatalogo.armar_carrito` arma
+-- junto con el carrito. Sin esto, `EmitirMandato` solo podia firmar una
+-- propuesta que le llegara por parametro desde el MISMO proceso que la
+-- creo -- lo que dejaba sin conectar el carrito que arma el chat (un
+-- proceso) con la firma que hace el titular (`entradas/cli/firmar`, otro
+-- proceso, otra terminal). Misma razon de ser que la tabla `carrito` de
+-- arriba, un nivel mas adentro.
+CREATE TABLE IF NOT EXISTS propuesta (
+    propuesta_id               TEXT PRIMARY KEY,
+    carrito_id                  TEXT NOT NULL,
+    comercio_id                  TEXT NOT NULL,
+    monto_max_centavos           INTEGER NOT NULL,
+    monto_max_moneda             TEXT NOT NULL,
+    usos_max                      INTEGER NOT NULL,
+    vigencia_minutos               INTEGER NOT NULL,
+    categorias                      TEXT NOT NULL,
+    justificacion                    TEXT NOT NULL
+);
+
+-- Etapa 6 (segunda parte): `RegistroDeEstados`. Se penso "en memoria nomas"
+-- en la etapa 5 porque su unico consumidor pensado era `consultar_estado`
+-- DENTRO de la misma sesion de `chat`. Eso dejo de ser cierto en cuanto
+-- `retomar` -- que nunca es herramienta del agente, resolver un CONFIRMAR
+-- es siempre decision humana -- se corre desde OTRA terminal: sin esta
+-- tabla, el chat nunca se entera de que la persona ya confirmo, y se queda
+-- diciendo "esperando confirmacion humana" para siempre. Mismo argumento
+-- que `carrito`/`propuesta` de arriba, un escalon mas adentro del flujo.
+CREATE TABLE IF NOT EXISTS estado_intencion (
+    intencion_id                TEXT PRIMARY KEY,
+    estado                       TEXT NOT NULL,
+    detalle                       TEXT NOT NULL
+);
 """
 
 

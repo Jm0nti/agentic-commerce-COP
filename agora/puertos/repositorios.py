@@ -21,8 +21,9 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Protocol
 
+from ..dominio.catalogo.modelo import Carrito
 from ..dominio.comun.dinero import Dinero
-from ..dominio.mandato.modelo import Consumo, Mandato
+from ..dominio.mandato.modelo import Consumo, Mandato, PropuestaDeMandato
 from ..dominio.pago.modelo import Ambiente, MedioDePagoRef
 
 
@@ -102,3 +103,76 @@ class RepositorioMedios(Protocol):
     def vivos(self, titular_id: str, ambiente: Ambiente) -> list[MedioDePagoRef]: ...
 
     def marcar_estado(self, ref: MedioDePagoRef, estado: str) -> None: ...
+
+
+class RepositorioCarritos(Protocol):
+    """Etapa 5. `EmitirMandato` necesita volver a buscar el `Carrito` EXACTO
+    por `carrito_id` al momento de firmar, en vez de confiar en un carrito
+    que le llegue de afuera (por ejemplo, por parametro desde el agente):
+    calcular `carrito_hash` a partir de una fuente que el agente pudo
+    manipular volveria inutil la verificacion que ese hash existe para
+    ofrecer. `NavegarCatalogo.armar_carrito` es el unico que guarda."""
+
+    def guardar(self, carrito: Carrito) -> None: ...
+
+    def obtener(self, carrito_id: str) -> Carrito:
+        """Levanta `CarritoDesconocido` si no existe."""
+        ...
+
+
+class RepositorioPropuestas(Protocol):
+    """Etapa 6. El mismo argumento que `RepositorioCarritos`, aplicado a la
+    otra mitad de lo que se firma: `EmitirMandato` vuelve a buscar la
+    `PropuestaDeMandato` EXACTA por `propuesta_id` al momento de firmar, en
+    vez de aceptar una que le llegue por parametro.
+
+    Antes de esta etapa `EmitirMandato` recibia el objeto `PropuestaDeMandato`
+    directo -- comodo mientras "armar el carrito" y "firmar" corrian en el
+    mismo proceso (`entradas/cli/emitir`, el humano operando la CLI de punta
+    a punta). En cuanto la propuesta la arma el agente en una conversacion de
+    chat y la firma un humano en OTRO proceso (`entradas/cli/firmar`),
+    aceptar una `PropuestaDeMandato` por parametro significaria confiar en
+    cualquier `monto_max`/`usos_max`/`categorias` que ese segundo proceso
+    diga tener -- el mismo hueco que `carrito_hash` existe para cerrar del
+    lado del carrito. `NavegarCatalogo.armar_carrito` es el unico que
+    guarda."""
+
+    def guardar(self, propuesta: PropuestaDeMandato) -> None: ...
+
+    def obtener(self, propuesta_id: str) -> PropuestaDeMandato:
+        """Levanta `PropuestaDesconocida` si no existe."""
+        ...
+
+
+class RegistroDeEstados(Protocol):
+    """Etapa 5. Resuelve un vacio que `LibroDeConsumo.reserva_pendiente_de`
+    deja a proposito (ver su docstring): esa reserva vuelve `None` tanto si
+    la intencion nunca existio como si ya se resolvio, y no dice si se
+    resolvio en `APROBADO` o en `RECHAZADO`. `consultar_estado` (la
+    herramienta del agente) necesita esa distincion, y ni `LibroDeConsumo`
+    ni `Bitacora` -- que es auditoria de solo escritura, no estado de
+    aplicacion (`puertos/sistema.py`) -- estan pensados para contestarla.
+
+    `EjecutarIntencion` y `ConciliarEvento` escriben aqui en cada uno de sus
+    puntos de decision ya existentes (parametro opcional, `None` por
+    defecto: no cambia su comportamiento si nadie lo provee). `estado` es
+    texto libre y corto -- "pendiente", "aprobado", "rechazado",
+    "esperando_confirmacion" -- no un enum nuevo: es el mismo vocabulario
+    que ya usa `Recibo.motivo`/`EstadoCobro`, no una taxonomia paralela.
+
+    Etapa 6 (segunda parte): tiene adaptador SQLite ademas del de memoria.
+    La etapa 5 penso esto como "vocabulario para que el agente se
+    autoconsulte dentro de UNA conversacion" y lo dejo sin sqlite a
+    proposito -- pero `retomar` nunca es herramienta del agente (resolver
+    un CONFIRMAR es decision humana, igual que firmar), asi que SIEMPRE
+    corre en otra terminal. Sin persistencia entre procesos, el chat
+    quedaria diciendo "esperando confirmacion humana" para siempre aunque
+    la persona ya hubiera confirmado en la otra terminal -- exactamente el
+    bug que motivo agregar la tabla `estado_intencion`.
+    """
+
+    def fijar(self, intencion_id: str, estado: str, detalle: str = "") -> None: ...
+
+    def obtener(self, intencion_id: str) -> tuple[str, str] | None:
+        """`(estado, detalle)`, o `None` si nunca se fijo nada para este id."""
+        ...

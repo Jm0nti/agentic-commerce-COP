@@ -20,6 +20,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from agora.adaptadores.pasarelas.simulada import AdaptadorSimulado
 from agora.adaptadores.persistencia.memoria import (
     LibroDeConsumoEnMemoria,
+    RegistroDeEstadosEnMemoria,
     RepositorioMandatosEnMemoria,
 )
 from agora.adaptadores.sistema import GeneradorIdsUuid, VerificadorEd25519
@@ -81,7 +82,7 @@ def _intencion(monto_pesos: int, comercio="com_x", **kw) -> Intencion:
     )
 
 
-def _armar(correo: str = "juan@correo-real.com"):
+def _armar(correo: str = "juan@correo-real.com", estados=None):
     """Wiring manual, sin pasar por `composicion/`: esta prueba quiere
     controlar cada pieza (el reloj fijo, el mandato exacto) para que los
     escenarios sean deterministas."""
@@ -103,6 +104,7 @@ def _armar(correo: str = "juan@correo-real.com"):
         ambiente=Ambiente.SANDBOX,
         correo_pagador=correo,
         datos_pagador={},
+        estados=estados,
     )
     return ejecutar, mandatos, consumo, pasarela, bitacora
 
@@ -350,6 +352,57 @@ def test_pendiente_deja_la_reserva_viva():
     assert consumo.consumo_de(m.mandato_id).usos == 0
     # La reserva sigue viva: el cupo diario la sigue contando.
     assert consumo.gastado_hoy(Ambiente.SANDBOX) == Dinero.de_pesos(2_000)
+
+
+def test_carrito_hash_correcto_deja_pasar_un_mandato_atado_a_un_carrito():
+    """Etapa 5: un `Mandato` con `carrito_hash` (obra de `EmitirMandato`) solo
+    cobra si quien llama a `EjecutarIntencion` reafirma el mismo hash --
+    ver el docstring de `EjecutarIntencion.__call__`."""
+    sk = Ed25519PrivateKey.generate()
+    ejecutar, mandatos, _, _, _ = _armar()
+    m = _mandato(sk, monto_max=Dinero.de_pesos(20_000), tope_total=Dinero.de_pesos(20_000),
+                 usos_max=5, carrito_hash="sha256:abc")
+    mandatos.guardar(m, Ambiente.SANDBOX)
+
+    recibo = ejecutar(_intencion(2_050), carrito_hash="sha256:abc")
+
+    assert recibo.ejecutado
+
+
+def test_carrito_hash_distinto_bloquea_por_carrito_alterado():
+    sk = Ed25519PrivateKey.generate()
+    ejecutar, mandatos, consumo, _, _ = _armar()
+    m = _mandato(sk, monto_max=Dinero.de_pesos(20_000), tope_total=Dinero.de_pesos(20_000),
+                 usos_max=5, carrito_hash="sha256:abc")
+    mandatos.guardar(m, Ambiente.SANDBOX)
+
+    recibo = ejecutar(_intencion(2_050), carrito_hash="sha256:distinto")
+
+    assert not recibo.ejecutado
+    assert {v.tipo for v in recibo.dictamen.violaciones} == {"carrito_alterado"}
+    assert consumo.gastado_hoy(Ambiente.SANDBOX) == Dinero.de_pesos(0)
+
+
+def test_registro_de_estados_es_opcional_y_se_actualiza_cuando_se_provee():
+    """Etapa 5: `estados` es `None` por defecto (todas las pruebas de arriba
+    lo confirman sin pedirlo). Cuando se provee, `EjecutarIntencion` anota en
+    cada uno de sus tres desenlaces -- aprobado, bloqueado, esperando
+    confirmacion -- lo que `ConsultarEstado` despues necesita leer."""
+    sk = Ed25519PrivateKey.generate()
+    estados = RegistroDeEstadosEnMemoria()
+    ejecutar, mandatos, _, _, _ = _armar(estados=estados)
+    # tope_total generoso (20.000) para que la segunda intencion bloquee por
+    # `monto_sobre_mandato` (excede monto_max=8.000) y no por
+    # `tope_total_agotado` -- el punto de esta prueba es solo confirmar que
+    # `estados` se actualiza en cada desenlace, no volver a probar la politica.
+    m = _mandato(sk, monto_max=Dinero.de_pesos(8_000), tope_total=Dinero.de_pesos(20_000), usos_max=5)
+    mandatos.guardar(m, Ambiente.SANDBOX)
+
+    ejecutar(_intencion(2_050, intencion_id="int_ok"))
+    assert estados.obtener("int_ok")[0] == "aprobado"
+
+    ejecutar(_intencion(15_000, intencion_id="int_bloqueado"))
+    assert estados.obtener("int_bloqueado")[0] == "rechazado"
 
 
 def test_mandato_de_otro_ambiente_no_se_ejecuta():

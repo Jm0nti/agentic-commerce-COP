@@ -1,20 +1,34 @@
-"""Verificacion de firmas ed25519 contra un mandato.
+"""Firma y verificacion ed25519 de un mandato.
 
-Implementa el `Verificador` que `dominio/mandato/modelo.py` define como
-`Protocol` (y que `dominio/mandato/compat.py` reusa para la v1): recibe la
-firma, la carga canonica y la llave publica, todas en bytes, y devuelve un
-booleano. El dominio no importa `cryptography` -- eso vive aqui, en el unico
-lugar donde la capa de adaptadores toca criptografia.
+`VerificadorEd25519` implementa el `Verificador` que `dominio/mandato/
+modelo.py` define como `Protocol` (y que `dominio/mandato/compat.py` reusa
+para la v1): recibe la firma, la carga canonica y la llave publica, todas en
+bytes, y devuelve un booleano. El dominio no importa `cryptography` -- eso
+vive aqui, en el unico lugar donde la capa de adaptadores toca criptografia.
 
 Antes de este archivo, la misma clase vivia duplicada como test double dentro
 de `tests/test_dominio.py`. Promoverla a adaptador real evita que la unica
 implementacion de `Verificador` que existe en el repo sea una de pruebas.
+
+`FirmanteEd25519` + `cargar_o_generar_firmante` son la etapa 5: implementan
+el `Firmante` de `puertos/firma.py`, del lado de quien SI tiene la llave
+privada -- el titular, simulado aqui como un par ed25519 en disco, igual que
+`boveda/cli.py:llaves()`/`cmd_llaves`. Solo `composicion/contenedor.py` llama
+a `cargar_o_generar_firmante`: `agente/` no importa este modulo (lo verifica
+`test_fronteras.py`), y `aplicacion/emitir_mandato.py` recibe un `Firmante`
+ya armado por constructor, sin saber que hay un archivo en disco detras.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+    Ed25519PrivateKey,
+    Ed25519PublicKey,
+)
 
 
 class VerificadorEd25519:
@@ -26,3 +40,58 @@ class VerificadorEd25519:
             return True
         except (InvalidSignature, ValueError):
             return False
+
+
+class FirmanteEd25519:
+    """Implementa el `Firmante` de `puertos.firma`."""
+
+    def __init__(self, llave_privada: Ed25519PrivateKey) -> None:
+        self._sk = llave_privada
+
+    def firma(self, carga: bytes) -> bytes:
+        return self._sk.sign(carga)
+
+    def llave_publica(self) -> bytes:
+        return self._sk.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+
+
+def cargar_o_generar_firmante(ruta_sk: Path, ruta_pk: Path) -> FirmanteEd25519:
+    """Igual que `boveda/cli.py`: `llaves()` lee, `cmd_llaves` genera.
+
+    Aqui las dos cosas se juntan en una sola funcion porque, a diferencia de
+    la v1 (donde `llaves` es un subcomando aparte y `emitir` se niega a
+    correr sin haberlo corrido antes), `entradas/cli/` de esta etapa no tiene
+    un flujo de "primero genere sus llaves" -- el titular simulado de una
+    demo no deberia tener que saber que existe un paso de bootstrap de
+    criptografia antes de poder firmar su primer mandato. Si `ruta_sk` no
+    existe, se genera el par y se escribe sin cifrar (mismo alcance de PoC
+    que la v1); si existe, se lee tal cual.
+
+    No cifrar la llave privada en disco es una decision de alcance, no un
+    descuido: `docs/variables-de-entorno.md` ya documenta que este proceso
+    guarda otros secretos (credenciales de Wompi) del mismo modo, y
+    `agente/` nunca llega a este archivo -- `test_fronteras.py` lo verifica.
+    """
+    if ruta_sk.exists():
+        sk = Ed25519PrivateKey.from_private_bytes(ruta_sk.read_bytes())
+    else:
+        sk = Ed25519PrivateKey.generate()
+        ruta_sk.parent.mkdir(parents=True, exist_ok=True)
+        ruta_sk.write_bytes(
+            sk.private_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PrivateFormat.Raw,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+        )
+        ruta_pk.parent.mkdir(parents=True, exist_ok=True)
+        ruta_pk.write_bytes(
+            sk.public_key().public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw,
+            )
+        )
+    return FirmanteEd25519(sk)

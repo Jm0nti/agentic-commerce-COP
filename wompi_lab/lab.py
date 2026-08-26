@@ -38,6 +38,12 @@ import httpx
 
 BASE_URL = "https://sandbox.wompi.co/v1"
 AQUI = Path(__file__).resolve().parent
+RAIZ_REPO = AQUI.parent
+if str(RAIZ_REPO) not in sys.path:
+    sys.path.insert(0, str(RAIZ_REPO))
+
+from utilidades.env import cargar_env_desde_archivo
+
 LEDGER = AQUI / "ledger.jsonl"
 CACHE = AQUI / "source.json"
 EMAIL = "lab+poc@example.com"
@@ -57,19 +63,8 @@ FINALES = frozenset({"APPROVED", "DECLINED", "VOIDED", "ERROR"})
 
 
 def cargar_env() -> None:
-    """Lee el .env de la raiz del repo sin depender de python-dotenv."""
-    env = AQUI.parent / ".env"
-    if not env.exists():
-        return
-    for linea in env.read_text(encoding="utf-8").splitlines():
-        linea = linea.strip()
-        if not linea or linea.startswith("#") or "=" not in linea:
-            continue
-        clave, _, valor = linea.partition("=")
-        clave = clave.strip()
-        valor = valor.split(" #")[0].strip().strip("\"'")
-        if clave and clave not in os.environ:
-            os.environ[clave] = valor
+    """Lee el .env de la raiz del repo sin pisar variables ya exportadas."""
+    cargar_env_desde_archivo(RAIZ_REPO / ".env")
 
 
 def anotar(evento: str, datos: dict) -> None:

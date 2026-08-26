@@ -41,6 +41,17 @@ RAIZ_REPO = Path(__file__).resolve().parent.parent.parent
 BITACORA_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "recibos.jsonl"
 SQLITE_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "agora.db"
 
+# Etapa 5: la llave de firma del titular, en disco, "igual que v1"
+# (`boveda/secretos/firma.sk`/`firma.pk`). Sin cifrar -- ver el docstring de
+# `adaptadores/sistema/firma_ed25519.py:cargar_o_generar_firmante`.
+LLAVE_FIRMA_SK_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "secretos" / "firma.sk"
+LLAVE_FIRMA_PK_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "secretos" / "firma.pk"
+
+# `deepseek-chat` de nuevo aca, no importado de `adaptadores/llm/deepseek/
+# config.py`: `composicion/` no deberia depender de la forma interna de un
+# adaptador solo para copiar un default.
+DEEPSEEK_MODELO_POR_DEFECTO = "deepseek-chat"
+
 # A proposito NO en un dominio reservado (a diferencia del viejo default de
 # `boveda/nucleo.py:perfil_pagador`, `boveda+poc@example.com`): ese fue el
 # correo que produjo el rechazo real por antifraude (`docs/hallazgo-afe.md`).
@@ -65,6 +76,15 @@ class ConfiguracionAgora:
     wompi: ConfiguracionWompi | None = None
     persistencia: str = "memoria"  # "memoria" | "sqlite"
     sqlite_path: Path = SQLITE_POR_DEFECTO
+    llave_firma_sk: Path = LLAVE_FIRMA_SK_POR_DEFECTO
+    llave_firma_pk: Path = LLAVE_FIRMA_PK_POR_DEFECTO
+    # Vacio = sin agente de chat disponible (`entradas/cli/` sigue sirviendo
+    # para enrolar/revocar/emitir/pagar a mano). A diferencia de las demas
+    # variables de este archivo, esta SI puede quedar vacia sin que
+    # `leer_configuracion` la rechace: el resto de la app (mandatos, cobros,
+    # catalogo) no depende de que haya una llave de DeepSeek.
+    deepseek_llave_api: str = ""
+    deepseek_modelo: str = DEEPSEEK_MODELO_POR_DEFECTO
 
     def __post_init__(self) -> None:
         if self.pasarela not in ("simulada", "wompi"):
@@ -129,6 +149,18 @@ def leer_configuracion(entorno: Mapping[str, str]) -> ConfiguracionAgora:
     sqlite_path = (
         Path(entorno["AGORA_SQLITE_PATH"]) if "AGORA_SQLITE_PATH" in entorno else SQLITE_POR_DEFECTO
     )
+    llave_firma_sk = (
+        Path(entorno["AGORA_LLAVE_FIRMA_SK"])
+        if "AGORA_LLAVE_FIRMA_SK" in entorno
+        else LLAVE_FIRMA_SK_POR_DEFECTO
+    )
+    llave_firma_pk = (
+        Path(entorno["AGORA_LLAVE_FIRMA_PK"])
+        if "AGORA_LLAVE_FIRMA_PK" in entorno
+        else LLAVE_FIRMA_PK_POR_DEFECTO
+    )
+    deepseek_llave_api = entorno.get("DEEPSEEK_API_KEY", "")
+    deepseek_modelo = entorno.get("DEEPSEEK_MODELO", DEEPSEEK_MODELO_POR_DEFECTO)
 
     wompi = None
     if pasarela == "wompi":
@@ -159,4 +191,8 @@ def leer_configuracion(entorno: Mapping[str, str]) -> ConfiguracionAgora:
         wompi=wompi,
         persistencia=persistencia,
         sqlite_path=sqlite_path,
+        llave_firma_sk=llave_firma_sk,
+        llave_firma_pk=llave_firma_pk,
+        deepseek_llave_api=deepseek_llave_api,
+        deepseek_modelo=deepseek_modelo,
     )

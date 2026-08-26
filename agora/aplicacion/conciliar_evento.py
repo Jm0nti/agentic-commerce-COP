@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from ..dominio.comun.errores import ErrorDePasarela
 from ..dominio.pago.modelo import EstadoCobro, ResultadoCobro
 from ..puertos.pasarela import PasarelaDePagos
-from ..puertos.repositorios import LibroDeConsumo
+from ..puertos.repositorios import LibroDeConsumo, RegistroDeEstados
 from ..puertos.sistema import Bitacora
 
 
@@ -46,10 +46,14 @@ class ConciliarEvento:
         consumo: LibroDeConsumo,
         pasarela: PasarelaDePagos,
         bitacora: Bitacora,
+        estados: RegistroDeEstados | None = None,
     ) -> None:
         self._consumo = consumo
         self._pasarela = pasarela
         self._bitacora = bitacora
+        # Igual que en `EjecutarIntencion`: opcional, `None` por defecto, sin
+        # efecto sobre quien ya construye `ConciliarEvento` sin pasarlo.
+        self._estados = estados
 
     def __call__(self, cuerpo: bytes, cabeceras: dict[str, str]) -> ResultadoConciliacion:
         try:
@@ -89,6 +93,9 @@ class ConciliarEvento:
             intencion_id=intencion_id, resultado=resultado,
         )
         self._bitacora.anotar("conciliado", conciliado)
+        if self._estados is not None:
+            estado = "aprobado" if resultado.estado is EstadoCobro.APROBADO else "rechazado"
+            self._estados.fijar(intencion_id, estado, resultado.estado.value)
         return conciliado
 
     def _ignorado(

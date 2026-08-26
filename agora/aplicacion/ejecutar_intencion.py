@@ -35,6 +35,7 @@ from ..dominio.pago.topes import TopesDuros
 from ..puertos.pasarela import PasarelaDePagos
 from ..puertos.repositorios import (
     LibroDeConsumo,
+    RegistroDeEstados,
     RepositorioMandatos,
     Reserva,
     TopeAgotado,
@@ -89,6 +90,7 @@ class EjecutarIntencion:
         ambiente: Ambiente,
         correo_pagador: str,
         datos_pagador: dict[str, str],
+        estados: RegistroDeEstados | None = None,
     ) -> None:
         self._mandatos = mandatos
         self._consumo = consumo
@@ -100,8 +102,29 @@ class EjecutarIntencion:
         self._ambiente = ambiente
         self._correo = correo_pagador
         self._datos = datos_pagador
+        # Etapa 5, opcional y con default `None` a proposito: `estados` es lo
+        # que `consultar_estado` (herramienta del agente) necesita para
+        # distinguir "nunca se ejecuto" de "se resolvio en RECHAZADO" -- ver
+        # el docstring de `puertos.repositorios.RegistroDeEstados`. Nadie que
+        # ya construya `EjecutarIntencion` sin este parametro ve cambiar su
+        # comportamiento.
+        self._estados = estados
 
-    def __call__(self, intencion: Intencion, exigir_mandato: bool = True) -> Recibo:
+    def __call__(
+        self, intencion: Intencion, exigir_mandato: bool = True, carrito_hash: str | None = None,
+    ) -> Recibo:
+        """`carrito_hash` es lo que hace valer el Cart Mandate de AP2 en el
+        momento del cobro (`dominio/catalogo/modelo.py`, docstring de
+        `Carrito.hash_canonico`): si el `Mandato` se firmo atado a un
+        carrito (`carrito_hash` no vacio, obra de `EmitirMandato`), quien
+        llame a `EjecutarIntencion` tiene que volver a calcular el hash del
+        carrito que de verdad se esta cobrando -- normalmente
+        `RepositorioCarritos.obtener(intencion.carrito_id).hash_canonico` --
+        y pasarlo aca. Sin esto, un mandato atado a un carrito nunca podria
+        ejecutarse (`Mandato.violaciones_contra` compara contra `None` y
+        siempre encuentra `carrito_alterado`). Es opcional y no rompe nada
+        para un mandato que nunca se ato a un carrito -- la mayoria de las
+        pruebas de este archivo, que arman el `Mandato` a mano."""
         mandato = self._mandatos.obtener(intencion.mandato_id, self._ambiente)
 
         # 1. Topes duros. Antes que nada y sin excepcion. Ni siquiera se
@@ -121,7 +144,7 @@ class EjecutarIntencion:
         consumo = self._consumo.consumo_de(mandato.mandato_id)
         dictamen = evaluar(
             mandato, intencion, consumo, self._verificador, exigir_mandato,
-            ahora=self._reloj.ahora(),
+            ahora=self._reloj.ahora(), carrito_hash=carrito_hash,
         )
         if dictamen.decision is Decision.BLOQUEAR:
             self._consumo.liberar(reserva)
@@ -134,7 +157,9 @@ class EjecutarIntencion:
         # 4. Cobro. Devuelve PENDIENTE; el desenlace llega por webhook.
         return self._cobrar(intencion, mandato, dictamen, reserva)
 
-    def retomar(self, intencion: Intencion, aprueba: bool) -> Recibo:
+    def retomar(
+        self, intencion: Intencion, aprueba: bool, carrito_hash: str | None = None,
+    ) -> Recibo:
         """Resuelve una intencion que quedo en `CONFIRMAR`, con la decision
         que un humano tomo mientras tanto.
 
@@ -169,7 +194,7 @@ class EjecutarIntencion:
         consumo = self._consumo.consumo_de(mandato.mandato_id)
         dictamen = evaluar(
             mandato, intencion, consumo, self._verificador, exigir_mandato=True,
-            ahora=self._reloj.ahora(),
+            ahora=self._reloj.ahora(), carrito_hash=carrito_hash,
         )
         if dictamen.decision is Decision.BLOQUEAR:
             self._consumo.liberar(reserva)
@@ -211,6 +236,12 @@ class EjecutarIntencion:
             ambiente=self._ambiente,
         )
         self._bitacora.anotar("cobro", recibo)
+        if resultado.estado is EstadoCobro.APROBADO:
+            self._anotar_estado(intencion.intencion_id, "aprobado", resultado.estado.value)
+        elif resultado.estado is EstadoCobro.PENDIENTE:
+            self._anotar_estado(intencion.intencion_id, "pendiente", resultado.estado.value)
+        else:
+            self._anotar_estado(intencion.intencion_id, "rechazado", resultado.estado.value)
         return recibo
 
     def _detenido(self, intencion, motivo: str, dictamen: Dictamen) -> Recibo:
@@ -222,6 +253,7 @@ class EjecutarIntencion:
             ambiente=self._ambiente,
         )
         self._bitacora.anotar("detenido", recibo)
+        self._anotar_estado(intencion.intencion_id, "rechazado", motivo)
         return recibo
 
     def _esperando(self, intencion, dictamen: Dictamen) -> Recibo:
@@ -237,4 +269,11 @@ class EjecutarIntencion:
             ambiente=self._ambiente,
         )
         self._bitacora.anotar("esperando_confirmacion", recibo)
+        self._anotar_estado(
+            intencion.intencion_id, "esperando_confirmacion", "esperando_confirmacion_humana"
+        )
         return recibo
+
+    def _anotar_estado(self, intencion_id: str, estado: str, detalle: str) -> None:
+        if self._estados is not None:
+            self._estados.fijar(intencion_id, estado, detalle)

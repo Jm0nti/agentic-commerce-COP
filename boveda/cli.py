@@ -57,6 +57,7 @@ from .nucleo import (
     ClienteWompi,
     perfil_pagador,
 )
+from utilidades.env import cargar_env_desde_archivo
 
 RAIZ = Path(__file__).resolve().parent.parent
 SECRETOS = RAIZ / "boveda" / "secretos"
@@ -68,17 +69,7 @@ RECIBOS = RAIZ / "boveda" / "recibos.jsonl"
 
 
 def cargar_env() -> None:
-    env = RAIZ / ".env"
-    if not env.exists():
-        return
-    for linea in env.read_text(encoding="utf-8").splitlines():
-        linea = linea.strip()
-        if not linea or linea.startswith("#") or "=" not in linea:
-            continue
-        k, _, v = linea.partition("=")
-        k, v = k.strip(), v.split(" #")[0].strip().strip("\"'")
-        if k and k not in os.environ:
-            os.environ[k] = v
+    cargar_env_desde_archivo(RAIZ / ".env")
 
 
 def llaves() -> tuple[Ed25519PrivateKey, Ed25519PublicKey]:

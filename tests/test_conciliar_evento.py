@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from agora.adaptadores.pasarelas.simulada import APROBADO, DECLINADO, AdaptadorSimulado
-from agora.adaptadores.persistencia.memoria import LibroDeConsumoEnMemoria
+from agora.adaptadores.persistencia.memoria import LibroDeConsumoEnMemoria, RegistroDeEstadosEnMemoria
 from agora.adaptadores.sistema.ids import GeneradorIdsUuid
 from agora.aplicacion.conciliar_evento import ConciliarEvento
 from agora.dominio.comun.dinero import Dinero
@@ -70,13 +70,13 @@ def _mandato(mandato_id: str = "mnd_1") -> Mandato:
     )
 
 
-def _armar():
+def _armar(estados=None):
     reloj = _RelojFijo(HOY)
     ids = GeneradorIdsUuid()
     consumo = LibroDeConsumoEnMemoria(reloj, ids)
     pasarela = AdaptadorSimulado(ids, Ambiente.SANDBOX)
     bitacora = _BitacoraEnLista()
-    conciliar = ConciliarEvento(consumo, pasarela, bitacora)
+    conciliar = ConciliarEvento(consumo, pasarela, bitacora, estados=estados)
     return conciliar, consumo, pasarela, bitacora
 
 
@@ -127,6 +127,19 @@ def test_evento_declinado_libera_la_reserva():
     assert consumo.consumo_de(mandato.mandato_id).usos == 0
     assert consumo.gastado_hoy(Ambiente.SANDBOX) == Dinero.de_pesos(0)
     assert consumo.reserva_pendiente_de("int_1") is None
+
+
+def test_evento_aprobado_actualiza_el_registro_de_estados_si_se_provee():
+    estados = RegistroDeEstadosEnMemoria()
+    conciliar, consumo, pasarela, _ = _armar(estados=estados)
+    mandato = _mandato()
+    pendiente = _reservar_y_cobrar_pendiente(consumo, pasarela, mandato, "int_1")
+    pasarela.resolver_pendiente(pendiente.id_externo, APROBADO)
+    cuerpo = json.dumps(pasarela.evento_de(pendiente.id_externo)).encode("utf-8")
+
+    conciliar(cuerpo, {})
+
+    assert estados.obtener("int_1")[0] == "aprobado"
 
 
 def test_evento_que_sigue_pendiente_no_hace_nada():

@@ -19,11 +19,28 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from enum import Enum
 from typing import Any
 
 from ..comun.dinero import CERO, Dinero
 from ..comun.identidad import CarritoId, ComercioId, ProductoId, TurnoId
+
+
+class Disponibilidad(str, Enum):
+    """El vocabulario de `availability` del product feed de ACP (OpenAI +
+    Stripe), reducido a lo que esta demo necesita -- sin `unknown` (aqui
+    todo producto simulado tiene un estado, nunca uno desconocido).
+
+    `PoliticaDeMandato` (etapa 1) no mira este campo: el mandato protege
+    contra gastar de mas, no contra comprar algo agotado. Eso lo decide
+    `navegar_catalogo` (etapa 5), filtrando o avisando antes de armar el
+    carrito -- un producto AGOTADO nunca deberia llegar a `ItemCarrito`.
+    """
+
+    EN_STOCK = "en_stock"
+    AGOTADO = "agotado"
+    PEDIDO_ANTICIPADO = "pedido_anticipado"
 
 
 @dataclass(frozen=True)
@@ -31,6 +48,7 @@ class Comercio:
     comercio_id: ComercioId
     nombre: str
     categoria: str
+    descripcion: str = ""
     simulado: bool = True
 
 
@@ -42,6 +60,7 @@ class Producto:
     descripcion: str
     precio: Dinero
     categoria: str
+    disponibilidad: Disponibilidad = Disponibilidad.EN_STOCK
 
 
 @dataclass(frozen=True)

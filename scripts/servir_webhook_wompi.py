@@ -47,9 +47,11 @@ import uvicorn  # noqa: E402
 from agora.composicion.configuracion import leer_configuracion  # noqa: E402
 from agora.composicion.contenedor import construir  # noqa: E402
 from agora.entradas.webhooks.wompi import crear_app  # noqa: E402
+from utilidades.env import cargar_env_desde_archivo  # noqa: E402
 
 
 def main() -> int:
+    cargar_env_desde_archivo(RAIZ_REPO / ".env")
     config = leer_configuracion(os.environ)
     contenedor = construir(config)
     app = crear_app(contenedor.conciliar_evento)

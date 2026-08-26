@@ -1,0 +1,341 @@
+{
+  "comercios": [
+    {
+      "comercio_id": "com_d58d8fe80a87",
+      "nombre": "TecnoAndes",
+      "categoria": "tecnologia",
+      "descripcion": "Tienda de tecnología y gadgets en Bogotá, con envíos a todo Colombia.",
+      "simulado": true
+    },
+    {
+      "comercio_id": "com_ec5fa92da173",
+      "nombre": "Moda Andina",
+      "categoria": "moda",
+      "descripcion": "Ropa y accesorios modernos con inspiración en la cultura andina colombiana.",
+      "simulado": true
+    },
+    {
+      "comercio_id": "com_7b5b69704135",
+      "nombre": "Hogar Esmeralda",
+      "categoria": "hogar",
+      "descripcion": "Tienda colombiana de artículos para el hogar: muebles, decoración y textiles con estilo tropical.",
+      "simulado": true
+    },
+    {
+      "comercio_id": "com_1436a00979e5",
+      "nombre": "La Fogata de la Abuela",
+      "categoria": "restaurantes",
+      "descripcion": "Restaurante tradicional colombiano con recetas de la abuela, especializado en platos típicos de la región Andina.",
+      "simulado": true
+    },
+    {
+      "comercio_id": "com_261844005640",
+      "nombre": "Librería El Ilustrado",
+      "categoria": "libros",
+      "descripcion": "Librería bogotana especializada en literatura colombiana, latinoamericana y clásicos universales, con catálogo actualizado mensualmente.",
+      "simulado": true
+    }
+  ],
+  "productos": [
+    {
+      "producto_id": "prd_6dcf3abfe9fb",
+      "comercio_id": "com_d58d8fe80a87",
+      "nombre": "Smartphone X200 Pro",
+      "descripcion": "Pantalla AMOLED de 6.7 pulgadas, cámara de 108 MP, batería de 5000 mAh, 5G.",
+      "precio": {
+        "centavos": 249990000,
+        "moneda": "COP"
+      },
+      "categoria": "tecnologia",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_7330bf6ca041",
+      "comercio_id": "com_d58d8fe80a87",
+      "nombre": "Laptop Ultrabook 14",
+      "descripcion": "Ultrabook con procesador Intel Core i7, 16GB RAM, SSD 512GB, pantalla táctil Full HD.",
+      "precio": {
+        "centavos": 459990000,
+        "moneda": "COP"
+      },
+      "categoria": "tecnologia",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_5c2b93bdb84b",
+      "comercio_id": "com_d58d8fe80a87",
+      "nombre": "Auriculares Inalámbricos SoundMax",
+      "descripcion": "Auriculares over-ear con cancelación activa de ruido, Bluetooth 5.3, batería de 40 horas.",
+      "precio": {
+        "centavos": 49990000,
+        "moneda": "COP"
+      },
+      "categoria": "tecnologia",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_e8619c6078b7",
+      "comercio_id": "com_d58d8fe80a87",
+      "nombre": "Smartwatch FitTrack",
+      "descripcion": "Reloj inteligente con monitor de frecuencia cardíaca, GPS, resistencia al agua 5 ATM.",
+      "precio": {
+        "centavos": 89990000,
+        "moneda": "COP"
+      },
+      "categoria": "tecnologia",
+      "disponibilidad": "agotado"
+    },
+    {
+      "producto_id": "prd_4c5bf8ffc754",
+      "comercio_id": "com_d58d8fe80a87",
+      "nombre": "Tablet TabPro 11",
+      "descripcion": "Tablet con pantalla 11 pulgadas, 128GB almacenamiento, compatible con lápiz táctil.",
+      "precio": {
+        "centavos": 189990000,
+        "moneda": "COP"
+      },
+      "categoria": "tecnologia",
+      "disponibilidad": "pedido_anticipado"
+    },
+    {
+      "producto_id": "prd_1c35779b40e9",
+      "comercio_id": "com_ec5fa92da173",
+      "nombre": "Bufanda Tejida Wayuu",
+      "descripcion": "Bufanda artesanal tejida a mano con lana de oveja, colores vibrantes y diseño geométrico.",
+      "precio": {
+        "centavos": 8500000,
+        "moneda": "COP"
+      },
+      "categoria": "moda",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_90d4f59b485a",
+      "comercio_id": "com_ec5fa92da173",
+      "nombre": "Chaqueta de Jean Reciclado",
+      "descripcion": "Chaqueta vaquera confeccionada con denim reciclado, corte moderno y botones metálicos.",
+      "precio": {
+        "centavos": 12000000,
+        "moneda": "COP"
+      },
+      "categoria": "moda",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_9c2944cfbacb",
+      "comercio_id": "com_ec5fa92da173",
+      "nombre": "Vestido Floral Boho",
+      "descripcion": "Vestido largo con estampado floral, tela ligera y caída fluida ideal para clima cálido.",
+      "precio": {
+        "centavos": 9800000,
+        "moneda": "COP"
+      },
+      "categoria": "moda",
+      "disponibilidad": "pedido_anticipado"
+    },
+    {
+      "producto_id": "prd_03db8c781897",
+      "comercio_id": "com_ec5fa92da173",
+      "nombre": "Sombrero Vueltiao",
+      "descripcion": "Sombrero tradicional colombiano tejido en fibra de caña flecha, con diseños únicos.",
+      "precio": {
+        "centavos": 6500000,
+        "moneda": "COP"
+      },
+      "categoria": "moda",
+      "disponibilidad": "agotado"
+    },
+    {
+      "producto_id": "prd_be623963f826",
+      "comercio_id": "com_ec5fa92da173",
+      "nombre": "Bolso Wayuu Mediano",
+      "descripcion": "Bolso de mano tejido a mano con algodón, colores llamativos y asa larga.",
+      "precio": {
+        "centavos": 13500000,
+        "moneda": "COP"
+      },
+      "categoria": "moda",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_cb00037b2ef6",
+      "comercio_id": "com_7b5b69704135",
+      "nombre": "Sofá modular 'Bogotá' en tela gris",
+      "descripcion": "Sofá de tres puestos con chaise longue, estructura en madera y tela resistente.",
+      "precio": {
+        "centavos": 289900000,
+        "moneda": "COP"
+      },
+      "categoria": "hogar",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_50e45e830fd4",
+      "comercio_id": "com_7b5b69704135",
+      "nombre": "Juego de sábanas king 'Cafetal' 500 hilos",
+      "descripcion": "Sábanas de algodón egipcio, colores tierra, para cama king.",
+      "precio": {
+        "centavos": 21950000,
+        "moneda": "COP"
+      },
+      "categoria": "hogar",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_3830b8abd98a",
+      "comercio_id": "com_7b5b69704135",
+      "nombre": "Lámpara de pie 'Bambuco' en ratán",
+      "descripcion": "Lámpara artesanal con pantalla de ratán natural, iluminación cálida.",
+      "precio": {
+        "centavos": 28900000,
+        "moneda": "COP"
+      },
+      "categoria": "hogar",
+      "disponibilidad": "pedido_anticipado"
+    },
+    {
+      "producto_id": "prd_988bc8638ec2",
+      "comercio_id": "com_7b5b69704135",
+      "nombre": "Cocina integral 'Santander' medida 2.4m",
+      "descripcion": "Módulos de cocina en MDF con acabado mate y herrajes importados.",
+      "precio": {
+        "centavos": 379000000,
+        "moneda": "COP"
+      },
+      "categoria": "hogar",
+      "disponibilidad": "agotado"
+    },
+    {
+      "producto_id": "prd_8d4b0c872f5f",
+      "comercio_id": "com_7b5b69704135",
+      "nombre": "Espejo redondo 'Malecón' con marco dorado",
+      "descripcion": "Espejo decorativo de 80cm de diámetro, marco metálico en dorado antiguo.",
+      "precio": {
+        "centavos": 14850000,
+        "moneda": "COP"
+      },
+      "categoria": "hogar",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_3b5b2fe1255a",
+      "comercio_id": "com_1436a00979e5",
+      "nombre": "Bandeja Paisa",
+      "descripcion": "Frijoles, arroz, carne molida, chicharrón, huevo frito, aguacate, arepa, morcilla y chorizo.",
+      "precio": {
+        "centavos": 2890000,
+        "moneda": "COP"
+      },
+      "categoria": "restaurantes",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_6d8c6ae5f550",
+      "comercio_id": "com_1436a00979e5",
+      "nombre": "Ajiaco Santafereño",
+      "descripcion": "Sopa cremosa de papa con pollo, maíz y guascas, acompañada de alcaparras, crema de leche y aguacate.",
+      "precio": {
+        "centavos": 2350000,
+        "moneda": "COP"
+      },
+      "categoria": "restaurantes",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_9b5dff3e38f5",
+      "comercio_id": "com_1436a00979e5",
+      "nombre": "Sancocho de Gallina",
+      "descripcion": "Caldo de gallina criolla con yuca, plátano, papa y mazorca, servido con arroz y ají.",
+      "precio": {
+        "centavos": 2590000,
+        "moneda": "COP"
+      },
+      "categoria": "restaurantes",
+      "disponibilidad": "pedido_anticipado"
+    },
+    {
+      "producto_id": "prd_666e751435f3",
+      "comercio_id": "com_1436a00979e5",
+      "nombre": "Mazamorra con Queso",
+      "descripcion": "Postre tradicional de maíz blanco con queso costeño, ideal para compartir.",
+      "precio": {
+        "centavos": 800000,
+        "moneda": "COP"
+      },
+      "categoria": "restaurantes",
+      "disponibilidad": "agotado"
+    },
+    {
+      "producto_id": "prd_56a0c926aec3",
+      "comercio_id": "com_1436a00979e5",
+      "nombre": "Limonada de Coco",
+      "descripcion": "Bebida refrescante de coco con limón, endulzada con panela, servida con hielo.",
+      "precio": {
+        "centavos": 750000,
+        "moneda": "COP"
+      },
+      "categoria": "restaurantes",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_0a9fef9638e1",
+      "comercio_id": "com_261844005640",
+      "nombre": "Cien años de soledad (Edición conmemorativa)",
+      "descripcion": "Edición especial de la novela de Gabriel García Márquez, con tapa dura y prólogo de Juan Gabriel Vásquez. Incluye ilustraciones de la cienañera Macondo.",
+      "precio": {
+        "centavos": 6800000,
+        "moneda": "COP"
+      },
+      "categoria": "libros",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_22b85a178427",
+      "comercio_id": "com_261844005640",
+      "nombre": "La vorágine (Edición crítica)",
+      "descripcion": "Edición anotada de la obra de José Eustasio Rivera, con estudios introductorios y mapas de la selva amazónica. Ideal para académicos y amantes de la literatura.",
+      "precio": {
+        "centavos": 4250000,
+        "moneda": "COP"
+      },
+      "categoria": "libros",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_9fc5b48be055",
+      "comercio_id": "com_261844005640",
+      "nombre": "El olvido que seremos",
+      "descripcion": "Novela de Héctor Abad Faciolince sobre su padre, el médico Héctor Abad Gómez, y la violencia en Medellín. Nueva edición conmemorativa.",
+      "precio": {
+        "centavos": 5400000,
+        "moneda": "COP"
+      },
+      "categoria": "libros",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_a0803527e71f",
+      "comercio_id": "com_261844005640",
+      "nombre": "Poesía completa de Piedad Bonnett",
+      "descripcion": "Recopilación de todos los poemarios de Piedad Bonnett hasta 2024, incluyendo inéditos. Incluye entrevista y cronología.",
+      "precio": {
+        "centavos": 7800000,
+        "moneda": "COP"
+      },
+      "categoria": "libros",
+      "disponibilidad": "pedido_anticipado"
+    },
+    {
+      "producto_id": "prd_a0a4e2e5387f",
+      "comercio_id": "com_261844005640",
+      "nombre": "Historia secreta de Bogotá",
+      "descripcion": "Ensayo ilustrado del historiador Andrés Otálora sobre los mitos y orígenes ocultos de la capital, desde la leyenda de la Llorona hasta los túneles de la Candelaria.",
+      "precio": {
+        "centavos": 6200000,
+        "moneda": "COP"
+      },
+      "categoria": "libros",
+      "disponibilidad": "agotado"
+    }
+  ]
+}

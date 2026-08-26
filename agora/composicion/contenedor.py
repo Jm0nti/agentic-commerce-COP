@@ -14,30 +14,54 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ..adaptadores.catalogo.semilla import RepositorioCatalogoSemilla
+from ..adaptadores.llm.deepseek import AdaptadorDeepSeek, ConfiguracionDeepSeek
 from ..adaptadores.pasarelas.simulada import AdaptadorSimulado, GuionSimulado
 from ..adaptadores.pasarelas.wompi import AdaptadorWompi
 from ..adaptadores.persistencia.memoria import (
     LibroDeConsumoEnMemoria,
+    RegistroDeEstadosEnMemoria,
+    RepositorioCarritosEnMemoria,
     RepositorioMandatosEnMemoria,
     RepositorioMediosEnMemoria,
+    RepositorioPropuestasEnMemoria,
 )
 from ..adaptadores.persistencia.sqlite import (
     LibroDeConsumoSQLite,
+    RegistroDeEstadosSQLite,
+    RepositorioCarritosSQLite,
     RepositorioMandatosSQLite,
     RepositorioMediosSQLite,
+    RepositorioPropuestasSQLite,
 )
 from ..adaptadores.sistema import (
     BitacoraJsonl,
     GeneradorIdsUuid,
     RelojDelSistema,
     VerificadorEd25519,
+    cargar_o_generar_firmante,
 )
 from ..aplicacion.conciliar_evento import ConciliarEvento
+from ..aplicacion.consultar_estado import ConsultarEstado
 from ..aplicacion.ejecutar_intencion import EjecutarIntencion
+from ..aplicacion.emitir_mandato import EmitirMandato
+from ..aplicacion.enrolar_medio import EnrolarMedio
+from ..aplicacion.navegar_catalogo import NavegarCatalogo
+from ..aplicacion.revocar_medio import RevocarMedio
 from ..dominio.mandato.modelo import Verificador
 from ..dominio.pago.topes import TopesDuros
+from ..puertos.catalogo import RepositorioCatalogo
+from ..puertos.firma import Firmante
+from ..puertos.modelo_lenguaje import ModeloDeLenguaje
 from ..puertos.pasarela import PasarelaDePagos
-from ..puertos.repositorios import LibroDeConsumo, RepositorioMandatos, RepositorioMedios
+from ..puertos.repositorios import (
+    LibroDeConsumo,
+    RegistroDeEstados,
+    RepositorioCarritos,
+    RepositorioMandatos,
+    RepositorioMedios,
+    RepositorioPropuestas,
+)
 from ..puertos.sistema import Bitacora, GeneradorIds, Reloj
 from .configuracion import ConfiguracionAgora
 
@@ -50,6 +74,12 @@ class Contenedor:
     Se expone como un solo objeto, no como variables sueltas, para que
     agregar una dependencia nueva no obligue a tocar la firma de cada punto
     de entrada que llama a `construir`.
+
+    `catalogo` sigue el mismo precedente que `RepositorioMediosSQLite` en la
+    etapa 3: el adaptador esta listo y probado antes de que exista el caso de
+    uso que lo llame (`aplicacion/navegar_catalogo.py`, etapa 5) -- no hay
+    ninguna dependencia entre construir el catalogo y construir el resto del
+    contenedor, asi que no hay motivo para esperar.
     """
 
     config: ConfiguracionAgora
@@ -59,10 +89,26 @@ class Contenedor:
     medios: RepositorioMedios
     consumo: LibroDeConsumo
     pasarela: PasarelaDePagos
+    catalogo: RepositorioCatalogo
     reloj: Reloj
     ids: GeneradorIds
     bitacora: Bitacora
     verificador: Verificador
+    # -- etapa 5 -------------------------------------------------------- #
+    carritos: RepositorioCarritos
+    # -- etapa 6 -------------------------------------------------------- #
+    propuestas: RepositorioPropuestas
+    estados: RegistroDeEstados
+    firmante: Firmante
+    navegar_catalogo: NavegarCatalogo
+    emitir_mandato: EmitirMandato
+    enrolar_medio: EnrolarMedio
+    revocar_medio: RevocarMedio
+    consultar_estado: ConsultarEstado
+    # `None` cuando no hay DEEPSEEK_API_KEY -- ver `ConfiguracionAgora.
+    # deepseek_llave_api`. El resto del contenedor (mandatos, cobros,
+    # catalogo, enrolamiento) no depende de que esto exista.
+    modelo_lenguaje: ModeloDeLenguaje | None
 
 
 def construir(
@@ -107,6 +153,15 @@ def construir(
     else:
         pasarela = AdaptadorSimulado(ids, config.ambiente, guion_simulado)
 
+    # Etapa 6 (segunda parte): sqlite si `retomar` puede correr en otra
+    # terminal que la del `chat` -- que, con `agente/herramientas.py`
+    # negandole `retomar` al agente a proposito, es SIEMPRE el caso. Ver el
+    # comentario de la tabla `estado_intencion` en `esquema.py`.
+    estados: RegistroDeEstados
+    if config.persistencia == "sqlite":
+        estados = RegistroDeEstadosSQLite(config.sqlite_path)
+    else:
+        estados = RegistroDeEstadosEnMemoria()
     ejecutar_intencion = EjecutarIntencion(
         mandatos=mandatos,
         consumo=consumo,
@@ -118,8 +173,57 @@ def construir(
         ambiente=config.ambiente,
         correo_pagador=config.correo_pagador,
         datos_pagador=config.datos_pagador,
+        estados=estados,
     )
-    conciliar_evento = ConciliarEvento(consumo=consumo, pasarela=pasarela, bitacora=bitacora)
+    conciliar_evento = ConciliarEvento(
+        consumo=consumo, pasarela=pasarela, bitacora=bitacora, estados=estados,
+    )
+    catalogo = RepositorioCatalogoSemilla()
+
+    # -- etapa 5 ------------------------------------------------------------ #
+    carritos: RepositorioCarritos
+    propuestas: RepositorioPropuestas
+    if config.persistencia == "sqlite":
+        # Mismo motivo que `mandatos`/`medios`/`consumo`: `entradas/cli/`
+        # trata "armar y firmar" y "pagar" como comandos separados, cada uno
+        # su propio proceso -- sin esto, el carrito nunca sobreviviria entre
+        # los dos.
+        carritos = RepositorioCarritosSQLite(config.sqlite_path)
+        # Etapa 6: mismo argumento, un nivel mas adentro -- la propuesta
+        # tiene que sobrevivir entre el proceso que arma el carrito (el
+        # chat) y el que firma (`entradas/cli/firmar`, en otra terminal).
+        propuestas = RepositorioPropuestasSQLite(config.sqlite_path)
+        # `estados` ya se armo mas arriba, antes de `ejecutar_intencion` --
+        # por eso no aparece aca, aunque logicamente es la misma decision.
+    else:
+        carritos = RepositorioCarritosEnMemoria()
+        propuestas = RepositorioPropuestasEnMemoria()
+    # "Igual que v1: llave en disco" -- si no existe, se genera aca mismo, la
+    # primera vez que se arma un Contenedor. `agente/` nunca ve esta llamada
+    # (test_fronteras.py lo verifica): la firma solo llega a `emitir_mandato`,
+    # ya armada.
+    firmante = cargar_o_generar_firmante(config.llave_firma_sk, config.llave_firma_pk)
+
+    navegar_catalogo = NavegarCatalogo(
+        catalogo=catalogo, carritos=carritos, ids=ids, propuestas=propuestas,
+    )
+    emitir_mandato = EmitirMandato(
+        carritos=carritos, propuestas=propuestas, medios=medios, mandatos=mandatos,
+        firmante=firmante, ids=ids, reloj=reloj, bitacora=bitacora, ambiente=config.ambiente,
+    )
+    enrolar_medio = EnrolarMedio(
+        pasarela=pasarela, medios=medios, bitacora=bitacora, ambiente=config.ambiente,
+    )
+    revocar_medio = RevocarMedio(pasarela=pasarela, medios=medios, bitacora=bitacora)
+    consultar_estado = ConsultarEstado(estados=estados)
+
+    modelo_lenguaje: ModeloDeLenguaje | None = None
+    if config.deepseek_llave_api:
+        modelo_lenguaje = AdaptadorDeepSeek(
+            ConfiguracionDeepSeek(
+                llave_api=config.deepseek_llave_api, modelo=config.deepseek_modelo,
+            )
+        )
 
     return Contenedor(
         config=config,
@@ -129,8 +233,19 @@ def construir(
         medios=medios,
         consumo=consumo,
         pasarela=pasarela,
+        catalogo=catalogo,
         reloj=reloj,
         ids=ids,
         bitacora=bitacora,
         verificador=verificador,
+        carritos=carritos,
+        propuestas=propuestas,
+        estados=estados,
+        firmante=firmante,
+        navegar_catalogo=navegar_catalogo,
+        emitir_mandato=emitir_mandato,
+        enrolar_medio=enrolar_medio,
+        revocar_medio=revocar_medio,
+        consultar_estado=consultar_estado,
+        modelo_lenguaje=modelo_lenguaje,
     )

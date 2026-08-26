@@ -11,6 +11,7 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from agora.aplicacion.navegar_catalogo import ItemPedido
 from agora.composicion.configuracion import (
     CORREO_POR_DEFECTO,
     ConfiguracionInvalida,
@@ -184,3 +185,58 @@ def test_construir_con_simulada_ejecuta_una_intencion_de_punta_a_punta(tmp_path)
     assert (tmp_path / "recibos.jsonl").exists()
     contenido = (tmp_path / "recibos.jsonl").read_text(encoding="utf-8")
     assert "int_1" in contenido
+
+
+def test_construir_arma_el_catalogo_sin_depender_de_la_pasarela_ni_la_persistencia():
+    """`contenedor.catalogo` (etapa 5) lee `datos/catalogo.json` sin red y sin
+    tocar `config.pasarela`/`config.persistencia` -- se arma igual sin
+    importar el resto de la configuracion."""
+    contenedor = construir(leer_configuracion({}))
+    assert contenedor.catalogo.buscar_comercios() != []
+
+
+def test_construir_encadena_navegar_emitir_pagar_y_consultar_de_punta_a_punta(tmp_path):
+    """El flujo completo de la etapa 5, con las piezas que arma `Contenedor`
+    de verdad (sin wiring manual): enrolar -> armar_carrito -> firmar ->
+    pagar -> consultar_estado. Usa el catalogo placeholder que se entrega
+    con el repo (`docs/catalogo-simulado-deepseek.md`)."""
+    config = leer_configuracion({
+        "AGORA_BITACORA": str(tmp_path / "recibos.jsonl"),
+        "AGORA_LLAVE_FIRMA_SK": str(tmp_path / "firma.sk"),
+        "AGORA_LLAVE_FIRMA_PK": str(tmp_path / "firma.pk"),
+        "PAGADOR_EMAIL": "juan@correo-real.com",
+    })
+    contenedor = construir(config)
+
+    ref = contenedor.enrolar_medio("3001234567", "titular@correo.com", "tit_1")
+    assert contenedor.medios.vivos("tit_1", Ambiente.SANDBOX) == [ref]
+
+    # La libreta (12.000 COP) y no los audifonos (120.000 COP): tiene que
+    # caber bajo el tope duro por transaccion (20.000 COP, `TopesDuros`) para
+    # que esta prueba llegue hasta `aprobado` sin toparselo.
+    carrito, propuesta = contenedor.navegar_catalogo.armar_carrito(
+        "com_placeholder_librosur", [ItemPedido("prd_placeholder_libreta")],
+    )
+    mandato = contenedor.emitir_mandato(propuesta.propuesta_id, "tit_1")
+    assert mandato.medio == ref
+    assert mandato.carrito_hash == carrito.hash_canonico
+
+    intencion = Intencion(
+        intencion_id=contenedor.ids.nuevo("int"), mandato_id=mandato.mandato_id,
+        comercio_id=carrito.comercio_id, carrito_id=carrito.carrito_id, monto=carrito.total,
+    )
+    recibo = contenedor.ejecutar_intencion(intencion, carrito_hash=carrito.hash_canonico)
+    # `EmitirMandato` corta el mandato exacto al carrito (monto_max ==
+    # carrito.total, usos_max=1): eso siempre dispara las senales blandas de
+    # `dominio/mandato/politica.py` ("agota el mandato de una sola vez", "es
+    # el ultimo uso") y deja la intencion en `CONFIRMAR`, no en `PERMITIR`.
+    # No es un fallo de esta prueba -- es la consecuencia esperada de firmar
+    # un mandato tan angosto, y `retomar()` es como un humano lo resuelve.
+    assert recibo.esperando_confirmacion
+    recibo = contenedor.ejecutar_intencion.retomar(
+        intencion, aprueba=True, carrito_hash=carrito.hash_canonico,
+    )
+    assert recibo.ejecutado
+
+    estado = contenedor.consultar_estado(intencion.intencion_id)
+    assert estado.estado == "aprobado"

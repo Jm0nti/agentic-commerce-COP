@@ -34,4 +34,24 @@ PAGADOR_NOMBRE=Nombre Apellido
 PAGADOR_TELEFONO=3001234567
 PAGADOR_DOCUMENTO=1020304050
 PAGADOR_TIPO_DOC=CC
+
+# --- DeepSeek --------------------------------------------------------------- #
+# Etapa 5: a diferencia de la version anterior de este documento, SI la lee
+# `composicion/configuracion.py` ahora -- es lo que arma `contenedor.
+# modelo_lenguaje` para el chat en vivo (`entradas/cli/ chat`). Sigue siendo
+# opcional: sin ella, `contenedor.modelo_lenguaje` queda en `None` y el resto
+# de la app (enrolar, emitir, pagar, navegar el catalogo) funciona igual --
+# solo el comando `chat` avisa que falta y no arranca. Ver
+# docs/etapa-5-agente-y-cli.md.
+DEEPSEEK_API_KEY=sk-...
+# DEEPSEEK_MODELO=deepseek-chat   # opcional, default deepseek-chat
+
+# --- Firma del titular (etapa 5) -------------------------------------------- #
+# El par ed25519 que firma los mandatos, "igual que v1": si los archivos no
+# existen, `composicion/contenedor.py` los genera la primera vez que arma un
+# Contenedor. Sin cifrar en disco -- mismo alcance de PoC que las llaves de
+# Wompi de arriba. No hace falta ponerlas en el .env para una demo: los
+# defaults (agora_datos/secretos/firma.sk y firma.pk) alcanzan.
+# AGORA_LLAVE_FIRMA_SK=agora_datos/secretos/firma.sk
+# AGORA_LLAVE_FIRMA_PK=agora_datos/secretos/firma.pk
 ```

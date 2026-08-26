@@ -41,6 +41,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -49,6 +50,12 @@ import httpx
 
 BASE_URL = "https://api.sandbox.payouts.wompi.co/v1"
 AQUI = Path(__file__).resolve().parent
+RAIZ_REPO = AQUI.parent
+if str(RAIZ_REPO) not in sys.path:
+    sys.path.insert(0, str(RAIZ_REPO))
+
+from utilidades.env import cargar_env_desde_archivo
+
 LEDGER = AQUI / "ledger_payouts.jsonl"
 
 # Ver nota 2 en el encabezado. Ajustar cuando se lea la guia oficial.
@@ -71,17 +78,7 @@ ESTADOS_TX = {
 
 
 def cargar_env() -> None:
-    env = AQUI.parent / ".env"
-    if not env.exists():
-        return
-    for linea in env.read_text(encoding="utf-8").splitlines():
-        linea = linea.strip()
-        if not linea or linea.startswith("#") or "=" not in linea:
-            continue
-        k, _, v = linea.partition("=")
-        k, v = k.strip(), v.split(" #")[0].strip().strip("\"'")
-        if k and k not in os.environ:
-            os.environ[k] = v
+    cargar_env_desde_archivo(RAIZ_REPO / ".env")
 
 
 def anotar(evento: str, datos: dict) -> None:
