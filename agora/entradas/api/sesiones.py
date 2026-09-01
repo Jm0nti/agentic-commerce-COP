@@ -1,0 +1,240 @@
+"""Sesiones de chat en memoria para `entradas/api/` (etapa 7).
+
+Une en un solo proceso lo que hasta la etapa 6 pasaba por dos terminales
+separadas: cada `_Sesion` guarda la `Conversacion` de `agente/conversacion.py`
+y una cola de eventos de "atencion requerida" (`propuesta_pendiente`,
+`confirmacion_pendiente`) que `entradas/api/app.py` expone por Server-Sent
+Events. Detectar esos eventos es tarea de este modulo, no de `app.py`: es
+quien tiene el historial de mensajes para poder mirar el resultado JSON que
+`armar_carrito`/`pagar` (`composicion/agente.py`) dejaron en el ultimo
+mensaje de rol "tool".
+
+POR QUE VIVE EN `entradas/` Y NO EN `composicion/` O `agente/`
+----------------------------------------------------------------
+Sesiones HTTP (un id de sesion por pestana de navegador, una cola de eventos
+por sesion) son un concepto de "como llega la charla por HTTP", no de "como
+funciona el agente" ni de "como se arma el contenedor" -- exactamente lo que
+`docs/arquitectura-v2.md` seccion 2 asigna a `entradas/`. `agente/
+conversacion.py` sigue sin saber que existe HTTP, SSE, o mas de una charla a
+la vez; este modulo tampoco le agrega nada, solo lo llama una vez por
+sesion en lugar de una vez por proceso.
+
+POR QUE UNA COLA POR SESION, NO UN SOLO BUS DE EVENTOS
+--------------------------------------------------------
+Cada pestana de navegador tiene su propia charla con el agente -- un evento
+de "esta propuesta necesita firma" de la sesion A nunca deberia disparar un
+popup en la sesion B. `queue.Queue` (no `asyncio.Queue`) porque Starlette
+corre generadores sincronos de `StreamingResponse` en un threadpool, asi
+que no hace falta -- ni conviene -- meter async/await en un agente que
+`docs/arquitectura-v2.md` (seccion 9) ya decidio dejar sincrono.
+
+QUE NO HACE ESTE MODULO
+--------------------------
+No firma propuestas ni resuelve confirmaciones -- eso lo sigue haciendo
+`app.py`, llamando directo a `contenedor.emitir_mandato`/`contenedor.
+ejecutar_intencion.retomar`, exactamente como `entradas/cli/__main__.py:
+cmd_firmar`/`cmd_retomar`. Este modulo solo le avisa despues a la
+conversacion correspondiente (`continuar`) para que el agente se entere y
+conteste -- la persona sigue siendo quien decide firmar o confirmar, nunca
+el agente ni este modulo.
+"""
+
+from __future__ import annotations
+
+import json
+import threading
+import uuid
+from dataclasses import dataclass, field
+from queue import Queue
+from typing import Any
+
+from ...agente.conversacion import Agente, Conversacion
+from ...composicion.contenedor import Contenedor
+
+
+class SesionDesconocida(Exception):
+    """No existe ninguna sesion con ese id -- el proceso se reinicio, o
+    nunca existio. `Conversacion` es en memoria (ver su propio docstring),
+    asi que esto es esperable despues de reiniciar `scripts/servir_api.py`
+    -- el frontend reacciona pidiendo una sesion nueva."""
+
+
+@dataclass
+class _Sesion:
+    conversacion: Conversacion
+    sesion_id: str = ""
+    eventos: Queue = field(default_factory=Queue)
+    lock: threading.Lock = field(default_factory=threading.Lock)
+    # Cuanto de `conversacion.mensajes` ya se reviso en busca de eventos --
+    # sin esto, mandar un segundo mensaje de chat volveria a encolar el
+    # mismo `propuesta_pendiente` del turno anterior.
+    escaneado_hasta: int = 0
+
+
+class AlmacenDeSesiones:
+    """Una `Conversacion` por sesion de chat, en memoria del proceso --
+    igual que `Conversacion` misma: no sobrevive un reinicio, y esta bien
+    que no lo haga, un chat es efimero. Lo que SI tiene que sobrevivir
+    entre procesos (propuestas, mandatos, estados) ya vive en sqlite desde
+    la etapa 6; esto solo une esas piezas en una sola pestana."""
+
+    def __init__(self, agente: Agente, contenedor: Contenedor) -> None:
+        self._agente = agente
+        self._contenedor = contenedor
+        self._sesiones: dict[str, _Sesion] = {}
+        self._lock = threading.Lock()
+        # Etapa 9: que intencion_id le pertenece a que sesion, mientras la
+        # pasarela todavia no dio un desenlace final. Vive aca (no adentro
+        # de cada `_Sesion`) porque `SondeoDePagosPendientes` necesita
+        # poder recorrer TODAS las pendientes de TODAS las sesiones en cada
+        # pasada, sin conocer sus ids de antemano -- ver
+        # `entradas/api/sondeo_pagos.py`.
+        self._pendientes: dict[str, str] = {}
+
+    def crear(self) -> str:
+        sesion_id = uuid.uuid4().hex
+        sesion = _Sesion(conversacion=self._agente.iniciar(), sesion_id=sesion_id)
+        with self._lock:
+            self._sesiones[sesion_id] = sesion
+        return sesion_id
+
+    def enviar_mensaje(self, sesion_id: str, texto: str) -> str:
+        """Un turno completo de charla: agrega lo que escribio la persona,
+        deja correr `Agente.turno`, y antes de devolver el texto final
+        escanea los mensajes nuevos en busca de eventos de atencion
+        requerida para encolarlos."""
+        sesion = self._obtener(sesion_id)
+        with sesion.lock:
+            respuesta = self._agente.turno(sesion.conversacion, texto)
+            self._escanear_eventos(sesion)
+            return respuesta
+
+    def continuar(self, sesion_id: str, texto: str) -> str:
+        """Lo mismo que `enviar_mensaje`, pero para el aviso que `app.py`
+        le manda a la conversacion despues de que la PERSONA firma una
+        propuesta o resuelve una confirmacion desde el popup -- nunca algo
+        que ella escribio en el cuadro de texto. Es el mismo mecanismo (un
+        mensaje mas, otra vuelta de `agente.turno`); el nombre distinto es
+        solo para que `app.py` deje clara la intencion en cada llamada."""
+        return self.enviar_mensaje(sesion_id, texto)
+
+    def eventos(self, sesion_id: str) -> Queue:
+        return self._obtener(sesion_id).eventos
+
+    def registrar_pendiente(self, sesion_id: str, intencion_id: str) -> None:
+        """`pagar()` (o `/intenciones/{id}/retomar` en `entradas/api/
+        app.py`) devolvio 'PENDING' -- todavia no es un desenlace final, lo
+        va a resolver el webhook de la pasarela desde OTRO proceso
+        (`entradas/webhooks/wompi.py`), que no tiene forma de tocar la
+        memoria de este. `SondeoDePagosPendientes` es quien vuelve a
+        preguntar por esto a intervalos."""
+        with self._lock:
+            self._pendientes[intencion_id] = sesion_id
+
+    def pendientes(self) -> dict[str, str]:
+        """Copia -- quien sondea no deberia poder mutar el registro por
+        afuera de `registrar_pendiente`/`resolver_pendiente`."""
+        with self._lock:
+            return dict(self._pendientes)
+
+    def resolver_pendiente(self, intencion_id: str, estado: str) -> str | None:
+        """La pasarela ya dio un desenlace final para `intencion_id` --
+        `SondeoDePagosPendientes` lo supo volviendole a preguntar a
+        `consultar_estado`. Le avisa a la conversacion dueña exactamente
+        igual que `_continuar_si_hay_sesion` (`entradas/api/app.py`)
+        despues de firmar/retomar desde un popup -- mismo mecanismo, solo
+        que esta vez nadie hizo click: fue el webhook, en otro proceso, el
+        que se entero primero. Ademas encola un evento SSE nuevo
+        (`mensaje_agente`) para que el navegador lo muestre sin que la
+        persona tenga que volver a preguntar. Devuelve la respuesta del
+        agente, o `None` si la sesion ya no existe (la pestana se cerro, o
+        el proceso se reinicio)."""
+        with self._lock:
+            sesion_id = self._pendientes.pop(intencion_id, None)
+        if sesion_id is None:
+            return None
+        aviso = (
+            f"(el webhook de la pasarela ya resolvio la intencion "
+            f"{intencion_id} de forma asincronica -- estado='{estado}'. "
+            "Confirma con consultar_estado antes de contarle a la persona "
+            "el resultado.)"
+        )
+        try:
+            respuesta = self.continuar(sesion_id, aviso)
+        except SesionDesconocida:
+            return None
+        self._obtener(sesion_id).eventos.put({"tipo": "mensaje_agente", "texto": respuesta})
+        return respuesta
+
+    def _obtener(self, sesion_id: str) -> _Sesion:
+        with self._lock:
+            sesion = self._sesiones.get(sesion_id)
+        if sesion is None:
+            raise SesionDesconocida(f"no existe la sesion '{sesion_id}'")
+        return sesion
+
+    def _escanear_eventos(self, sesion: _Sesion) -> None:
+        mensajes = sesion.conversacion.mensajes
+        for i in range(sesion.escaneado_hasta, len(mensajes)):
+            m = mensajes[i]
+            if m.rol != "tool" or not m.contenido:
+                continue
+            evento: dict[str, Any] | None = None
+            if m.nombre_herramienta == "armar_carrito":
+                evento = self._evento_propuesta_pendiente(m.contenido)
+            elif m.nombre_herramienta == "pagar":
+                evento = self._evento_confirmacion_pendiente(m.contenido)
+                self._registrar_si_pendiente_de_pasarela(sesion, m.contenido)
+            if evento is not None:
+                sesion.eventos.put(evento)
+        sesion.escaneado_hasta = len(mensajes)
+
+    def _evento_propuesta_pendiente(self, contenido_json: str) -> dict[str, Any] | None:
+        datos = json.loads(contenido_json)
+        propuesta = datos.get("propuesta")
+        if propuesta is None:
+            # `armar_carrito` puede devolver un error de dominio en vez del
+            # shape esperado (`Agente._ejecutar` traduce cualquier
+            # `ErrorDeDominio` a `{"tipo": ..., "mensaje": ...}`) -- no hay
+            # propuesta pendiente de la que avisar.
+            return None
+        carrito = self._contenedor.carritos.obtener(datos["carrito_id"])
+        return {
+            "tipo": "propuesta_pendiente",
+            "propuesta_id": propuesta["propuesta_id"],
+            "carrito_id": datos["carrito_id"],
+            "comercio_id": propuesta["comercio_id"],
+            "monto_max_cop": propuesta["monto_max_cop"],
+            "justificacion": propuesta["justificacion"],
+            "items": [
+                {
+                    "nombre": i.nombre,
+                    "cantidad": i.cantidad,
+                    "subtotal_cop": i.subtotal.pesos,
+                }
+                for i in carrito.items
+            ],
+        }
+
+    def _registrar_si_pendiente_de_pasarela(self, sesion: _Sesion, contenido_json: str) -> None:
+        """`pagar()` fue directo a cobro (nunca paso por `esperando_
+        confirmacion_humana`, que tiene su propio evento) y la pasarela
+        contesto 'PENDING' -- el caso tipico de Wompi real contra Nequi,
+        que liquida de forma asincronica. Sin esto, solo el camino que pasa
+        por `/intenciones/{id}/retomar` (`entradas/api/app.py`) quedaria
+        bajo sondeo."""
+        datos = json.loads(contenido_json)
+        if datos.get("motivo") == "PENDING":
+            self.registrar_pendiente(sesion.sesion_id, datos["intencion_id"])
+
+    def _evento_confirmacion_pendiente(self, contenido_json: str) -> dict[str, Any] | None:
+        datos = json.loads(contenido_json)
+        if not datos.get("esperando_confirmacion"):
+            return None
+        return {
+            "tipo": "confirmacion_pendiente",
+            "intencion_id": datos["intencion_id"],
+            "mandato_id": datos["mandato_id"],
+            "carrito_id": datos["carrito_id"],
+            "motivo": datos.get("motivo", ""),
+        }

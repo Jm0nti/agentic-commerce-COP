@@ -34,6 +34,20 @@
       "categoria": "libros",
       "descripcion": "Librería bogotana especializada en literatura colombiana, latinoamericana y clásicos universales, con catálogo actualizado mensualmente.",
       "simulado": true
+    },
+    {
+      "comercio_id": "com_6fb0a13bdd8b",
+      "nombre": "Dulcería La Golosina",
+      "categoria": "confites",
+      "descripcion": "Dulcería de barrio en Bogotá con confites, chocolates y golosinas colombianas de toda la vida.",
+      "simulado": true
+    },
+    {
+      "comercio_id": "com_787e7bee6302",
+      "nombre": "Papelería El Lápiz Feliz",
+      "categoria": "papeleria",
+      "descripcion": "Papelería de barrio en Medellín con útiles escolares y de oficina a precios económicos.",
+      "simulado": true
     }
   ],
   "productos": [
@@ -336,6 +350,150 @@
       },
       "categoria": "libros",
       "disponibilidad": "agotado"
+    },
+    {
+      "producto_id": "prd_4597d64a1fe9",
+      "comercio_id": "com_6fb0a13bdd8b",
+      "nombre": "Bombón de chocolate relleno",
+      "descripcion": "Bombón de chocolate con leche relleno de arequipe.",
+      "precio": {
+        "centavos": 150000,
+        "moneda": "COP"
+      },
+      "categoria": "confites",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_a66204e53faf",
+      "comercio_id": "com_6fb0a13bdd8b",
+      "nombre": "Paquete de gomitas surtidas",
+      "descripcion": "Gomitas de frutas surtidas, bolsa de 100 gramos.",
+      "precio": {
+        "centavos": 160000,
+        "moneda": "COP"
+      },
+      "categoria": "confites",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_acaa9eddfd7d",
+      "comercio_id": "com_6fb0a13bdd8b",
+      "nombre": "Chicle de menta x10",
+      "descripcion": "Paquete de 10 unidades de chicle sabor menta.",
+      "precio": {
+        "centavos": 150000,
+        "moneda": "COP"
+      },
+      "categoria": "confites",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_b2fc1c39a178",
+      "comercio_id": "com_6fb0a13bdd8b",
+      "nombre": "Caramelo de leche artesanal",
+      "descripcion": "Caramelo de leche hecho a mano, receta tradicional.",
+      "precio": {
+        "centavos": 170000,
+        "moneda": "COP"
+      },
+      "categoria": "confites",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_3548881d813a",
+      "comercio_id": "com_6fb0a13bdd8b",
+      "nombre": "Paleta de dulce de coco",
+      "descripcion": "Paleta artesanal de coco rallado y panela.",
+      "precio": {
+        "centavos": 180000,
+        "moneda": "COP"
+      },
+      "categoria": "confites",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_27fbff26f62f",
+      "comercio_id": "com_6fb0a13bdd8b",
+      "nombre": "Rollo de regaliz",
+      "descripcion": "Rollo de regaliz de frutas, 80 gramos.",
+      "precio": {
+        "centavos": 200000,
+        "moneda": "COP"
+      },
+      "categoria": "confites",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_19cacb2b27ac",
+      "comercio_id": "com_787e7bee6302",
+      "nombre": "Lápiz de grafito HB",
+      "descripcion": "Lápiz de grafito HB, ideal para escritura y dibujo escolar.",
+      "precio": {
+        "centavos": 150000,
+        "moneda": "COP"
+      },
+      "categoria": "papeleria",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_39c81d34f2fb",
+      "comercio_id": "com_787e7bee6302",
+      "nombre": "Borrador blanco",
+      "descripcion": "Borrador de nata blanco, no mancha el papel.",
+      "precio": {
+        "centavos": 150000,
+        "moneda": "COP"
+      },
+      "categoria": "papeleria",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_9ddf5731f1e2",
+      "comercio_id": "com_787e7bee6302",
+      "nombre": "Sacapuntas manual",
+      "descripcion": "Sacapuntas metálico de un solo orificio.",
+      "precio": {
+        "centavos": 170000,
+        "moneda": "COP"
+      },
+      "categoria": "papeleria",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_610d4a12e232",
+      "comercio_id": "com_787e7bee6302",
+      "nombre": "Paquete de post-its",
+      "descripcion": "Bloc de notas adhesivas, 50 hojas, colores surtidos.",
+      "precio": {
+        "centavos": 190000,
+        "moneda": "COP"
+      },
+      "categoria": "papeleria",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_4d3b12cf4fa1",
+      "comercio_id": "com_787e7bee6302",
+      "nombre": "Marcador resaltador",
+      "descripcion": "Resaltador fluorescente, punta biselada.",
+      "precio": {
+        "centavos": 200000,
+        "moneda": "COP"
+      },
+      "categoria": "papeleria",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_dd08a1f0d0e9",
+      "comercio_id": "com_787e7bee6302",
+      "nombre": "Regla de 20 cm",
+      "descripcion": "Regla plástica transparente de 20 centímetros.",
+      "precio": {
+        "centavos": 160000,
+        "moneda": "COP"
+      },
+      "categoria": "papeleria",
+      "disponibilidad": "en_stock"
     }
   ]
 }

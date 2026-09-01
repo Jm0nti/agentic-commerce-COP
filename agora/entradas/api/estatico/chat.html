@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agora -- chat</title>
+<style>
+  :root {
+    color-scheme: dark;
+    /* -- superficies, de mas oscura (fondo) a mas clara (elevada) -- */
+    --bg: #0a0e14;
+    --bg-header: #0f141d;
+    --bg-surface: #141a24;
+    --bg-surface-2: #1b2330;
+    --bg-surface-3: #232c3d;
+    --border: #262f40;
+    --border-strong: #34405a;
+    /* -- texto -- */
+    --text: #e6ebf2;
+    --text-dim: #9aa7bb;
+    --text-faint: #63708a;
+    /* -- acento (azul) -- */
+    --accent: #4d7cfe;
+    --accent-strong: #3d64e0;
+    --accent-soft: rgba(77, 124, 254, 0.14);
+    /* -- semanticos -- */
+    --success: #34d399;
+    --success-soft: rgba(52, 211, 153, 0.14);
+    --danger: #f87171;
+    --danger-soft: rgba(248, 113, 113, 0.14);
+    --warning: #fbbf24;
+    --warning-soft: rgba(251, 191, 36, 0.14);
+    /* -- forma -- */
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.55);
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0; font-family: var(--font-sans); -webkit-font-smoothing: antialiased;
+    background: var(--bg); color: var(--text); display: flex; flex-direction: column;
+    height: 100vh; font-size: 14px;
+  }
+
+  /* -- encabezado -------------------------------------------------------- */
+
+  header {
+    background: var(--bg-header); border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .contenedor-header {
+    max-width: 900px; margin: 0 auto; padding: 12px 20px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .marca { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+  .marca .logo {
+    width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(155deg, var(--accent), var(--accent-strong));
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; flex-shrink: 0; box-shadow: 0 2px 8px rgba(77, 124, 254, 0.4);
+  }
+  .marca .titulo { display: flex; flex-direction: column; line-height: 1.25; }
+  .marca .titulo strong { font-size: 14px; font-weight: 650; letter-spacing: .01em; }
+  .marca .titulo small { font-size: 11px; color: var(--text-dim); }
+
+  .campo-titular { display: flex; align-items: center; gap: 8px; }
+  .campo-titular label { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+  .campo-titular input {
+    padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    background: var(--bg-surface-2); color: var(--text); font-size: 12.5px; width: 130px;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .campo-titular input:focus-visible {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .indicador-estado { display: flex; align-items: center; font-size: 12px; color: var(--text-dim); }
+  .punto-estado {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 7px;
+    background: var(--text-faint); flex-shrink: 0; transition: background-color .2s ease, box-shadow .2s ease;
+  }
+  .punto-estado.pendiente { background: var(--warning); box-shadow: 0 0 0 3px var(--warning-soft); }
+  .punto-estado.ok { background: var(--success); box-shadow: 0 0 0 3px var(--success-soft); }
+  .punto-estado.error { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+
+  header button {
+    padding: 7px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--bg-surface-2); color: var(--text); font-size: 12.5px; font-weight: 550;
+    cursor: pointer; transition: background-color .15s ease, border-color .15s ease;
+  }
+  header button:hover { background: var(--bg-surface-3); border-color: var(--accent); }
+  header button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  /* -- area de chat -------------------------------------------------------- */
+
+  #chat {
+    flex: 1; overflow-y: auto; padding: 24px 20px; display: flex; flex-direction: column;
+    gap: 14px; width: 100%; max-width: 900px; margin: 0 auto;
+  }
+  #chat::-webkit-scrollbar { width: 10px; }
+  #chat::-webkit-scrollbar-track { background: transparent; }
+  #chat::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; border: 2px solid var(--bg); }
+  #chat { scrollbar-color: var(--border-strong) transparent; scrollbar-width: thin; }
+
+  .burbuja {
+    max-width: 74%; padding: 11px 15px; border-radius: var(--radius-md); line-height: 1.5;
+    font-size: 14px; white-space: pre-wrap; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    animation: aparecer .18s ease;
+  }
+  @keyframes aparecer {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .persona {
+    align-self: flex-end; background: var(--accent); color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .agente {
+    align-self: flex-start; background: var(--bg-surface); border: 1px solid var(--border);
+    border-bottom-left-radius: 4px; white-space: normal;
+  }
+  .sistema {
+    align-self: center; background: var(--bg-surface-2); color: var(--text-dim);
+    font-size: 12px; padding: 6px 14px; border-radius: 999px; box-shadow: none;
+  }
+
+  /* contenido markdown renderizado adentro de una burbuja del agente */
+  .agente > :first-child { margin-top: 0; }
+  .agente > :last-child { margin-bottom: 0; }
+  .agente h1, .agente h2, .agente h3, .agente h4, .agente h5, .agente h6 {
+    margin: 14px 0 6px; line-height: 1.3; font-weight: 650; color: var(--text);
+  }
+  .agente h1 { font-size: 1.25em; }
+  .agente h2 { font-size: 1.15em; }
+  .agente h3 { font-size: 1.05em; }
+  .agente h4, .agente h5, .agente h6 { font-size: 1em; }
+  .agente p { margin: 6px 0; }
+  .agente ul, .agente ol { margin: 6px 0; padding-left: 22px; }
+  .agente li { margin: 3px 0; }
+  .agente strong { color: var(--text); font-weight: 700; }
+  .agente code {
+    background: var(--bg-surface-3); border: 1px solid var(--border);
+    padding: 1px 5px; border-radius: 4px; font-family: var(--font-mono); font-size: .9em;
+  }
+  .agente pre {
+    background: var(--bg-surface-3); border: 1px solid var(--border);
+    padding: 10px 12px; border-radius: var(--radius-sm); overflow-x: auto; margin: 8px 0;
+  }
+  .agente pre code { background: none; border: none; padding: 0; }
+  .agente blockquote {
+    margin: 8px 0; padding: 5px 12px; border-left: 3px solid var(--accent);
+    color: var(--text-dim); background: var(--accent-soft); border-radius: 0 6px 6px 0;
+  }
+  .agente hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+  .agente a { color: var(--accent); text-decoration: underline; text-decoration-color: rgba(77, 124, 254, .4); }
+  .agente a:hover { text-decoration-color: currentColor; }
+  .agente .tabla-md { overflow-x: auto; margin: 8px 0; }
+  .agente table { border-collapse: collapse; width: 100%; font-size: .92em; }
+  .agente th, .agente td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+  .agente th { background: var(--bg-surface-3); font-weight: 650; }
+  .agente tr:nth-child(even) td { background: rgba(255, 255, 255, 0.02); }
+
+  /* indicador de "el agente esta escribiendo" -- una burbuja mas, efimera */
+  .burbuja.escribiendo { display: flex; align-items: center; gap: 5px; padding: 15px 16px; }
+  .burbuja.escribiendo .punto {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--text-faint);
+    animation: rebote 1.2s infinite ease-in-out;
+  }
+  .burbuja.escribiendo .punto:nth-child(2) { animation-delay: .15s; }
+  .burbuja.escribiendo .punto:nth-child(3) { animation-delay: .3s; }
+  @keyframes rebote {
+    0%, 60%, 100% { transform: translateY(0); opacity: .5; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
+
+  /* -- barra de entrada -------------------------------------------------------- */
+
+  form#entrada {
+    background: var(--bg-header); border-top: 1px solid var(--border); padding: 14px 20px; flex-shrink: 0;
+  }
+  .contenedor-entrada { display: flex; gap: 10px; max-width: 900px; margin: 0 auto; }
+  form#entrada input[type=text] {
+    flex: 1; padding: 11px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    background: var(--bg-surface-2); color: var(--text); font-size: 14px;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  form#entrada input[type=text]::placeholder { color: var(--text-faint); }
+  form#entrada input[type=text]:focus-visible {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  form#entrada input[type=text]:disabled { opacity: .55; cursor: not-allowed; }
+
+  /* -- botones -------------------------------------------------------- */
+
+  form#entrada button, .modal button {
+    padding: 11px 20px; border: none; border-radius: var(--radius-sm); background: var(--accent); color: #fff;
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color .15s ease, transform .05s ease;
+  }
+  form#entrada button:hover:not(:disabled), .modal button:hover { background: var(--accent-strong); }
+  form#entrada button:active:not(:disabled), .modal button:active { transform: scale(.98); }
+  form#entrada button:disabled { background: var(--bg-surface-3); color: var(--text-faint); cursor: not-allowed; }
+  form#entrada button:focus-visible, .modal button:focus-visible {
+    outline: none; box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .modal .botones button.cancelar { background: var(--bg-surface-3); color: var(--text); }
+  .modal .botones button.cancelar:hover { background: var(--border-strong); }
+  .modal .botones button.rechazar { background: var(--danger); }
+  .modal .botones button.rechazar:hover { background: #e15b5b; }
+
+  /* -- modales -------------------------------------------------------- */
+
+  .modal-fondo {
+    position: fixed; inset: 0; background: rgba(4, 6, 10, 0.6); backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center; z-index: 10;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity .18s ease, visibility 0s linear .18s;
+  }
+  .modal-fondo.visible {
+    opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .18s ease;
+  }
+  .modal {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 24px 28px; width: 400px; max-width: 90vw; box-shadow: var(--shadow-lg);
+    transform: translateY(10px) scale(.98); transition: transform .18s ease;
+  }
+  .modal-fondo.visible .modal { transform: translateY(0) scale(1); }
+  .modal h2 { margin: 0 0 4px; font-size: 17px; font-weight: 650; }
+  .modal p.aviso {
+    margin: 0 0 16px; font-size: 12px; color: var(--warning); background: var(--warning-soft);
+    padding: 9px 11px; border-radius: var(--radius-sm); line-height: 1.4;
+  }
+  .modal dl { margin: 0 0 18px; font-size: 13px; }
+  .modal dt { color: var(--text-dim); margin-top: 8px; font-size: 12px; }
+  .modal dd { margin: 2px 0 0; font-weight: 600; }
+  .modal ul.items {
+    margin: 0 0 18px; padding: 0; list-style: none; font-size: 13px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .modal ul.items li { padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .modal ul.items li:last-child { border-bottom: none; }
+  .modal .botones { display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* -- modal: medios de pago -------------------------------------------------------- */
+
+  .modal .medios-lista { margin: 0 0 16px; padding: 0; list-style: none; font-size: 13px; }
+  .modal .medios-lista li {
+    display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .modal .medios-lista li:last-child { border-bottom: none; }
+  .medio-proveedor { font-weight: 600; text-transform: capitalize; }
+  .medio-id { margin-left: auto; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-dim); }
+  .badge {
+    font-size: 10.5px; padding: 2px 9px; border-radius: 999px; text-transform: uppercase;
+    letter-spacing: .04em; font-weight: 700; flex-shrink: 0;
+  }
+  .badge-sandbox { background: var(--success-soft); color: var(--success); }
+  .badge-produccion { background: var(--danger-soft); color: var(--danger); }
+  .modal p.medios-vacio { font-size: 13px; color: var(--text-dim); margin: 0 0 16px; }
+  .modal form.enrolar { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .modal form.enrolar input {
+    padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    background: var(--bg-surface-2); color: var(--text); font-size: 13px;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .modal form.enrolar input::placeholder { color: var(--text-faint); }
+  .modal form.enrolar input:focus-visible {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .modal p.progreso {
+    margin: 0 0 12px; font-size: 12px; color: var(--success); background: var(--success-soft);
+    padding: 9px 11px; border-radius: var(--radius-sm); line-height: 1.4;
+  }
+  .modal p.error-enrolar {
+    margin: 0 0 12px; font-size: 12px; color: var(--danger); background: var(--danger-soft);
+    padding: 9px 11px; border-radius: var(--radius-sm); line-height: 1.4;
+  }
+
+  /* -- responsive -------------------------------------------------------- */
+
+  @media (max-width: 560px) {
+    .contenedor-header { padding: 10px 14px; gap: 10px; }
+    .marca .titulo small { display: none; }
+    .campo-titular input { width: 96px; }
+    #chat { padding: 16px 14px; }
+    .burbuja { max-width: 88%; }
+    form#entrada { padding: 10px 14px; }
+    .modal { padding: 20px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="contenedor-header">
+    <div class="marca">
+      <span class="logo" aria-hidden="true">A</span>
+      <div class="titulo">
+        <strong>agora</strong>
+        <small>chat con el agente</small>
+      </div>
+    </div>
+    <div class="campo-titular">
+      <label for="titular_id">titular_id</label>
+      <input id="titular_id" type="text" placeholder="tit_1">
+    </div>
+    <div class="indicador-estado">
+      <span class="punto-estado pendiente" id="estado-punto" aria-hidden="true"></span>
+      <span id="estado">conectando...</span>
+    </div>
+    <button type="button" id="btn-medios">Medios de pago</button>
+  </div>
+</header>
+
+<div id="chat"></div>
+
+<form id="entrada">
+  <div class="contenedor-entrada">
+    <input id="texto" type="text" autocomplete="off" placeholder="Escribi tu mensaje..." disabled>
+    <button type="submit" disabled>Enviar</button>
+  </div>
+</form>
+
+<!-- Popup: firmar propuesta (Cart Mandate sin firmar -> Mandato firmado) -->
+<div class="modal-fondo" id="modal-propuesta">
+  <div class="modal">
+    <h2>Confirmar y firmar la propuesta</h2>
+    <p class="aviso">El agente NUNCA puede firmar esto -- solo vos, como titular del medio de pago.</p>
+    <ul class="items" id="propuesta-items"></ul>
+    <dl>
+      <dt>Comercio</dt><dd id="propuesta-comercio"></dd>
+      <dt>Monto maximo autorizado</dt><dd id="propuesta-monto"></dd>
+      <dt>Justificacion del agente</dt><dd id="propuesta-justificacion"></dd>
+    </dl>
+    <div class="botones">
+      <button type="button" class="cancelar" id="propuesta-cancelar">Cancelar</button>
+      <button type="button" id="propuesta-firmar">Firmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Popup: confirmar/rechazar un cobro que quedo "esperando_confirmacion_humana" -->
+<div class="modal-fondo" id="modal-confirmacion">
+  <div class="modal">
+    <h2>Confirmar el pago</h2>
+    <p class="aviso">El agente pidio cobrar y la politica de mandato lo dejo esperando tu confirmacion.</p>
+    <dl>
+      <dt>Motivo</dt><dd id="confirmacion-motivo"></dd>
+    </dl>
+    <div class="botones">
+      <button type="button" class="rechazar" id="confirmacion-rechazar">Rechazar</button>
+      <button type="button" id="confirmacion-confirmar">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Popup: enrolar un medio de pago y ver los del titular actual -->
+<div class="modal-fondo" id="modal-medios">
+  <div class="modal">
+    <h2>Medios de pago</h2>
+    <p class="aviso">Se enrolan y se consultan para el titular_id de arriba a la derecha.</p>
+
+    <p class="medios-vacio" id="medios-vacio" hidden></p>
+    <ul class="medios-lista" id="medios-lista"></ul>
+
+    <form class="enrolar" id="form-enrolar">
+      <input id="enrolar-telefono" type="text" placeholder="Telefono (ej: 3001234567)" required>
+      <input id="enrolar-correo" type="email" placeholder="Correo del titular" required>
+      <button type="submit" id="enrolar-boton">Enrolar nuevo medio</button>
+    </form>
+
+    <p class="progreso" id="enrolar-progreso" hidden></p>
+    <p class="error-enrolar" id="enrolar-error" hidden></p>
+
+    <div class="botones">
+      <button type="button" class="cancelar" id="medios-cerrar">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const chat = document.getElementById("chat");
+  const estado = document.getElementById("estado");
+  const estadoPunto = document.getElementById("estado-punto");
+  const form = document.getElementById("entrada");
+  const campoTexto = document.getElementById("texto");
+  const botonEnviar = form.querySelector("button");
+  const campoTitular = document.getElementById("titular_id");
+
+  const modalPropuesta = document.getElementById("modal-propuesta");
+  const modalConfirmacion = document.getElementById("modal-confirmacion");
+
+  let sesionId = null;
+  let eventSource = null;
+  let propuestaActual = null;
+  let confirmacionActual = null;
+
+  campoTitular.value = localStorage.getItem("agora_titular_id") || "";
+  campoTitular.addEventListener("change", function () {
+    localStorage.setItem("agora_titular_id", campoTitular.value.trim());
+  });
+
+  function fijarEstado(texto, tipo) {
+    estado.textContent = texto;
+    estadoPunto.className = "punto-estado " + tipo;
+  }
+
+  // -- Markdown minimo, sin dependencias externas ---------------------- //
+  //
+  // DeepSeek contesta en markdown (encabezados, negrita, tablas, listas)
+  // pero hasta ahora la burbuja del agente lo mostraba como texto plano.
+  // Este renderer cubre lo que de verdad aparece en las respuestas del
+  // agente -- no es CommonMark completo -- y por seguridad escapa TODO el
+  // texto de entrada antes de interpretar cualquier sintaxis: el unico
+  // HTML que termina en el DOM es el que este codigo genera el mismo con
+  // una lista fija de etiquetas, nunca HTML crudo que haya podido colarse
+  // en la respuesta del modelo (relevante: la respuesta del agente puede
+  // incluir texto de catalogo u otras fuentes que esta app no controla al
+  // 100%).
+
+  function escaparHtml(s) {
+    return s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function procesarInline(texto) {
+    // El codigo inline se saca primero (con un marcador de por medio) para
+    // que negrita/cursiva/enlaces no metan mano adentro de un `` `...` ``.
+    const codigos = [];
+    let out = texto.replace(/`([^`]+)`/g, function (_, c) {
+      codigos.push(c);
+      return " " + (codigos.length - 1) + " ";
+    });
+    out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, function (_, t, u) {
+      return '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + t + "</a>";
+    });
+    out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    out = out.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+    out = out.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+    out = out.replace(/(^|[^\w])_([^_]+)_(?=[^\w]|$)/g, "$1<em>$2</em>");
+    out = out.replace(/ (\d+) /g, function (_, i) {
+      return "<code>" + codigos[Number(i)] + "</code>";
+    });
+    return out;
+  }
+
+  function esSeparadorDeTabla(linea) {
+    return /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(linea) && linea.indexOf("-") !== -1;
+  }
+
+  function celdasDeFila(linea) {
+    let l = linea.trim();
+    if (l.charAt(0) === "|") l = l.slice(1);
+    if (l.charAt(l.length - 1) === "|") l = l.slice(0, -1);
+    return l.split("|").map(function (c) { return c.trim(); });
+  }
+
+  function renderizarMarkdown(texto) {
+    const lineas = escaparHtml(texto).split("\n");
+    const html = [];
+    let i = 0;
+
+    while (i < lineas.length) {
+      const linea = lineas[i];
+
+      if (linea.trim() === "") { i++; continue; }
+
+      const encabezado = linea.match(/^(#{1,6})\s+(.*)$/);
+      if (encabezado) {
+        const nivel = encabezado[1].length;
+        html.push("<h" + nivel + ">" + procesarInline(encabezado[2].trim()) + "</h" + nivel + ">");
+        i++; continue;
+      }
+
+      if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(linea)) {
+        html.push("<hr>");
+        i++; continue;
+      }
+
+      const inicioCodigo = linea.match(/^```(\w*)\s*$/);
+      if (inicioCodigo) {
+        const codigo = [];
+        i++;
+        while (i < lineas.length && !/^```\s*$/.test(lineas[i])) { codigo.push(lineas[i]); i++; }
+        i++;
+        html.push("<pre><code>" + codigo.join("\n") + "</code></pre>");
+        continue;
+      }
+
+      if (linea.indexOf("|") !== -1 && i + 1 < lineas.length && esSeparadorDeTabla(lineas[i + 1])) {
+        const encabezados = celdasDeFila(linea);
+        i += 2;
+        const filas = [];
+        while (i < lineas.length && lineas[i].indexOf("|") !== -1 && lineas[i].trim() !== "") {
+          filas.push(celdasDeFila(lineas[i]));
+          i++;
+        }
+        let tabla = '<div class="tabla-md"><table><thead><tr>';
+        encabezados.forEach(function (c) { tabla += "<th>" + procesarInline(c) + "</th>"; });
+        tabla += "</tr></thead><tbody>";
+        filas.forEach(function (fila) {
+          tabla += "<tr>";
+          fila.forEach(function (c) { tabla += "<td>" + procesarInline(c) + "</td>"; });
+          tabla += "</tr>";
+        });
+        tabla += "</tbody></table></div>";
+        html.push(tabla);
+        continue;
+      }
+
+      if (/^\s*[-*+]\s+/.test(linea)) {
+        const items = [];
+        while (i < lineas.length && /^\s*[-*+]\s+/.test(lineas[i])) {
+          items.push(lineas[i].replace(/^\s*[-*+]\s+/, ""));
+          i++;
+        }
+        html.push("<ul>" + items.map(function (it) { return "<li>" + procesarInline(it) + "</li>"; }).join("") + "</ul>");
+        continue;
+      }
+
+      if (/^\s*\d+[.)]\s+/.test(linea)) {
+        const items = [];
+        while (i < lineas.length && /^\s*\d+[.)]\s+/.test(lineas[i])) {
+          items.push(lineas[i].replace(/^\s*\d+[.)]\s+/, ""));
+          i++;
+        }
+        html.push("<ol>" + items.map(function (it) { return "<li>" + procesarInline(it) + "</li>"; }).join("") + "</ol>");
+        continue;
+      }
+
+      if (/^\s*>\s?/.test(linea)) {
+        const citas = [];
+        while (i < lineas.length && /^\s*>\s?/.test(lineas[i])) {
+          citas.push(lineas[i].replace(/^\s*>\s?/, ""));
+          i++;
+        }
+        html.push("<blockquote>" + procesarInline(citas.join(" ")) + "</blockquote>");
+        continue;
+      }
+
+      const parrafo = [linea];
+      i++;
+      while (
+        i < lineas.length && lineas[i].trim() !== "" &&
+        !/^#{1,6}\s+/.test(lineas[i]) && !/^```/.test(lineas[i]) &&
+        !/^\s*[-*+]\s+/.test(lineas[i]) && !/^\s*\d+[.)]\s+/.test(lineas[i]) &&
+        !/^\s*>\s?/.test(lineas[i]) && !/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(lineas[i])
+      ) {
+        parrafo.push(lineas[i]);
+        i++;
+      }
+      html.push("<p>" + procesarInline(parrafo.join(" ")) + "</p>");
+    }
+
+    return html.join("\n");
+  }
+
+  function burbuja(texto, clase) {
+    const div = document.createElement("div");
+    div.className = "burbuja " + clase;
+    if (clase === "agente") {
+      // Unico rol cuyo texto se interpreta como markdown -- lo que
+      // escribe la persona (clase "persona") y los avisos propios
+      // (clase "sistema") se muestran siempre como texto plano.
+      div.innerHTML = renderizarMarkdown(texto);
+    } else {
+      div.textContent = texto;
+    }
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    return div;
+  }
+
+  function burbujaEscribiendo() {
+    const div = document.createElement("div");
+    div.className = "burbuja agente escribiendo";
+    div.innerHTML = "<span class=\"punto\"></span><span class=\"punto\"></span><span class=\"punto\"></span>";
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    return div;
+  }
+
+  function habilitarEntrada(habilitar) {
+    campoTexto.disabled = !habilitar;
+    botonEnviar.disabled = !habilitar;
+    if (habilitar) campoTexto.focus();
+  }
+
+  async function iniciarSesion() {
+    try {
+      const resp = await fetch("/sesiones", { method: "POST" });
+      if (resp.status === 503) {
+        fijarEstado("sin agente (falta DEEPSEEK_API_KEY en el servidor)", "error");
+        return;
+      }
+      if (!resp.ok) throw new Error("no se pudo crear la sesion");
+      const datos = await resp.json();
+      sesionId = datos.sesion_id;
+      fijarEstado("conectado", "ok");
+      habilitarEntrada(true);
+      conectarEventos();
+    } catch (err) {
+      fijarEstado("error al conectar: " + err.message, "error");
+    }
+  }
+
+  function conectarEventos() {
+    eventSource = new EventSource("/sesiones/" + sesionId + "/eventos");
+    eventSource.onmessage = function (e) {
+      let evento;
+      try { evento = JSON.parse(e.data); } catch (err) { return; }
+      if (evento.tipo === "propuesta_pendiente") mostrarModalPropuesta(evento);
+      else if (evento.tipo === "confirmacion_pendiente") mostrarModalConfirmacion(evento);
+      // Etapa 9: el webhook de la pasarela (otro proceso) resolvio un pago
+      // que habia quedado PENDING, sin que la persona tuviera que volver a
+      // preguntar -- ver agora/entradas/api/sondeo_pagos.py.
+      else if (evento.tipo === "mensaje_agente") burbuja(evento.texto, "agente");
+    };
+    eventSource.onerror = function () {
+      fijarEstado("conexion de eventos interrumpida (reintentando)", "error");
+    };
+  }
+
+  function mostrarModalPropuesta(evento) {
+    propuestaActual = evento;
+    document.getElementById("propuesta-comercio").textContent = evento.comercio_id;
+    document.getElementById("propuesta-monto").textContent = (evento.monto_max_cop / 1).toLocaleString("es-CO") + " COP";
+    document.getElementById("propuesta-justificacion").textContent = evento.justificacion || "(sin justificacion)";
+    const lista = document.getElementById("propuesta-items");
+    lista.innerHTML = "";
+    (evento.items || []).forEach(function (i) {
+      const li = document.createElement("li");
+      li.textContent = i.cantidad + "x " + i.nombre + " -- " + i.subtotal_cop.toLocaleString("es-CO") + " COP";
+      lista.appendChild(li);
+    });
+    modalPropuesta.classList.add("visible");
+  }
+
+  function mostrarModalConfirmacion(evento) {
+    confirmacionActual = evento;
+    document.getElementById("confirmacion-motivo").textContent = evento.motivo || "(sin motivo)";
+    modalConfirmacion.classList.add("visible");
+  }
+
+  function cerrarPropuesta() {
+    modalPropuesta.classList.remove("visible");
+    propuestaActual = null;
+  }
+
+  document.getElementById("propuesta-cancelar").addEventListener("click", cerrarPropuesta);
+  modalPropuesta.addEventListener("click", function (e) {
+    if (e.target === modalPropuesta) cerrarPropuesta();
+  });
+
+  document.getElementById("propuesta-firmar").addEventListener("click", async function () {
+    if (!propuestaActual) return;
+    const titularId = campoTitular.value.trim();
+    if (!titularId) { alert("Falta el titular_id (arriba a la derecha)."); return; }
+    const propuestaId = propuestaActual.propuesta_id;
+    modalPropuesta.classList.remove("visible");
+    burbuja("Firmando la propuesta " + propuestaId + "...", "sistema");
+    try {
+      const resp = await fetch("/propuestas/" + propuestaId + "/firmar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titular_id: titularId, sesion_id: sesionId }),
+      });
+      const datos = await resp.json();
+      if (!resp.ok) { burbuja("No se pudo firmar: " + (datos.detail || resp.status), "sistema"); return; }
+      burbuja("Mandato firmado: " + datos.mandato_id, "sistema");
+      if (datos.respuesta_agente) burbuja(datos.respuesta_agente, "agente");
+    } catch (err) {
+      burbuja("Error al firmar: " + err.message, "sistema");
+    }
+    propuestaActual = null;
+  });
+
+  async function resolverConfirmacion(aprueba) {
+    if (!confirmacionActual) return;
+    const evento = confirmacionActual;
+    modalConfirmacion.classList.remove("visible");
+    confirmacionActual = null;
+    burbuja((aprueba ? "Confirmando" : "Rechazando") + " el pago de la intencion " + evento.intencion_id + "...", "sistema");
+    try {
+      const resp = await fetch("/intenciones/" + evento.intencion_id + "/retomar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mandato_id: evento.mandato_id,
+          carrito_id: evento.carrito_id,
+          aprueba: aprueba,
+          sesion_id: sesionId,
+        }),
+      });
+      const datos = await resp.json();
+      if (!resp.ok) { burbuja("No se pudo resolver: " + (datos.detail || resp.status), "sistema"); return; }
+      burbuja("ejecutado=" + datos.ejecutado + " motivo=" + datos.motivo, "sistema");
+      if (datos.respuesta_agente) burbuja(datos.respuesta_agente, "agente");
+    } catch (err) {
+      burbuja("Error al resolver: " + err.message, "sistema");
+    }
+  }
+
+  document.getElementById("confirmacion-confirmar").addEventListener("click", function () { resolverConfirmacion(true); });
+  document.getElementById("confirmacion-rechazar").addEventListener("click", function () { resolverConfirmacion(false); });
+  // El modal de confirmar un pago exige una decision explicita (Confirmar o
+  // Rechazar) -- a proposito no se cierra con click afuera ni con Escape,
+  // para no confundir "cerre el popup" con "rechace el cobro".
+
+  // -- Medios de pago: enrolar y consultar, al margen del chat ------------- //
+
+  const btnMedios = document.getElementById("btn-medios");
+  const modalMedios = document.getElementById("modal-medios");
+  const listaMedios = document.getElementById("medios-lista");
+  const medioVacio = document.getElementById("medios-vacio");
+  const formEnrolar = document.getElementById("form-enrolar");
+  const campoTelefono = document.getElementById("enrolar-telefono");
+  const campoCorreo = document.getElementById("enrolar-correo");
+  const botonEnrolar = document.getElementById("enrolar-boton");
+  const progresoEnrolar = document.getElementById("enrolar-progreso");
+  const errorEnrolar = document.getElementById("enrolar-error");
+
+  let sondeoEnrolamiento = null;
+
+  function titularIdActual() {
+    return campoTitular.value.trim();
+  }
+
+  function mostrarProgreso(texto) {
+    progresoEnrolar.textContent = texto;
+    progresoEnrolar.hidden = false;
+    errorEnrolar.hidden = true;
+  }
+
+  function mostrarErrorEnrolar(texto) {
+    errorEnrolar.textContent = texto;
+    errorEnrolar.hidden = false;
+    progresoEnrolar.hidden = true;
+  }
+
+  function limpiarMensajesEnrolar() {
+    progresoEnrolar.hidden = true;
+    errorEnrolar.hidden = true;
+  }
+
+  function detenerSondeoEnrolamiento() {
+    if (sondeoEnrolamiento) {
+      clearInterval(sondeoEnrolamiento);
+      sondeoEnrolamiento = null;
+    }
+  }
+
+  async function cargarMedios() {
+    const titularId = titularIdActual();
+    listaMedios.innerHTML = "";
+    medioVacio.hidden = true;
+    if (!titularId) {
+      medioVacio.hidden = false;
+      medioVacio.textContent = "Escribi un titular_id arriba a la derecha para ver sus medios.";
+      return;
+    }
+    try {
+      const resp = await fetch("/medios?titular_id=" + encodeURIComponent(titularId));
+      if (!resp.ok) throw new Error("no se pudo consultar los medios");
+      const datos = await resp.json();
+      if (!datos.medios || datos.medios.length === 0) {
+        medioVacio.hidden = false;
+        medioVacio.textContent = "Sin medios de pago vivos para '" + titularId + "'.";
+        return;
+      }
+      datos.medios.forEach(function (m) {
+        const li = document.createElement("li");
+        const nombre = document.createElement("span");
+        nombre.className = "medio-proveedor";
+        nombre.textContent = m.proveedor;
+        const badge = document.createElement("span");
+        badge.className = "badge badge-" + m.ambiente;
+        badge.textContent = m.ambiente;
+        const idExterno = document.createElement("span");
+        idExterno.className = "medio-id";
+        idExterno.textContent = m.id_externo;
+        li.appendChild(nombre);
+        li.appendChild(badge);
+        li.appendChild(idExterno);
+        listaMedios.appendChild(li);
+      });
+    } catch (err) {
+      medioVacio.hidden = false;
+      medioVacio.textContent = "Error al consultar los medios: " + err.message;
+    }
+  }
+
+  function abrirModalMedios() {
+    limpiarMensajesEnrolar();
+    cargarMedios();
+    modalMedios.classList.add("visible");
+  }
+
+  function cerrarModalMedios() {
+    detenerSondeoEnrolamiento();
+    modalMedios.classList.remove("visible");
+  }
+
+  btnMedios.addEventListener("click", abrirModalMedios);
+  document.getElementById("medios-cerrar").addEventListener("click", cerrarModalMedios);
+  modalMedios.addEventListener("click", function (e) {
+    if (e.target === modalMedios) cerrarModalMedios();
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    if (modalPropuesta.classList.contains("visible")) cerrarPropuesta();
+    else if (modalMedios.classList.contains("visible")) cerrarModalMedios();
+  });
+
+  async function confirmarEnrolamiento(token, correo, titularId) {
+    try {
+      const resp = await fetch("/medios/enrolar/confirmar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: token, correo: correo, titular_id: titularId }),
+      });
+      const datos = await resp.json();
+      if (!resp.ok) { mostrarErrorEnrolar("No se pudo confirmar: " + (datos.detail || resp.status)); return; }
+      mostrarProgreso("Medio enrolado: " + datos.proveedor + " " + datos.id_externo);
+      formEnrolar.reset();
+      cargarMedios();
+    } catch (err) {
+      mostrarErrorEnrolar("Error al confirmar: " + err.message);
+    }
+  }
+
+  function sondearEnrolamiento(token, correo, titularId) {
+    const limite = Date.now() + 5 * 60 * 1000; // 300s, igual que ESPERA_PUSH_SEG
+    detenerSondeoEnrolamiento();
+    sondeoEnrolamiento = setInterval(async function () {
+      if (Date.now() > limite) {
+        detenerSondeoEnrolamiento();
+        mostrarErrorEnrolar("Paso el tiempo de espera (5 minutos) sin que se aceptara el push.");
+        return;
+      }
+      try {
+        const resp = await fetch("/medios/enrolar/" + encodeURIComponent(token) + "/estado");
+        if (!resp.ok) throw new Error("no se pudo consultar el estado");
+        const datos = await resp.json();
+        if (datos.estado === "APPROVED") {
+          detenerSondeoEnrolamiento();
+          mostrarProgreso("Push aceptado, confirmando...");
+          confirmarEnrolamiento(token, correo, titularId);
+        } else if (["DECLINED", "ERROR", "VOIDED"].indexOf(datos.estado) !== -1) {
+          detenerSondeoEnrolamiento();
+          mostrarErrorEnrolar("El enrolamiento termino en '" + datos.estado + "'.");
+        } else {
+          mostrarProgreso("Esperando que el titular acepte el push en Nequi (estado: " + datos.estado + ")...");
+        }
+      } catch (err) {
+        detenerSondeoEnrolamiento();
+        mostrarErrorEnrolar("Error al sondear: " + err.message);
+      }
+    }, 3000);
+  }
+
+  formEnrolar.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const titularId = titularIdActual();
+    if (!titularId) { alert("Falta el titular_id (arriba a la derecha)."); return; }
+    const telefono = campoTelefono.value.trim();
+    const correo = campoCorreo.value.trim();
+    if (!telefono || !correo) return;
+    limpiarMensajesEnrolar();
+    botonEnrolar.disabled = true;
+    mostrarProgreso("Iniciando enrolamiento...");
+    try {
+      const resp = await fetch("/medios/enrolar/iniciar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telefono: telefono, correo: correo }),
+      });
+      const datos = await resp.json();
+      if (!resp.ok) { mostrarErrorEnrolar("No se pudo iniciar: " + (datos.detail || resp.status)); return; }
+      if (datos.estado === "APPROVED") {
+        mostrarProgreso("Aprobado de inmediato, confirmando...");
+        await confirmarEnrolamiento(datos.token, correo, titularId);
+      } else {
+        mostrarProgreso("Push enviado. Esperando que " + titularId + " lo acepte en la app Nequi...");
+        sondearEnrolamiento(datos.token, correo, titularId);
+      }
+    } catch (err) {
+      mostrarErrorEnrolar("Error al iniciar: " + err.message);
+    } finally {
+      botonEnrolar.disabled = false;
+    }
+  });
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const texto = campoTexto.value.trim();
+    if (!texto || !sesionId) return;
+    burbuja(texto, "persona");
+    campoTexto.value = "";
+    habilitarEntrada(false);
+    const indicador = burbujaEscribiendo();
+    try {
+      const resp = await fetch("/sesiones/" + sesionId + "/mensajes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto: texto }),
+      });
+      const datos = await resp.json();
+      indicador.remove();
+      if (!resp.ok) { burbuja("Error: " + (datos.detail || resp.status), "sistema"); }
+      else { burbuja(datos.respuesta, "agente"); }
+    } catch (err) {
+      indicador.remove();
+      burbuja("Error de red: " + err.message, "sistema");
+    }
+    habilitarEntrada(true);
+  });
+
+  iniciarSesion();
+})();
+</script>
+
+</body>
+</html>

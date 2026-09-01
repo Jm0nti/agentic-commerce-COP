@@ -45,7 +45,12 @@ from ..aplicacion.conciliar_evento import ConciliarEvento
 from ..aplicacion.consultar_estado import ConsultarEstado
 from ..aplicacion.ejecutar_intencion import EjecutarIntencion
 from ..aplicacion.emitir_mandato import EmitirMandato
-from ..aplicacion.enrolar_medio import EnrolarMedio
+from ..aplicacion.enrolar_medio import (
+    ConfirmarEnrolamiento,
+    ConsultarEnrolamiento,
+    EnrolarMedio,
+    IniciarEnrolamiento,
+)
 from ..aplicacion.navegar_catalogo import NavegarCatalogo
 from ..aplicacion.revocar_medio import RevocarMedio
 from ..dominio.mandato.modelo import Verificador
@@ -103,6 +108,13 @@ class Contenedor:
     navegar_catalogo: NavegarCatalogo
     emitir_mandato: EmitirMandato
     enrolar_medio: EnrolarMedio
+    # -- etapa 8 (web): los mismos tres pasos que EnrolarMedio compone,
+    # sueltos para que entradas/api/ pueda sondear el push de Nequi sin
+    # bloquear una peticion HTTP hasta 5 minutos (ver el docstring de
+    # aplicacion/enrolar_medio.py).
+    iniciar_enrolamiento: IniciarEnrolamiento
+    consultar_enrolamiento: ConsultarEnrolamiento
+    confirmar_enrolamiento: ConfirmarEnrolamiento
     revocar_medio: RevocarMedio
     consultar_estado: ConsultarEstado
     # `None` cuando no hay DEEPSEEK_API_KEY -- ver `ConfiguracionAgora.
@@ -214,6 +226,13 @@ def construir(
     enrolar_medio = EnrolarMedio(
         pasarela=pasarela, medios=medios, bitacora=bitacora, ambiente=config.ambiente,
     )
+    # Mismas dependencias que enrolar_medio, pero sueltas -- entradas/api/
+    # las necesita para sondear el push de Nequi desde el navegador sin
+    # bloquear una peticion HTTP (ver el docstring de aplicacion/
+    # enrolar_medio.py).
+    iniciar_enrolamiento = IniciarEnrolamiento(pasarela, config.ambiente)
+    consultar_enrolamiento = ConsultarEnrolamiento(pasarela)
+    confirmar_enrolamiento = ConfirmarEnrolamiento(pasarela, medios, bitacora)
     revocar_medio = RevocarMedio(pasarela=pasarela, medios=medios, bitacora=bitacora)
     consultar_estado = ConsultarEstado(estados=estados)
 
@@ -245,6 +264,9 @@ def construir(
         navegar_catalogo=navegar_catalogo,
         emitir_mandato=emitir_mandato,
         enrolar_medio=enrolar_medio,
+        iniciar_enrolamiento=iniciar_enrolamiento,
+        consultar_enrolamiento=consultar_enrolamiento,
+        confirmar_enrolamiento=confirmar_enrolamiento,
         revocar_medio=revocar_medio,
         consultar_estado=consultar_estado,
         modelo_lenguaje=modelo_lenguaje,

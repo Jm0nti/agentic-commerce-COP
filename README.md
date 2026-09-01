@@ -1,128 +1,319 @@
 # PoC de comercio agéntico sobre rieles colombianos
 
-Un agente hace una compra y el dinero llega a un comercio real, sobre Wompi. El
-objeto de estudio es lo que pasa en medio: qué autoriza el titular, qué ejecuta
-el agente, y cuánto de la diferencia entre esas dos cosas alcanza a detenerse.
+Un agente conversacional le compra algo a una persona. El dinero sale de una
+cuenta Nequi real, sobre Wompi. Lo que este repositorio estudia es lo que pasa
+en el medio: qué autoriza el titular, qué intenta ejecutar el agente, y cuánto
+de la diferencia entre esas dos cosas alcanza a detenerse antes de que se mueva
+un peso.
 
-## Estado
+## La idea en una frase
 
-Sandbox de cobros verificado de punta a punta. El hallazgo de partida ya está en
-`wompi_lab/ledger.jsonl`: una sola suscripción Nequi y después cobros de 67.450,
-88.300 y 17.400 COP, ninguno autorizado por separado, los tres `APPROVED`.
+> **El agente propone. El humano firma. La bóveda ejecuta.**
+> Ninguno de los tres puede hacer el trabajo de otro.
 
-Wompi no tiene el concepto de mandato. Una fuente de pago autoriza al comercio a
-cobrar y punto — sin techo, sin vencimiento, sin ligadura a un producto. La
-bóveda es la capa que falta.
+En la práctica: una persona chatea con un agente de IA para comprarle algo a un
+comercio (simulado, para esta demo). El agente busca productos, arma un
+carrito y *propone* una autorización de pago — nunca la firma él mismo, porque
+no tiene la llave para hacerlo. La persona ve exactamente qué se le pide
+autorizar (qué comercio, qué monto máximo, por cuánto tiempo, para cuántos
+usos) y firma esa autorización con un clic o un comando, en su propio
+dispositivo. Solo entonces el agente puede pedirle a la "bóveda" que cobre —y
+la bóveda vuelve a revisar todo (firma, vigencia, monto, comercio, que el
+carrito no haya cambiado) antes de llamar a la pasarela de pagos real.
 
-**Rama `prod`:** Fase A implementada contra producción. El titular enrola su
-cuenta Nequi real aceptando un push en la app. Ver `docs/fase-a-produccion.md`.
+Además de esa autorización específica (el "mandato"), existen **topes duros**
+que nunca se pueden desactivar, ni siquiera para experimentar: protegen el
+dinero real independientemente de que el mandato falle o se manipule.
 
-## Componentes
+## Qué hay hoy en este repositorio
+
+Conviven dos árboles de código con roles distintos:
+
+| | `boveda/` (v1) | `agora/` (v2) |
+|---|---|---|
+| Qué es | El experimento original, mínimo | La aplicación demostrativa completa |
+| Estado | Ya movió dinero real en producción (Fase A + Fase B) | Arquitectura completa y probada (dominio, adaptadores, agente, CLI, API web, webhook) |
+| Interfaz | Solo línea de comandos | CLI **y** una página web de chat con firma integrada |
+| Agente de IA | No tiene | Sí — DeepSeek, con seis herramientas y una frontera dura verificada por pruebas |
+| Catálogo de comercios | No tiene | Sí, simulado y generado con IA |
+| Se recomienda para | Referencia histórica del primer hallazgo (ver más abajo) | Usar y extender de acá en adelante |
+
+`agora/` es la reescritura ordenada de la misma idea de `boveda/`, siguiendo
+una arquitectura por capas (`docs/arquitectura-v2.md`). Está construida en
+seis etapas, todas completas a la fecha de este documento, con más de 400
+pruebas automatizadas en verde. La diferencia importante frente a `boveda/`:
+**se puede correr contra la pasarela simulada sin gastar un peso**, o contra
+Wompi real cambiando una sola variable de entorno.
+
+`wompi_lab/` es un banco de pruebas antiguo, congelado — se conserva solo
+porque tiene el único código del repo que sabe hacer dispersiones (payouts)
+por Bre-B.
+
+## Arquitectura, de un vistazo
 
 ```
-wompi_lab/     banco de pruebas de la pasarela, sin abstracciones
-  lab.py         cobros: tarjeta, Nequi, fuente de pago
-  payouts.py     envíos: cuentas bancarias y llaves Bre-B
+        entradas/            composicion/
+     (cli, api web,          (el único que arma
+      webhook)                 todo y lee el .env)
+           │                        │
+           ▼                        ▼
+   ┌─────────────────────────────────────┐
+   │            aplicacion/               │  casos de uso
+   │   EjecutarIntencion, EmitirMandato…  │
+   └─────────────────────────────────────┘
+           │                        ▲
+           ▼                        │ implementan
+   ┌───────────┐             ┌──────────────┐
+   │ puertos/  │◄────────────│ adaptadores/ │  wompi, simulada,
+   │(interfaces)│             │              │  sqlite, deepseek
+   └───────────┘             └──────────────┘
+           │
+           ▼
+   ┌─────────────────────────────────────┐
+   │              dominio/                │  reglas puras, sin red
+   │   Mandato, Intención, Dinero…        │
+   └─────────────────────────────────────┘
 
-boveda/        lo único que toca credenciales de pago
-  enrolamiento.py  Fase A: el titular autoriza una vez, por push
-  mandato.py       modelo del mandato, firma ed25519, evaluación
-  nucleo.py        Fase B: ejecución contra Wompi, topes duros
-  cli.py           las dos fases desde la terminal
+   agente/  →  solo ve dominio/ y puertos/. Nunca puede importar
+               una pasarela de pagos ni la llave de firma — una
+               prueba (tests/test_fronteras.py) rompe el build si
+               alguien lo intenta.
 ```
 
-El agente irá aparte y nunca verá una credencial: solo pide a la bóveda que
-ejecute un mandato por su `mandato_id`.
+El detalle completo de cada módulo está en **`Documentacion.md`**, en la raíz
+del repositorio.
 
-## Arranque
+## Cómo correrlo, paso a paso
+
+### 0. Requisitos
+
+Python 3.10 o superior y `pip`.
+
+### 1. Instalar dependencias
 
 ```bash
 pip install -r requirements.txt
-
-# .env en la raíz
-#   WOMPI_PUBLIC_KEY=pub_test_...      (o pub_prod_ en la rama prod)
-#   WOMPI_PRIVATE_KEY=prv_test_...
-#   WOMPI_INTEGRITY_SECRET=test_integrity_...
-
-python -m pytest tests/ -q
-python -m boveda.cli llaves
 ```
 
-### Fase A — el titular autoriza, una vez
+### 2. Crear el archivo de configuración
+
+Copiar la plantilla de `docs/variables-de-entorno.md` a un archivo `.env` en
+la raíz del repositorio (ya está en `.gitignore`: nunca se sube a control de
+versiones). Como mínimo, para empezar sin tocar dinero real, alcanza con:
+
+```dotenv
+AGORA_AMBIENTE=sandbox
+AGORA_PASARELA=simulada
+AGORA_PERSISTENCIA=sqlite
+```
+
+Ver la sección **Archivos de configuración** más abajo para el resto de las
+variables (Wompi, el perfil del pagador, DeepSeek).
+
+### 3. Correr las pruebas
+
+```bash
+python -m pytest tests/ -q
+```
+
+(Nota: dos pruebas preexistentes fallan por un desfase entre el catálogo de
+ejemplo y datos que esas pruebas esperaban — ver "Hallazgos" en
+`Documentacion.md`. No están relacionadas con nada de lo demás.)
+
+### 4. Explorar el catálogo simulado
+
+```bash
+python -m agora.entradas.cli comercios
+python -m agora.entradas.cli productos <comercio_id>
+python -m agora.entradas.cli producto <producto_id>
+```
+
+### 5. Autorizar un medio de pago (una sola vez, "Fase A")
+
+Con `AGORA_PASARELA=simulada` esto no toca ninguna cuenta real — genera un
+medio de pago de mentiras al instante. Con `AGORA_PASARELA=wompi` en
+producción, esto le manda un push de verdad a la app Nequi del titular:
+
+```bash
+python -m agora.entradas.cli enrolar --telefono 3001234567 --titular tit_demo
+python -m agora.entradas.cli fuentes tit_demo
+```
+
+**También se puede hacer sin la terminal**, desde el navegador: con el
+servidor web corriendo (paso 7), abrí `http://localhost:8002`, poné el
+`titular_id` arriba a la derecha y hacé clic en "Medios de pago". Ahí mismo
+se enrola un medio nuevo (teléfono + correo) y se ven los que ya están
+enrolados para ese titular — funciona igual con `AGORA_PASARELA=simulada`
+que con `wompi` (sandbox o producción, según `AGORA_AMBIENTE`).
+
+### 6. Comprar a mano, desde la terminal
+
+Cuando la misma persona opera la terminal de punta a punta, un solo comando
+arma el carrito y firma el mandato:
+
+```bash
+python -m agora.entradas.cli emitir <comercio_id> tit_demo --item <producto_id>:1
+python -m agora.entradas.cli pagar <mandato_id> <carrito_id>
+```
+
+Si el pago queda "esperando confirmación humana" (es habitual: un mandato
+cortado exacto al carrito dispara una señal de revisión), la terminal muestra
+el comando exacto para resolverlo:
+
+```bash
+python -m agora.entradas.cli retomar <intencion_id> <mandato_id> <carrito_id>
+python -m agora.entradas.cli estado <intencion_id>
+```
+
+### 7. Chatear con el agente de IA
+
+Necesita una llave de DeepSeek (`DEEPSEEK_API_KEY` en el `.env`). Hay dos
+formas de probarlo:
+
+**Por terminal:**
+
+```bash
+python -m agora.entradas.cli chat
+```
+
+El agente puede buscar comercios y productos, armar un carrito y pedirte que
+lo pagues — pero cuando llega el momento de autorizar, te va a pasar un
+comando exacto (`firmar <propuesta_id> <titular>`) para que lo corras vos
+mismo, en otra terminal. El agente nunca puede firmar nada.
+
+**Por navegador (recomendado para una demo):**
+
+```bash
+python scripts/servir_api.py
+```
+
+Y abrir `http://localhost:8002` en el navegador. Es una sola página: se
+chatea con el agente y, cuando hay algo que firmar o confirmar, aparece un
+recuadro emergente para que la persona lo resuelva ahí mismo, sin cambiar de
+ventana ni de terminal. El botón "Medios de pago" del encabezado (ver paso 5)
+también vive en esta misma página.
+
+### 8. (Solo en producción) Recibir la confirmación de Wompi
+
+Los cobros contra Wompi real no se confirman al instante: llegan por webhook.
+**Sin este paso, cualquier compra por Nequi se queda mostrando "pendiente"
+para siempre en el chat**, aunque Wompi ya la haya aprobado del lado del
+banco — el dinero sale igual, pero esta app nunca se entera. Es un proceso
+aparte del chat (paso 7), así que hacen falta dos terminales corriendo al
+mismo tiempo:
+
+**Terminal 2 — arrancar el receptor:**
+
+```bash
+python scripts/servir_webhook_wompi.py
+```
+
+Confirmá que responde con `curl http://localhost:8001/salud`.
+
+**Terminal 3 — exponerlo a internet** (elegí una opción; ninguna requiere
+tocar el código):
+
+```bash
+# Opción A: cloudflared (no pide cuenta para un tunel rapido)
+cloudflared tunnel --url http://localhost:8001
+
+# Opción B: ngrok (pide una cuenta gratuita y un authtoken una sola vez)
+ngrok http 8001
+```
+
+Cualquiera de las dos imprime una URL pública (`https://algo.trycloudflare.com`
+o `https://algo.ngrok-free.app`).
+
+**Panel de Wompi:** Desarrolladores → Eventos, y ahí pegá la URL completa
+**con la ruta incluida**:
+
+```
+https://algo-al-azar.trycloudflare.com/pagos/wompi/transacciones
+```
+
+Con las tres terminales corriendo (chat, webhook, túnel), la consola de
+`servir_webhook_wompi.py` va a mostrar `[ok ] APPROVED intencion=...` en
+cuanto Wompi confirme un cobro, y el chat va a mostrar el resultado solo,
+sin que haga falta volver a preguntarle al agente (etapa 9, ver
+`Documentacion.md`).
+
+Con un túnel gratuito la URL cambia cada vez que lo reiniciás — hay que
+volver a pegarla en el panel de Wompi cada vez. Si esto va a quedar
+corriendo por más tiempo, conviene un dominio fijo (ngrok con plan pago, o
+un túnel nombrado de Cloudflare) para no repetir ese paso.
+
+### 9. La CLI del sistema original (`boveda/`)
+
+Se conserva porque ya hizo transferencias reales y es donde está documentado
+el primer hallazgo del proyecto (ver más abajo). No hace falta para usar
+`agora/`:
 
 ```bash
 python -m boveda.cli --modo produccion preflight
 python -m boveda.cli --modo produccion enrolar --telefono 3001234567
-python -m boveda.cli --modo produccion fuentes
-python -m boveda.cli --modo produccion revocar <payment_source_id>
-```
-
-`preflight` confirma que Nequi esté habilitado antes de involucrar a un humano
-con un teléfono. `enrolar` manda el push y espera hasta 5 minutos. No se cobra
-nada: lo que se entrega es la autorización.
-
-### Fase B — el agente cobra, sin el titular
-
-```bash
-python -m boveda.cli emitir --monto 8000
-python -m boveda.cli ejecutar <mandato_id> -m 8000
-python -m boveda.cli listar
-python -m boveda.cli recibos
+python -m boveda.cli --modo produccion emitir --monto 8000
+python -m boveda.cli --modo produccion ejecutar <mandato_id> -m 8000
 ```
 
 ## El experimento
 
-```bash
-# el mandato autoriza 8.000; la intención pide 15.000
-python -m boveda.cli ejecutar <id> -m 15000                 # detenido
-python -m boveda.cli ejecutar <id> -m 15000 --sin-mandato   # Wompi lo aprueba
-```
+La pregunta que dio origen al proyecto no es "¿el agente puede pagar?" sino
+"¿cuánto detiene el mandato cuando algo sale mal?". Por eso existe un brazo de
+comparación: se puede pedir que la bóveda **no** exija el mandato
+(`--sin-mandato` en `boveda.cli`, o `exigir_mandato=False` en el motor de
+`agora/`) y ver si la pasarela deja pasar igual un cobro que el mandato habría
+bloqueado. La diferencia entre las dos corridas es el efecto real del control.
 
-La diferencia entre las dos corridas es el efecto del control. Sin el brazo de
-comparación, una tasa sola no dice nada.
+Los **topes duros** (ver la tabla de configuración abajo) nunca se pueden
+apagar por parámetro. Si se pudieran, apagar el control que se está midiendo
+apagaría también la protección del dinero real.
 
-## Dos límites, distintos a propósito
+## Archivos de configuración
 
-**El mandato** es lo que se estudia. Se puede emitir amplio, degradar, o apagar
-su verificación con `--sin-mandato`.
-
-**El tope duro** es lo que protege. Vive en constantes de `boveda/nucleo.py`
-(20.000 COP por transacción, 100.000 COP diarios), se aplica siempre y no se
-puede desactivar por parámetro. Con dinero real, un bug en la capa que se está
-estudiando no puede convertirse en una pérdida.
-
-Si fueran el mismo límite, apagar el control para medir su efecto apagaría
-también la protección.
-
-## Lo que la PoC prueba, y lo que no
-
-Prueba que un agente puede consumar un pago sobre infraestructura colombiana en
-producción, y que el mandato firmado no lo detiene cuando fue el agente quien se
-equivocó — solo cuando se desvía el comercio.
-
-No prueba nada sobre desvío de beneficiario: con un solo comercio, el dinero
-siempre llega a donde debe. Eso requiere un segundo comercio real, o el lado de
-payouts.
+| Archivo | Qué controla |
+|---|---|
+| `.env` (raíz, no versionado) | Todas las credenciales y el modo de arranque. Plantilla completa y comentada en `docs/variables-de-entorno.md`. |
+| `agora/composicion/configuracion.py` | Lee y valida esas variables para `agora/`: valores por defecto, y reglas que impiden arrancar con una combinación insegura (por ejemplo, Wompi real con persistencia en memoria). |
+| `agora/dominio/pago/topes.py` | Los topes duros de `agora/`: **20.000 COP por transacción, 100.000 COP por día**. Son constantes en el código a propósito — si se volvieran configurables, dejarían de ser la protección que permite estudiar el mandato apagándolo. |
+| `boveda/nucleo.py` (líneas 46-47) | Los topes duros del sistema original (v1). **Advertencia:** hoy dicen `2.000.000` COP por transacción y `100.000` COP por día — no coincide con los `20.000` que describen este documento y `docs/flujo.md`. Ver el detalle en `Documentacion.md`, sección "Hallazgos", antes de operar `boveda.cli` contra producción. |
+| `.gitignore` | Qué queda fuera del control de versiones: el `.env`, toda la carpeta `boveda/secretos/`, la carpeta `agora_datos/` (bitácora + base SQLite + llave de firma), y los archivos sueltos de fuentes de pago o recibos. |
+| `requirements.txt` | Dependencias de Python (`fastapi`, `httpx`, `uvicorn`, `cryptography`, `pytest`, `python-dotenv`, `openai`). |
 
 ## Antes de tocar producción
 
-- Avisarle al equipo de Wompi. Un comercio cobrándose a sí mismo en bucle es el
-  patrón que dispara monitoreo antifraude; que congelen la cuenta a mitad de la
-  PoC cuesta semanas.
-- Presupuestar la comisión: 2.65% + $700 + IVA por transacción aprobada. En
-  circuito cerrado cada vuelta pierde el fee, y con cobros de 2.000 COP la
-  comisión supera el monto.
-- Nequi antes que tarjeta: cero superficie PCI, consentimiento observable por
-  push, revocación en un comando (`PUT /v1/payment_sources/{id}/void`).
-- Los `acceptance_token` los está aceptando el software en nombre de una persona
-  que nunca vio el contrato. `preflight` imprime los dos enlaces: en producción
-  esa persona eres tú y sí puedes leerlos.
+- **Avisar al equipo de Wompi.** Un comercio cobrándose a sí mismo en bucle es
+  el patrón que dispara su monitoreo antifraude; que congelen la cuenta a
+  mitad del experimento cuesta semanas.
+- **Presupuestar la comisión** (2,65 % + $700 + IVA por transacción aprobada).
+  En un circuito cerrado, cada vuelta pierde el fee — con cobros de pocos
+  miles de pesos, la comisión puede superar el monto.
+- **Nequi antes que tarjeta**: cero superficie de datos de tarjeta,
+  consentimiento observable por push, revocación en un comando.
+- El primer cobro real de este proyecto (2.000-2.050 COP) fue **rechazado por
+  el motor antifraude de Wompi**, no por el mandato ni por falta de fondos —
+  ver `docs/decline-afe.md` y la sección "Hallazgos" de `Documentacion.md`.
+
+## Qué prueba esto, y qué no
+
+Prueba que un agente conversacional puede completar una compra sobre
+infraestructura de pagos colombiana real, dentro de límites que una persona
+autorizó explícitamente y que un sistema aparte hace cumplir — y que ese
+sistema efectivamente detiene los casos donde el agente pide más de lo
+autorizado.
+
+No prueba nada sobre desvío del dinero hacia un beneficiario distinto: con un
+solo comercio de prueba, el dinero siempre llega adonde debe.
 
 ## Documentos
 
-```
-docs/fase-a-produccion.md               qué se usa, por qué, y cómo correrlo
-docs/informe-viabilidad-pagos-agenticos-co.md   comparativa de rieles colombianos
-docs/solicitudes-bancolombia-nequi.md   qué pedir a Wompi, Bancolombia y Nequi
-docs/arquitectura-iteracion-1.mermaid   el flujo con los puntos de control
-```
+- **`Documentacion.md`** (raíz del repo) — el detalle técnico completo: cada
+  módulo, cada capa, el modelo de mandato, las variables de entorno, y los
+  hallazgos encontrados hasta ahora.
+- `docs/arquitectura-v2.md` — la arquitectura objetivo y las decisiones detrás
+  de cada una (ADRs).
+- `docs/variables-de-entorno.md` — la plantilla comentada del `.env`.
+- `docs/flujo.md` — runbook de comandos para el sistema v1 (`boveda/`).
+- `docs/informe-viabilidad-pagos-agenticos-co.md` — por qué Wompi + Nequi y no
+  otro riel colombiano.
+- `docs/decline-afe.md`, `docs/hallazgo-afe.md` — el primer cobro real y por
+  qué lo rechazó el antifraude de Wompi.

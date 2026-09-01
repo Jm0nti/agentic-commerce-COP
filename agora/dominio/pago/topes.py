@@ -13,8 +13,8 @@ from ..comun.dinero import Dinero
 
 @dataclass(frozen=True)
 class TopesDuros:
-    por_transaccion: Dinero = Dinero.de_pesos(20_000)
-    por_dia: Dinero = Dinero.de_pesos(100_000)
+    por_transaccion: Dinero = Dinero.de_pesos(20_000) #2_000_000
+    por_dia: Dinero = Dinero.de_pesos(100_000) #10_000_000
 
     def excede(self, monto: Dinero) -> str | None:
         if monto.excede(self.por_transaccion):

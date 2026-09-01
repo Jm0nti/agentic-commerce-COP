@@ -103,6 +103,13 @@ def construir_agente(contenedor: Contenedor) -> Agente | None:
         recibo = contenedor.ejecutar_intencion(intencion, carrito_hash=carrito.hash_canonico)
         resultado: dict[str, Any] = {
             "intencion_id": intencion.intencion_id,
+            # `mandato_id`/`carrito_id` de vuelta en el resultado (no solo
+            # dentro de la "nota"): etapa 7 (`entradas/api/sesiones.py`) los
+            # necesita para armar el evento `confirmacion_pendiente` sin
+            # tener que parsear texto libre -- lo mismo que ya vale para
+            # "propuesta" en `armar_carrito`, un poco mas arriba.
+            "mandato_id": mandato_id,
+            "carrito_id": carrito_id,
             "ejecutado": recibo.ejecutado,
             "motivo": recibo.motivo,
             "esperando_confirmacion": recibo.esperando_confirmacion,
