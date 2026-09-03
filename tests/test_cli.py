@@ -51,19 +51,31 @@ def _contenedor(tmp_path):
 def test_flujo_completo_enrolar_emitir_pagar_retomar(tmp_path, capsys):
     contenedor = _contenedor(tmp_path)
 
+    # El catalogo semilla no es un dato fijo de esta prueba (hallazgo del
+    # 1 de septiembre de 2026: dos pruebas quedaron rotas cuando alguien
+    # regenero `catalogo.json` con otros ids) -- se descubre el comercio y
+    # el producto en el momento, contra lo que `Contenedor` de verdad trae
+    # cargado.
+    comercio = contenedor.navegar_catalogo.buscar_comercios()[0]
+    producto = contenedor.navegar_catalogo.buscar_productos(comercio.comercio_id)[0]
+
     assert cmd_comercios(SimpleNamespace(buscar=""), contenedor) == 0
     salida = capsys.readouterr().out
-    assert "com_placeholder_librosur" in salida
+    assert comercio.comercio_id in salida
 
     assert cmd_enrolar(
-        SimpleNamespace(telefono="3001234567", correo="t@correo.com", titular="tit_1"), contenedor,
+        SimpleNamespace(
+            telefono="3001234567", correo="t@correo.com", titular="tit_1",
+            comercio=comercio.comercio_id,
+        ),
+        contenedor,
     ) == 0
     assert contenedor.medios.vivos("tit_1", Ambiente.SANDBOX)
 
     assert cmd_emitir(
         SimpleNamespace(
-            comercio_id="com_placeholder_librosur", titular="tit_1",
-            item=["prd_placeholder_libreta"], justificacion="",
+            comercio_id=comercio.comercio_id, titular="tit_1",
+            item=[producto.producto_id], justificacion="",
         ),
         contenedor,
     ) == 0
@@ -106,9 +118,12 @@ def test_chat_arma_propuesta_y_titular_la_firma_en_otro_proceso(tmp_path, capsys
     # sin pasar por `emitir`, que es el camino del humano operando la CLI
     # de punta a punta.
     proceso_chat = construir(leer_configuracion(config))
-    proceso_chat.enrolar_medio("3001234567", "titular@correo.com", "tit_1")
     comercio = proceso_chat.navegar_catalogo.buscar_comercios()[0]
     producto = proceso_chat.navegar_catalogo.buscar_productos(comercio.comercio_id)[0]
+    # Multi-comercio: enrolar vincula el medio con ESTE comercio (ver el
+    # docstring de aplicacion/enrolar_medio.py) -- se descubre antes de
+    # enrolar, no despues.
+    proceso_chat.enrolar_medio("3001234567", "titular@correo.com", "tit_1", comercio.comercio_id)
     carrito_chat, propuesta = proceso_chat.navegar_catalogo.armar_carrito(
         comercio.comercio_id, [ItemPedido(producto.producto_id)],
     )

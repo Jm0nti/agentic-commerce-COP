@@ -6,7 +6,13 @@ estas pruebas quieren verificar que encaja con `LibroDeConsumo`. La unica
 excepcion es la prueba de un evento invalido -- la simulada no valida nada
 (ver su docstring), asi que ese caso usa un doble minimo que solo existe para
 levantar donde `AdaptadorWompi.validar_evento` levantaria de verdad.
-"""
+
+MULTI-COMERCIO: `ConciliarEvento` recibe un `SelectorDePasarela`, no una
+pasarela fija, y `__call__` exige un `comercio_id` (el que trae la URL del
+webhook -- ver el docstring del caso de uso). Estas pruebas envuelven su
+pasarela falsa en `RegistroDePasarelas({}, por_defecto=pasarela)`, que
+resuelve para cualquier `comercio_id` -- lo que se prueba aca es la
+traduccion evento->estado, no el ruteo por comercio."""
 
 from __future__ import annotations
 
@@ -14,6 +20,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from agora.adaptadores.pasarelas.registro import RegistroDePasarelas
 from agora.adaptadores.pasarelas.simulada import APROBADO, DECLINADO, AdaptadorSimulado
 from agora.adaptadores.persistencia.memoria import LibroDeConsumoEnMemoria, RegistroDeEstadosEnMemoria
 from agora.adaptadores.sistema.ids import GeneradorIdsUuid
@@ -24,6 +31,7 @@ from agora.dominio.mandato.modelo import Mandato
 from agora.dominio.pago.modelo import Ambiente, MedioDePagoRef, OrdenDeCobro, Proveedor
 
 HOY = datetime(2026, 8, 25, 12, 0, tzinfo=timezone.utc)
+COMERCIO_ID = "com_x"
 
 
 @dataclass
@@ -60,7 +68,7 @@ def _mandato(mandato_id: str = "mnd_1") -> Mandato:
         mandato_id=mandato_id,
         titular_id="tit_1",
         medio=MedioDePagoRef(Proveedor.SIMULADA, Ambiente.SANDBOX, "src_1"),
-        comercio_id="com_x",
+        comercio_id=COMERCIO_ID,
         monto_max=Dinero.de_pesos(20_000),
         tope_total=Dinero.de_pesos(20_000),
         usos_max=5,
@@ -76,7 +84,9 @@ def _armar(estados=None):
     consumo = LibroDeConsumoEnMemoria(reloj, ids)
     pasarela = AdaptadorSimulado(ids, Ambiente.SANDBOX)
     bitacora = _BitacoraEnLista()
-    conciliar = ConciliarEvento(consumo, pasarela, bitacora, estados=estados)
+    conciliar = ConciliarEvento(
+        consumo, RegistroDePasarelas({}, por_defecto=pasarela), bitacora, estados=estados,
+    )
     return conciliar, consumo, pasarela, bitacora
 
 
@@ -105,7 +115,7 @@ def test_evento_aprobado_confirma_la_reserva():
     pasarela.resolver_pendiente(pendiente.id_externo, APROBADO)
     cuerpo = json.dumps(pasarela.evento_de(pendiente.id_externo)).encode("utf-8")
 
-    resultado = conciliar(cuerpo, {})
+    resultado = conciliar(cuerpo, {}, COMERCIO_ID)
 
     assert resultado.procesado
     assert resultado.intencion_id == "int_1"
@@ -121,7 +131,7 @@ def test_evento_declinado_libera_la_reserva():
     pasarela.resolver_pendiente(pendiente.id_externo, DECLINADO)
     cuerpo = json.dumps(pasarela.evento_de(pendiente.id_externo)).encode("utf-8")
 
-    resultado = conciliar(cuerpo, {})
+    resultado = conciliar(cuerpo, {}, COMERCIO_ID)
 
     assert resultado.procesado
     assert consumo.consumo_de(mandato.mandato_id).usos == 0
@@ -137,7 +147,7 @@ def test_evento_aprobado_actualiza_el_registro_de_estados_si_se_provee():
     pasarela.resolver_pendiente(pendiente.id_externo, APROBADO)
     cuerpo = json.dumps(pasarela.evento_de(pendiente.id_externo)).encode("utf-8")
 
-    conciliar(cuerpo, {})
+    conciliar(cuerpo, {}, COMERCIO_ID)
 
     assert estados.obtener("int_1")[0] == "aprobado"
 
@@ -148,7 +158,7 @@ def test_evento_que_sigue_pendiente_no_hace_nada():
     pendiente = _reservar_y_cobrar_pendiente(consumo, pasarela, mandato, "int_1")
     cuerpo = json.dumps(pasarela.evento_de(pendiente.id_externo)).encode("utf-8")
 
-    resultado = conciliar(cuerpo, {})
+    resultado = conciliar(cuerpo, {}, COMERCIO_ID)
 
     assert not resultado.procesado
     assert resultado.motivo == "sigue_pendiente"
@@ -167,7 +177,7 @@ def test_evento_sin_reserva_pendiente_no_es_error():
     }
     cuerpo = json.dumps(evento).encode("utf-8")
 
-    resultado = conciliar(cuerpo, {})
+    resultado = conciliar(cuerpo, {}, COMERCIO_ID)
 
     assert not resultado.procesado
     assert resultado.motivo == "sin_reserva_pendiente"
@@ -178,7 +188,7 @@ def test_evento_no_reconocido_no_es_error():
     conciliar, _, _, _ = _armar()
     cuerpo = json.dumps({"event": "algo.distinto", "data": {}}).encode("utf-8")
 
-    resultado = conciliar(cuerpo, {})
+    resultado = conciliar(cuerpo, {}, COMERCIO_ID)
 
     assert not resultado.procesado
     assert resultado.motivo == "evento_no_reconocido"
@@ -187,9 +197,11 @@ def test_evento_no_reconocido_no_es_error():
 def test_evento_invalido_no_es_error_y_no_propaga_la_excepcion():
     consumo = LibroDeConsumoEnMemoria(_RelojFijo(HOY), GeneradorIdsUuid())
     bitacora = _BitacoraEnLista()
-    conciliar = ConciliarEvento(consumo, _PasarelaQueRechazaTodo(), bitacora)
+    conciliar = ConciliarEvento(
+        consumo, RegistroDePasarelas({}, por_defecto=_PasarelaQueRechazaTodo()), bitacora,
+    )
 
-    resultado = conciliar(b"cualquier cosa", {})
+    resultado = conciliar(b"cualquier cosa", {}, COMERCIO_ID)
 
     assert not resultado.procesado
     assert resultado.motivo == "evento_invalido"

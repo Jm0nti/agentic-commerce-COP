@@ -84,6 +84,22 @@ class SinMedioDePagoVivo(ErrorDeMandato):
     (`aplicacion/enrolar_medio.py`)."""
 
 
+class SinMedioVinculadoAlComercio(ErrorDeMandato):
+    """`EmitirMandato` (multi-comercio) con medios vivos, pero NINGUNO
+    vinculado al `comercio_id` de la propuesta -- distinto de
+    `SinMedioDePagoVivo`: aca el titular ya enrolo un medio (con OTRO
+    comercio, o con ninguno todavia), pero un `payment_source_id` de Wompi
+    esta atado al comercio (a la llave publica) que lo creo, no es portable
+    entre comercios aunque los tres usen Wompi. Hace falta vincular este
+    comercio especifico antes de poder firmar -- un enrolamiento mas,
+    dirigido a `comercio_id` (`aplicacion/enrolar_medio.py`).
+
+    Se distingue de `SinMedioDePagoVivo` a proposito: el agente (o quien
+    reciba el error) necesita saber si hay que enrolar por primera vez o
+    solo vincular un comercio nuevo con un medio que ya existe -- son dos
+    situaciones distintas y la UI de cada una es distinta."""
+
+
 # -- limites ---------------------------------------------------------------- #
 
 
@@ -150,6 +166,14 @@ class MedioNoRegistrado(ErrorDePasarela):
     reconoce para ese titular. Mismo espiritu que la guarda de
     `boveda/enrolamiento.py:revocar` -- revocar a ciegas puede apagar la
     fuente equivocada."""
+
+
+class ComercioSinCredencialesWompi(ErrorDePasarela):
+    """`SelectorDePasarela.para(comercio_id)` (multi-comercio) con
+    `AGORA_PASARELA=wompi` y un `comercio_id` que no aparece en el registro
+    de credenciales (`agora_datos/secretos/comercios_wompi.json`). Nunca
+    reintentable con los mismos datos -- hace falta agregar las credenciales
+    de ese comercio antes de volver a intentar."""
 
 
 # -- consumo ------------------------------------------------------------ #

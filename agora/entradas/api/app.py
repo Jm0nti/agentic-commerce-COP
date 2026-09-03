@@ -82,12 +82,17 @@ class _RetomarEntrante(BaseModel):
 class _IniciarEnrolamientoEntrante(BaseModel):
     telefono: str
     correo: str
+    # Multi-comercio: enrolar vincula el medio con ESTE comercio (ver el
+    # docstring de aplicacion/enrolar_medio.py) -- el navegador lo manda
+    # porque es quien sabe en que comercio esta el titular comprando.
+    comercio_id: str
 
 
 class _ConfirmarEnrolamientoEntrante(BaseModel):
     token: str
     correo: str
     titular_id: str
+    comercio_id: str
 
 
 def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
@@ -250,7 +255,7 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         `EnrolarMedio` para la CLI -- aca no se queda bloqueado sondeando,
         eso es tarea de quien llame a `estado_enrolamiento` despues."""
         try:
-            proceso = contenedor.iniciar_enrolamiento(cuerpo.telefono, cuerpo.correo)
+            proceso = contenedor.iniciar_enrolamiento(cuerpo.telefono, cuerpo.correo, cuerpo.comercio_id)
         except PasarelaNoDisponible as exc:
             raise HTTPException(status_code=502, detail=exc.mensaje) from exc
         except ErrorDeDominio as exc:
@@ -258,12 +263,14 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         return {"token": proceso.token, "estado": proceso.estado}
 
     @app.get("/medios/enrolar/{token}/estado")
-    def estado_enrolamiento(token: str) -> dict[str, Any]:
+    def estado_enrolamiento(token: str, comercio_id: str) -> dict[str, Any]:
         """Paso 2, repetido por el navegador a su propio ritmo -- nunca
         bloquea esperando un estado final, igual que el resto del puerto
-        de pasarela."""
+        de pasarela. `comercio_id` tiene que ser el mismo que se uso en
+        "iniciar" para este token (ver el docstring de aplicacion/
+        enrolar_medio.py:ConsultarEnrolamiento)."""
         try:
-            estado = contenedor.consultar_enrolamiento(token)
+            estado = contenedor.consultar_enrolamiento(token, comercio_id)
         except PasarelaNoDisponible as exc:
             raise HTTPException(status_code=502, detail=exc.mensaje) from exc
         except ErrorDeDominio as exc:
@@ -278,9 +285,9 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         agente.py:pagar`: lo que decide si algo se autoriza nunca sale de
         un dato que el cliente podria inventar."""
         try:
-            estado = contenedor.consultar_enrolamiento(cuerpo.token).estado
+            estado = contenedor.consultar_enrolamiento(cuerpo.token, cuerpo.comercio_id).estado
             ref = contenedor.confirmar_enrolamiento(
-                cuerpo.token, cuerpo.correo, cuerpo.titular_id, estado
+                cuerpo.token, cuerpo.correo, cuerpo.titular_id, estado, cuerpo.comercio_id
             )
         except PasarelaNoDisponible as exc:
             raise HTTPException(status_code=502, detail=exc.mensaje) from exc

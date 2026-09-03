@@ -28,6 +28,15 @@ class SolicitudEnrolamiento:
     telefono: str
     correo: str
     ambiente: Ambiente
+    # Multi-comercio: bajo que comercio se crea el token. Un `payment_
+    # source_id` de Wompi queda atado al comercio (a la llave publica) que
+    # lo creo -- no es portable entre comercios aunque los tres usen Wompi.
+    # `SelectorDePasarela.para(comercio_id)` es quien de verdad enruta esto;
+    # el campo viaja igual en la solicitud para que quede en la bitacora y
+    # para que un `PasarelaDePagos` de un solo comercio (la simulada, o un
+    # `AdaptadorWompi` ya construido con las credenciales de un comercio) lo
+    # pueda ignorar sin problema.
+    comercio_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -100,3 +109,30 @@ class PasarelaDePagos(Protocol):
         `aplicacion/`.
         """
         ...
+
+
+
+class SelectorDePasarela(Protocol):
+    """Resuelve que `PasarelaDePagos` usar para un comercio dado.
+
+    Antes de multi-comercio, `composicion/contenedor.py` armaba UNA sola
+    `PasarelaDePagos` por proceso y la inyectaba fija en el constructor de
+    cada caso de uso (`EjecutarIntencion`, `ConciliarEvento`, `EnrolarMedio`
+    y sus tres pasos, `RevocarMedio`). Eso alcanzaba mientras solo existiera
+    un comercio real por proceso. Con N comercios reales de Wompi, cada uno
+    con sus propias credenciales (`WOMPI_PUBLIC_KEY`/`PRIVATE_KEY`/
+    `INTEGRITY_SECRET`/`EVENTS_SECRET`), hace falta resolver la pasarela
+    correcta en el momento de cada operacion, no una sola vez al armar el
+    contenedor -- por eso este puerto reemplaza a la `pasarela` fija que
+    esos casos de uso recibian antes.
+
+    Con `AGORA_PASARELA=simulada` (el default) todo comercio, real o
+    inventado, resuelve a la MISMA pasarela simulada -- no hace falta
+    credenciales por comercio para una demo sin dinero real. Con
+    `AGORA_PASARELA=wompi`, cada comercio necesita su propia entrada en el
+    registro de credenciales; pedir uno que no esta ahi levanta
+    `ComercioSinCredencialesWompi` en vez de fallar en silencio contra las
+    credenciales de otro comercio.
+    """
+
+    def para(self, comercio_id: str) -> PasarelaDePagos: ...

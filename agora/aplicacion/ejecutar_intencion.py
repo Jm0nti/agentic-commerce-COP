@@ -21,7 +21,32 @@ para retomar, asi que el unico desenlace posible era liberar y parar. Ahora
 la reserva se queda viva -- el cupo diario la sigue contando mientras se
 espera a que un humano decida -- y `retomar()` la resuelve mas tarde, desde
 donde sea que se le pregunte al humano (etapas 4-5: hoy nada mas de esta
-sesion llama a `retomar`, pero la reserva ya no se pierde esperando)."""
+sesion llama a `retomar`, pero la reserva ya no se pierde esperando).
+
+MULTI-COMERCIO (1 de septiembre de 2026)
+-----------------------------------------
+Antes, `_cobrar` llamaba a una `PasarelaDePagos` fija, inyectada por
+constructor -- valido mientras solo hubiera un comercio real por proceso.
+Ahora recibe un `SelectorDePasarela` y resuelve la pasarela correcta en el
+momento del cobro, contra `mandato.comercio_id` -- que ya esta disponible
+ahi, viaja dentro de la carga firmada del mandato desde la v2
+(`dominio/mandato/modelo.py:Mandato.canonico`). No hace falta que
+`Intencion`/`OrdenDeCobro` carguen el comercio por su cuenta: el mandato ya
+es la fuente de verdad de a que comercio esta autorizado este cobro
+(`Mandato.violaciones_contra` ya lo valida contra `intencion.comercio_id`
+antes de llegar aca).
+
+Deuda tecnica consciente: esto confia en que `mandato.medio` de verdad se
+haya enrolado bajo las credenciales de `mandato.comercio_id` -- nada aca
+(ni en `dominio/mandato/modelo.py`) verifica esa correspondencia de forma
+criptografica. `EmitirMandato` es quien la garantiza en la practica (solo
+firma un mandato con un medio que `RepositorioMedios.vinculado_con` ya
+asocio a ese comercio), pero un bug en otra parte del sistema que armara un
+`Mandato` a mano con un medio de OTRO comercio no lo detectaria aca. Ver
+`docs/viabilidad-multi-comercio-wompi.md`, seccion "Amarre medio ->
+comercio", por las dos opciones que se evaluaron (esta, mas liviana, y
+meter `comercio_id` dentro de `MedioDePagoRef` con un mandato v3) y por que
+se eligio la liviana para esta iteracion."""
 
 from __future__ import annotations
 
@@ -32,7 +57,7 @@ from ..dominio.mandato.modelo import Intencion
 from ..dominio.mandato.politica import Decision, Dictamen, evaluar
 from ..dominio.pago.modelo import Ambiente, EstadoCobro, OrdenDeCobro, ResultadoCobro
 from ..dominio.pago.topes import TopesDuros
-from ..puertos.pasarela import PasarelaDePagos
+from ..puertos.pasarela import SelectorDePasarela
 from ..puertos.repositorios import (
     LibroDeConsumo,
     RegistroDeEstados,
@@ -82,7 +107,7 @@ class EjecutarIntencion:
         self,
         mandatos: RepositorioMandatos,
         consumo: LibroDeConsumo,
-        pasarela: PasarelaDePagos,
+        selector_pasarela: SelectorDePasarela,
         topes: TopesDuros,
         reloj: Reloj,
         bitacora: Bitacora,
@@ -94,7 +119,7 @@ class EjecutarIntencion:
     ) -> None:
         self._mandatos = mandatos
         self._consumo = consumo
-        self._pasarela = pasarela
+        self._selector_pasarela = selector_pasarela
         self._topes = topes
         self._reloj = reloj
         self._bitacora = bitacora
@@ -216,7 +241,8 @@ class EjecutarIntencion:
             datos_pagador=self._datos,
         )
         try:
-            resultado = self._pasarela.cobrar(orden)
+            pasarela = self._selector_pasarela.para(mandato.comercio_id)
+            resultado = pasarela.cobrar(orden)
         except Exception as exc:  # el adaptador traduce; aqui solo se libera
             self._consumo.liberar(reserva)
             return self._detenido(intencion, f"error_pasarela: {exc}", dictamen)

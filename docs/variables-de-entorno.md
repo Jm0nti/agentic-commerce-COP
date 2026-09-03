@@ -7,19 +7,47 @@ esto va como documento. Copie el bloque a un `.env` en la raiz del proyecto
 ```dotenv
 # Copiar a `.env` en la raiz. El .env real esta en el .gitignore.
 
-# --- Wompi ----------------------------------------------------------------- #
-# El modo del CLI y el prefijo de la llave tienen que coincidir. `nucleo.py`
-# se niega a arrancar si no.
-WOMPI_PUBLIC_KEY=pub_prod_...
-WOMPI_PRIVATE_KEY=prv_prod_...
-WOMPI_INTEGRITY_SECRET=prod_integrity_...
+# --- Pasarela y ambiente ---------------------------------------------------- #
+AGORA_PASARELA=wompi        # simulada (default) | wompi
+AGORA_AMBIENTE=produccion   # sandbox (default) | produccion
 
-# Secreto de eventos, para validar el X-Event-Checksum de los webhooks.
-# Dashboard > Desarrolladores > Eventos. Sin esto, `boveda.eventos` marca
-# todos los eventos como invalidos -- que es el comportamiento correcto:
-# un webhook sin verificar es una via para inventarle a la boveda que un
-# cobro paso.
-WOMPI_EVENTS_SECRET=prod_events_...
+# --- Wompi, MULTI-COMERCIO (1 de septiembre de 2026) ------------------------ #
+# Desde que `agora/` soporta varios comercios reales de Wompi en el mismo
+# proceso, las credenciales YA NO viven en variables `WOMPI_*` sueltas --
+# esas solo alcanzan para UN comercio, y el puente remoto tampoco deja
+# escribir un `.env` con una entrada por comercio de forma practica. En su
+# lugar, `AGORA_PASARELA=wompi` lee un registro JSON, uno por comercio,
+# indexado por el mismo `comercio_id` que usa el catalogo
+# (`agora/adaptadores/catalogo/semilla/datos/catalogo.json`):
+#
+#   agora_datos/secretos/comercios_wompi.json   (default; ya en .gitignore
+#                                                 via `agora_datos/`)
+#
+#     {
+#       "com_xxxxxxxxxxxx": {
+#         "public_key": "pub_prod_...",
+#         "private_key": "prv_prod_...",
+#         "integrity_secret": "prod_integrity_...",
+#         "events_secret": "prod_events_..."
+#       },
+#       "com_yyyyyyyyyyyy": { ... }
+#     }
+#
+# `events_secret` es el que valida el X-Event-Checksum de los webhooks
+# (Dashboard > Desarrolladores > Eventos, uno por comercio). Sin el, el
+# comercio queda operativo para cobrar pero `ConciliarEvento` marca sus
+# eventos como invalidos -- webhook sin verificar es una via para
+# inventarle a la app que un cobro paso.
+#
+# Cada comercio real tiene que apuntar su webhook a
+# `<tu-URL-publica>/pagos/wompi/transacciones/<ese comercio_id>` -- un solo
+# tunel, un solo puerto (8001), un segmento de URL por comercio. Ver
+# `docs/viabilidad-multi-comercio-wompi.md` y el docstring de
+# `entradas/webhooks/wompi.py`.
+#
+# Para apuntar el registro a otro archivo (por ejemplo, para separar
+# sandbox de produccion):
+# AGORA_WOMPI_COMERCIOS=agora_datos/secretos/comercios_wompi.sandbox.json
 
 # --- Perfil del pagador ---------------------------------------------------- #
 # Esto no es cosmetico. En un cobro contra fuente de pago no hay navegador, no

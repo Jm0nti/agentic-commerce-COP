@@ -124,7 +124,7 @@ def cmd_enrolar(a, contenedor: Contenedor) -> int:
         print(f"  {etapa:10} {detalle}")
 
     try:
-        ref = contenedor.enrolar_medio(a.telefono, a.correo, a.titular, al_avanzar=narrar)
+        ref = contenedor.enrolar_medio(a.telefono, a.correo, a.titular, a.comercio, al_avanzar=narrar)
     except ErrorDeDominio as exc:
         print(f"\n[x] {exc.mensaje}")
         return 1
@@ -411,6 +411,10 @@ def _armar_parser() -> argparse.ArgumentParser:
     pe.add_argument("--telefono", required=True)
     pe.add_argument("--correo", default="titular+demo@agora.local")
     pe.add_argument("--titular", default="tit_demo")
+    # Multi-comercio: enrolar vincula el medio con ESTE comercio (ver el
+    # docstring de aplicacion/enrolar_medio.py) -- ya no hay "enrolar"
+    # generico sin destino.
+    pe.add_argument("--comercio", required=True, help="comercio_id con el que vincular el medio")
 
     pf = sub.add_parser("fuentes", help="medios de pago vivos de un titular")
     pf.add_argument("titular")

@@ -16,6 +16,20 @@ que -- por diseno -- puede reintentar, llegar duplicado, o llegar para
 trafico ajeno. Por eso `__call__` nunca levanta: devuelve un
 `ResultadoConciliacion` y quien llame (el receptor HTTP) siempre responde 200,
 igual que `boveda/eventos.py`.
+
+MULTI-COMERCIO (1 de septiembre de 2026)
+-----------------------------------------
+Cada comercio real tiene su propio `WOMPI_EVENTS_SECRET`, y validar el
+checksum de un evento exige saber CONTRA CUAL. A diferencia de
+`EjecutarIntencion` (que ya tiene `mandato.comercio_id` disponible antes de
+cobrar), este caso de uso arranca de un cuerpo HTTP crudo -- no hay mandato
+ni intencion todavia, asi que no hay de donde sacar el comercio del
+CONTENIDO del evento antes de haberlo validado. La unica fuente confiable es
+la URL que lo trajo: `entradas/webhooks/wompi.py` la lee del path
+(`/pagos/wompi/transacciones/{comercio_id}`, un segmento por cada comercio
+configurado en su propio dashboard de Wompi) y se la pasa a `__call__` como
+parametro nuevo -- por eso, a diferencia de `EjecutarIntencion`, ac'a el
+`comercio_id` no sale de adentro del caso de uso sino de quien lo llama.
 """
 
 from __future__ import annotations
@@ -24,7 +38,7 @@ from dataclasses import dataclass
 
 from ..dominio.comun.errores import ErrorDePasarela
 from ..dominio.pago.modelo import EstadoCobro, ResultadoCobro
-from ..puertos.pasarela import PasarelaDePagos
+from ..puertos.pasarela import SelectorDePasarela
 from ..puertos.repositorios import LibroDeConsumo, RegistroDeEstados
 from ..puertos.sistema import Bitacora
 
@@ -44,24 +58,36 @@ class ConciliarEvento:
     def __init__(
         self,
         consumo: LibroDeConsumo,
-        pasarela: PasarelaDePagos,
+        selector_pasarela: SelectorDePasarela,
         bitacora: Bitacora,
         estados: RegistroDeEstados | None = None,
     ) -> None:
         self._consumo = consumo
-        self._pasarela = pasarela
+        self._selector = selector_pasarela
         self._bitacora = bitacora
         # Igual que en `EjecutarIntencion`: opcional, `None` por defecto, sin
         # efecto sobre quien ya construye `ConciliarEvento` sin pasarlo.
         self._estados = estados
 
-    def __call__(self, cuerpo: bytes, cabeceras: dict[str, str]) -> ResultadoConciliacion:
+    def __call__(
+        self, cuerpo: bytes, cabeceras: dict[str, str], comercio_id: str,
+    ) -> ResultadoConciliacion:
         try:
-            evento = self._pasarela.validar_evento(cuerpo, cabeceras)
+            pasarela = self._selector.para(comercio_id)
+        except ErrorDePasarela as exc:
+            # Un comercio_id en la URL que ya no tiene credenciales
+            # configuradas (se desconecto ese comercio, o nunca existio) es
+            # el mismo tipo de "no hay nada que hacer" que un checksum
+            # invalido -- no un fallo del receptor. Wompi sigue esperando
+            # su 200.
+            return self._ignorado("comercio_sin_pasarela", str(exc))
+
+        try:
+            evento = pasarela.validar_evento(cuerpo, cabeceras)
         except ErrorDePasarela as exc:
             return self._ignorado("evento_invalido", str(exc))
 
-        traduccion = self._pasarela.resultado_desde_evento(evento)
+        traduccion = pasarela.resultado_desde_evento(evento)
         if traduccion is None:
             return self._ignorado("evento_no_reconocido", "el evento no es un cobro de esta app")
         intencion_id, resultado = traduccion

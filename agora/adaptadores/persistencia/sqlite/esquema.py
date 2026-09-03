@@ -80,11 +80,20 @@ CREATE TABLE IF NOT EXISTS gastado_dia (
 -- Medios de pago vivos (equivalente a `boveda/secretos/fuentes.json`, que
 -- separaba por modo). `estado` no se borra al revocar: se marca, para que
 -- quede la evidencia de que existio.
+--
+-- `comercio_id` (multi-comercio, 1 de septiembre de 2026): un
+-- `payment_source_id` de Wompi esta atado al comercio que lo creo, no es
+-- portable entre comercios. `NOT NULL DEFAULT ''` en vez de una migracion
+-- que reescriba filas viejas -- una fila con `comercio_id=''` de antes de
+-- esta version simplemente nunca calza con `vinculado_con`, que es
+-- exactamente lo correcto: ese medio viejo no se sabe con que comercio se
+-- creo, asi que no debe reusarse a ciegas.
 CREATE TABLE IF NOT EXISTS medio_de_pago (
     proveedor                TEXT NOT NULL,
     ambiente                  TEXT NOT NULL,
     id_externo                TEXT NOT NULL,
     titular_id                 TEXT NOT NULL,
+    comercio_id                 TEXT NOT NULL DEFAULT '',
     estado                     TEXT NOT NULL,
     creado_en                  TEXT,
     PRIMARY KEY (proveedor, ambiente, id_externo)
@@ -142,3 +151,18 @@ CREATE TABLE IF NOT EXISTS estado_intencion (
 
 def asegurar(con: sqlite3.Connection) -> None:
     con.executescript(DDL)
+    _migrar_columnas_nuevas(con)
+
+
+def _migrar_columnas_nuevas(con: sqlite3.Connection) -> None:
+    """`CREATE TABLE IF NOT EXISTS` (arriba) no le agrega una columna nueva
+    a una tabla que ya existia de una version anterior del esquema -- un
+    `agora_datos/agora.db` armado antes del 1 de septiembre de 2026 (multi-
+    comercio) no tiene `medio_de_pago.comercio_id` todavia. `ALTER TABLE
+    ... ADD COLUMN` con un default es seguro en SQLite (no reescribe las
+    filas existentes) y es idempotente en la practica: se corre en cada
+    apertura de conexion (`conexion.abrir_conexion`), igual que `DDL`
+    arriba, y solo actua si la columna todavia falta."""
+    columnas = {fila[1] for fila in con.execute("PRAGMA table_info(medio_de_pago)")}
+    if "comercio_id" not in columnas:
+        con.execute("ALTER TABLE medio_de_pago ADD COLUMN comercio_id TEXT NOT NULL DEFAULT ''")

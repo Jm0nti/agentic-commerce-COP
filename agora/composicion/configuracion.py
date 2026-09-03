@@ -16,10 +16,42 @@ las de Wompi):
     AGORA_SQLITE_PATH   ruta del archivo SQLite (default: agora_datos/agora.db).
         Solo se lee si AGORA_PERSISTENCIA=sqlite.
 
-    WOMPI_PUBLIC_KEY / WOMPI_PRIVATE_KEY / WOMPI_INTEGRITY_SECRET / WOMPI_EVENTS_SECRET
-        Solo se leen si AGORA_PASARELA=wompi. Son las mismas variables que
-        usa `boveda/nucleo.py` -- no hay una segunda copia de las
-        credenciales para la casa nueva.
+    AGORA_WOMPI_COMERCIOS
+        Multi-comercio (1 de septiembre de 2026): ruta a un JSON con las
+        credenciales de CADA comercio real de Wompi, indexado por el mismo
+        `comercio_id` que usa el catalogo (`agora/adaptadores/catalogo/
+        semilla/datos/catalogo.json`). Solo se lee si AGORA_PASARELA=wompi.
+        Default: agora_datos/secretos/comercios_wompi.json (ya en
+        `.gitignore`, igual que el resto de `agora_datos/secretos/`) --
+        el puente remoto no deja escribir archivos que empiecen por `.env`,
+        asi que un JSON aparte, no variables `WOMPI_*` sueltas, es la unica
+        forma practica de guardar credenciales de MAS de un comercio.
+
+        Forma del archivo:
+
+            {
+              "com_xxxxxxxxxxxx": {
+                "public_key": "pub_test_...",
+                "private_key": "prv_test_...",
+                "integrity_secret": "test_integrity_...",
+                "events_secret": "test_events_..."
+              },
+              "com_yyyyyyyyyyyy": { ... }
+            }
+
+        Cada entrada se valida igual que antes (`ConfiguracionWompi.
+        __post_init__`: faltan credenciales, o el prefijo de la llave
+        publica no coincide con AGORA_AMBIENTE). Un comercio del catalogo
+        que no tenga entrada aca no puede cobrar contra Wompi --
+        `SelectorDePasarela.para(ese_comercio_id)` levanta
+        `ComercioSinCredencialesWompi` en el momento de usarlo, no al
+        arrancar (agregar un comercio nuevo al catalogo no exige reiniciar
+        con TODAS las credenciales ya resueltas).
+
+        La URL que cada comercio real tiene que registrar en su propio
+        dashboard de Wompi (seccion Eventos) NO vive en este archivo -- se
+        arma sola a partir del `comercio_id`: ver el docstring de
+        `entradas/webhooks/wompi.py`.
 
     PAGADOR_EMAIL / PAGADOR_NOMBRE / PAGADOR_TELEFONO / PAGADOR_DOCUMENTO / PAGADOR_TIPO_DOC
         Igual que `boveda/nucleo.py:perfil_pagador`. Importan de verdad: un
@@ -29,6 +61,7 @@ las de Wompi):
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping
@@ -40,6 +73,7 @@ from ..dominio.pago.modelo import Ambiente
 RAIZ_REPO = Path(__file__).resolve().parent.parent.parent
 BITACORA_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "recibos.jsonl"
 SQLITE_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "agora.db"
+COMERCIOS_WOMPI_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "secretos" / "comercios_wompi.json"
 
 # Etapa 5: la llave de firma del titular, en disco, "igual que v1"
 # (`boveda/secretos/firma.sk`/`firma.pk`). Sin cifrar -- ver el docstring de
@@ -73,7 +107,10 @@ class ConfiguracionAgora:
     correo_pagador: str
     datos_pagador: dict[str, str] = field(default_factory=dict)
     bitacora_path: Path = BITACORA_POR_DEFECTO
-    wompi: ConfiguracionWompi | None = None
+    # Multi-comercio: registro de credenciales por comercio_id, no una
+    # unica `ConfiguracionWompi`. Vacio cuando `pasarela == "simulada"` (no
+    # hace falta credenciales de nadie para la demo sin dinero real).
+    wompi: dict[str, ConfiguracionWompi] = field(default_factory=dict)
     persistencia: str = "memoria"  # "memoria" | "sqlite"
     sqlite_path: Path = SQLITE_POR_DEFECTO
     llave_firma_sk: Path = LLAVE_FIRMA_SK_POR_DEFECTO
@@ -91,10 +128,11 @@ class ConfiguracionAgora:
             raise ConfiguracionInvalida(
                 f"AGORA_PASARELA='{self.pasarela}' invalido: use 'simulada' o 'wompi'"
             )
-        if self.pasarela == "wompi" and self.wompi is None:
+        if self.pasarela == "wompi" and not self.wompi:
             raise ConfiguracionInvalida(
-                "AGORA_PASARELA=wompi exige las credenciales de Wompi "
-                "(WOMPI_PUBLIC_KEY / WOMPI_PRIVATE_KEY / WOMPI_INTEGRITY_SECRET)"
+                "AGORA_PASARELA=wompi exige al menos un comercio con "
+                "credenciales en el registro (AGORA_WOMPI_COMERCIOS, "
+                "default agora_datos/secretos/comercios_wompi.json)"
             )
         if self.persistencia not in ("memoria", "sqlite"):
             raise ConfiguracionInvalida(
@@ -109,15 +147,59 @@ class ConfiguracionAgora:
             # proceso reinicia -- un mandato que se creia agotado vuelve a
             # estar fresco. Contra dinero real (wompi + produccion) eso no es
             # aceptable (docs/etapa-2-completa.md, "Decision importante").
-            # No es un guardarrail que se pueda saltar con una bandera: quien
-            # necesite reproducir ese estado lo hace explicitamente
-            # instanciando los adaptadores en memoria a mano, no a traves de
-            # `leer_configuracion`.
+            # Se aplica al PROCESO completo, no comercio por comercio: los N
+            # comercios reales de un mismo proceso comparten la misma
+            # persistencia (`composicion/contenedor.py` arma un solo
+            # `LibroDeConsumo`), asi que si CUALQUIERA de ellos cobra contra
+            # produccion, todos necesitan sqlite. No es un guardarrail que
+            # se pueda saltar con una bandera: quien necesite reproducir ese
+            # estado lo hace explicitamente instanciando los adaptadores en
+            # memoria a mano, no a traves de `leer_configuracion`.
             raise ConfiguracionInvalida(
                 "AGORA_PASARELA=wompi en AGORA_AMBIENTE=produccion exige "
                 "AGORA_PERSISTENCIA=sqlite: la persistencia en memoria no "
                 "sobrevive un reinicio y permitiria reusar un mandato agotado"
             )
+
+
+def _cargar_registro_wompi(ruta: Path, ambiente: Ambiente) -> dict[str, ConfiguracionWompi]:
+    """Lee el JSON de credenciales por comercio. Cada entrada se traduce a
+    una `ConfiguracionWompi` propia -- multiples comercios en el mismo
+    proceso es justo lo que ese tipo ya soporta desde la etapa 2 (leer el
+    entorno UNA vez, circular como objeto inmutable despues, sin que
+    `ClienteWompi` vuelva a tocar `os.environ`)."""
+    if not ruta.exists():
+        raise ConfiguracionInvalida(
+            f"AGORA_PASARELA=wompi pero no existe el registro de credenciales "
+            f"'{ruta}' -- cree el archivo (ver el docstring de este modulo) "
+            "o apunte AGORA_WOMPI_COMERCIOS a otro."
+        )
+    try:
+        crudo = json.loads(ruta.read_text(encoding="utf-8"))
+    except ValueError as exc:
+        raise ConfiguracionInvalida(f"'{ruta}' no es JSON valido: {exc}") from exc
+    if not isinstance(crudo, dict) or not crudo:
+        raise ConfiguracionInvalida(
+            f"'{ruta}' tiene que ser un objeto JSON no vacio, comercio_id -> credenciales"
+        )
+
+    registro: dict[str, ConfiguracionWompi] = {}
+    for comercio_id, entrada in crudo.items():
+        if not isinstance(entrada, dict):
+            raise ConfiguracionInvalida(
+                f"'{ruta}': la entrada de '{comercio_id}' tiene que ser un objeto JSON"
+            )
+        try:
+            registro[comercio_id] = ConfiguracionWompi(
+                ambiente=ambiente,
+                llave_publica=entrada.get("public_key", ""),
+                llave_privada=entrada.get("private_key", ""),
+                secreto_integridad=entrada.get("integrity_secret", ""),
+                secreto_eventos=entrada.get("events_secret", ""),
+            )
+        except ConfiguracionWompiInvalida as exc:
+            raise ConfiguracionInvalida(f"comercio '{comercio_id}' en '{ruta}': {exc}") from exc
+    return registro
 
 
 def leer_configuracion(entorno: Mapping[str, str]) -> ConfiguracionAgora:
@@ -162,25 +244,14 @@ def leer_configuracion(entorno: Mapping[str, str]) -> ConfiguracionAgora:
     deepseek_llave_api = entorno.get("DEEPSEEK_API_KEY", "")
     deepseek_modelo = entorno.get("DEEPSEEK_MODELO", DEEPSEEK_MODELO_POR_DEFECTO)
 
-    wompi = None
+    wompi: dict[str, ConfiguracionWompi] = {}
     if pasarela == "wompi":
-        try:
-            wompi = ConfiguracionWompi(
-                ambiente=ambiente,
-                llave_publica=entorno.get("WOMPI_PUBLIC_KEY", ""),
-                llave_privada=entorno.get("WOMPI_PRIVATE_KEY", ""),
-                secreto_integridad=entorno.get("WOMPI_INTEGRITY_SECRET", ""),
-                secreto_eventos=entorno.get("WOMPI_EVENTS_SECRET", ""),
-            )
-        except ConfiguracionWompiInvalida as exc:
-            # Se traduce a la `ConfiguracionInvalida` de este modulo para que
-            # quien llame a `leer_configuracion` tenga un solo tipo de error
-            # que atrapar, sin tener que conocer `adaptadores/pasarelas/
-            # wompi/config.py`. Dos excepciones con el mismo nombre
-            # (`ConfiguracionInvalida`) en modulos distintos, sin relacion de
-            # herencia, es una trampa: un `except ConfiguracionInvalida`
-            # aqui NO atraparia la de wompi si no se tradujera.
-            raise ConfiguracionInvalida(str(exc)) from exc
+        ruta_comercios = (
+            Path(entorno["AGORA_WOMPI_COMERCIOS"])
+            if "AGORA_WOMPI_COMERCIOS" in entorno
+            else COMERCIOS_WOMPI_POR_DEFECTO
+        )
+        wompi = _cargar_registro_wompi(ruta_comercios, ambiente)
 
     return ConfiguracionAgora(
         ambiente=ambiente,

@@ -37,6 +37,35 @@ que le llega de otro lado, un agente manipulado podria hacer firmar un
 carrito y presentar otro distinto: el Cart Mandate de AP2 (`dominio/catalogo/
 modelo.py`, docstring de `Carrito.hash_canonico`) protege contra eso solo si
 el hash sale de una fuente que el agente no controla.
+
+VINCULACION POR COMERCIO (1 de septiembre de 2026)
+-----------------------------------------------------
+Antes de multi-comercio, "el medio de pago del titular" era ambiguo pero
+inofensivo: solo existia un comercio real por proceso, asi que cualquier
+medio vivo servia. Con N comercios reales de Wompi eso deja de ser cierto --
+un `payment_source_id` esta atado al comercio que lo creo, asi que "tomar el
+ultimo medio vivo" (el criterio viejo) podia firmar un mandato con un medio
+que Wompi va a rechazar en el momento de cobrar, contra las credenciales
+del comercio EQUIVOCADO, y el titular se entera recien ahi -- tarde, y con
+un mensaje de error que no explica nada.
+
+Ahora se pide especificamente el medio que el titular ya VINCULO con
+`propuesta.comercio_id` (`RepositorioMedios.vinculado_con`). Si no hay
+ninguno, se distingue explicitamente entre dos situaciones que un agente (o
+la CLI) necesitan tratar distinto:
+
+    SinMedioDePagoVivo          nunca enrolo nada. Hay que enrolar por
+                                 primera vez (dirigido a este comercio: todo
+                                 enrolamiento, con o sin historial previo,
+                                 es siempre "vincular con un comercio").
+
+    SinMedioVinculadoAlComercio ya enrolo con OTRO comercio, pero nunca con
+                                 este. Hay que vincular este comercio
+                                 puntual -- un enrolamiento mas, un push
+                                 mas, pero solo la primera vez que se compra
+                                 en el: `RepositorioMedios.vinculado_con` es
+                                 lo que hace que la proxima compra en el
+                                 MISMO comercio no vuelva a pedirlo.
 """
 
 from __future__ import annotations
@@ -44,7 +73,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import timedelta
 
-from ..dominio.comun.errores import PropuestaInvalida, SinMedioDePagoVivo
+from ..dominio.comun.errores import PropuestaInvalida, SinMedioDePagoVivo, SinMedioVinculadoAlComercio
 from ..dominio.mandato.modelo import Mandato
 from ..dominio.pago.modelo import Ambiente
 from ..puertos.firma import Firmante
@@ -95,16 +124,22 @@ class EmitirMandato:
                 f"carrito '{carrito.carrito_id}' es de '{carrito.comercio_id}'"
             )
 
-        vivos = self._medios.vivos(titular_id, self._ambiente)
-        if not vivos:
-            raise SinMedioDePagoVivo(
-                f"'{titular_id}' no tiene un medio de pago vivo en "
-                f"'{self._ambiente.value}' -- hay que enrolar uno primero"
+        # Multi-comercio: no "el ultimo medio vivo" (podria ser de otro
+        # comercio) sino "el medio que este titular ya vinculo con ESTE
+        # comercio" -- ver el docstring del modulo.
+        medio = self._medios.vinculado_con(titular_id, propuesta.comercio_id, self._ambiente)
+        if medio is None:
+            if not self._medios.vivos(titular_id, self._ambiente):
+                raise SinMedioDePagoVivo(
+                    f"'{titular_id}' no tiene un medio de pago vivo en "
+                    f"'{self._ambiente.value}' -- hay que enrolar uno primero"
+                )
+            raise SinMedioVinculadoAlComercio(
+                f"'{titular_id}' tiene medio(s) de pago vivos, pero ninguno "
+                f"vinculado con el comercio '{propuesta.comercio_id}' -- hay "
+                "que enrolar uno dirigido a ese comercio antes de firmar "
+                "(aplicacion/enrolar_medio.py)"
             )
-        # El mas reciente: `RepositorioMedios.guardar` agrega al final, asi
-        # que el ultimo de la lista es el ultimo enrolado. Mismo criterio que
-        # `boveda/cli.py:_fuente_por_defecto`.
-        medio = vivos[-1]
 
         ahora = self._reloj.ahora()
         mandato = Mandato(

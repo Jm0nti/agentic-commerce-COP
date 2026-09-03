@@ -94,11 +94,16 @@ def _resolver_y_conciliar(contenedor, recibo):
     push en su banco) y lo concilia. Esto es, literalmente, lo que hace
     `entradas/webhooks/wompi.py` al recibir el POST -- aqui se llama en el
     mismo proceso en vez de por HTTP, para no necesitar un servidor."""
-    pasarela = contenedor.pasarela
+    # Multi-comercio: la pasarela se resuelve por comercio, ya no es un
+    # atributo suelto de `contenedor` -- `recibo.intencion.comercio_id` es
+    # el mismo comercio contra el que se armo el mandato de esta escena.
+    pasarela = contenedor.selector_pasarela.para(recibo.intencion.comercio_id)
     pasarela.resolver_pendiente(recibo.resultado.id_externo, APROBADO)
     evento = pasarela.evento_de(recibo.resultado.id_externo)
     print(f"  evento del webhook: {json.dumps(evento)}")
-    resultado = contenedor.conciliar_evento(json.dumps(evento).encode("utf-8"), {})
+    resultado = contenedor.conciliar_evento(
+        json.dumps(evento).encode("utf-8"), {}, recibo.intencion.comercio_id,
+    )
     print(f"  conciliar_evento -> procesado={resultado.procesado} motivo={resultado.motivo}")
     return resultado
 
@@ -194,7 +199,7 @@ def main() -> int:
         "  2. En otro proceso (mismo AGORA_SQLITE_PATH), reserva y cobra hasta el punto\n"
         "     PENDIENTE, imprime el JSON de `pasarela.evento_de(...)` como hace este script,\n"
         "     y postealo en vez de llamar a `conciliar_evento` directo:\n"
-        "     curl -X POST http://127.0.0.1:8001/pagos/wompi/transacciones -d '<json>'\n"
+        "     curl -X POST http://127.0.0.1:8001/pagos/wompi/transacciones/com_demo -d '<json>'\n"
         "  3. `curl http://127.0.0.1:8001/salud` confirma que el servidor esta arriba."
     )
     return 0

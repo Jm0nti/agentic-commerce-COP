@@ -17,6 +17,13 @@ el ULTIMO mensaje del historial y decide que hacer -- hace falta aca porque
 generan recien cuando `/firmar` corre, en medio de la conversacion), asi
 que no hay forma de dejarlos precargados en una lista fija como hace
 `_ModeloGuionado`.
+
+MULTI-COMERCIO: las rutas de enrolamiento (`/medios/enrolar/...`) ahora
+exigen `comercio_id` -- ver el docstring de `aplicacion/enrolar_medio.py`.
+Las pruebas de esas rutas usan un `comercio_id` fijo ("com_1"): con la
+pasarela simulada (la que usa `_config`) cualquier comercio_id resuelve a
+la misma pasarela (`RegistroDePasarelas({}, por_defecto=...)`), asi que no
+hace falta que exista de verdad en el catalogo.
 """
 
 from __future__ import annotations
@@ -193,8 +200,11 @@ def test_eventos_de_sesion_desconocida_responde_404(tmp_path):
 
 def test_flujo_completo_por_http_arma_firma_paga_y_confirma(tmp_path):
     contenedor = construir(leer_configuracion(_config(tmp_path)))
-    contenedor.enrolar_medio("3001234567", "titular@correo.com", "tit_1")
     comercio_id, producto_id = _producto_barato(contenedor)
+    # Multi-comercio: enrolar vincula el medio con ESTE comercio -- se
+    # descubre antes de enrolar, no despues (ver el docstring de
+    # aplicacion/enrolar_medio.py).
+    contenedor.enrolar_medio("3001234567", "titular@correo.com", "tit_1", comercio_id)
 
     contenedor = replace(contenedor, modelo_lenguaje=_ModeloProgramable(comercio_id, producto_id))
     agente = construir_agente(contenedor)
@@ -304,6 +314,8 @@ def test_flujo_sse_codifica_un_evento_de_la_cola_como_server_sent_event():
 # responsabilidad del navegador, no de esta ruta -- por eso no hace falta
 # reproducirlo aca para cubrir la ruta.
 
+COMERCIO_ID = "com_1"
+
 
 def test_enrolar_por_http_de_punta_a_punta_con_la_pasarela_simulada(tmp_path):
     contenedor = construir(leer_configuracion(_config(tmp_path)))
@@ -313,7 +325,7 @@ def test_enrolar_por_http_de_punta_a_punta_con_la_pasarela_simulada(tmp_path):
     # 1. Iniciar -- no bloquea, la simulada ya deja el token en APPROVED.
     respuesta = cliente.post(
         "/medios/enrolar/iniciar",
-        json={"telefono": "3001234567", "correo": "titular@correo.com"},
+        json={"telefono": "3001234567", "correo": "titular@correo.com", "comercio_id": COMERCIO_ID},
     )
     assert respuesta.status_code == 200
     datos_inicio = respuesta.json()
@@ -321,7 +333,9 @@ def test_enrolar_por_http_de_punta_a_punta_con_la_pasarela_simulada(tmp_path):
     token = datos_inicio["token"]
 
     # 2. Consultar el estado -- mismo token, misma respuesta (idempotente).
-    respuesta = cliente.get(f"/medios/enrolar/{token}/estado")
+    #    `comercio_id` viaja como query param: es el mismo que se uso al
+    #    iniciar, no un dato nuevo que el navegador decida solo.
+    respuesta = cliente.get(f"/medios/enrolar/{token}/estado", params={"comercio_id": COMERCIO_ID})
     assert respuesta.status_code == 200
     assert respuesta.json() == {"estado": "APPROVED"}
 
@@ -329,7 +343,10 @@ def test_enrolar_por_http_de_punta_a_punta_con_la_pasarela_simulada(tmp_path):
     #    de guardar el medio (nunca confia en lo que mande el navegador).
     respuesta = cliente.post(
         "/medios/enrolar/confirmar",
-        json={"token": token, "correo": "titular@correo.com", "titular_id": "tit_web"},
+        json={
+            "token": token, "correo": "titular@correo.com", "titular_id": "tit_web",
+            "comercio_id": COMERCIO_ID,
+        },
     )
     assert respuesta.status_code == 200
     ref = respuesta.json()
@@ -370,7 +387,10 @@ def test_confirmar_enrolamiento_ignora_un_estado_falso_mandado_por_el_cliente(tm
 
     respuesta = cliente.post(
         "/medios/enrolar/confirmar",
-        json={"token": "tok-que-no-existe", "correo": "titular@correo.com", "titular_id": "tit_x"},
+        json={
+            "token": "tok-que-no-existe", "correo": "titular@correo.com", "titular_id": "tit_x",
+            "comercio_id": COMERCIO_ID,
+        },
     )
 
     assert respuesta.status_code == 400
@@ -391,8 +411,8 @@ def test_sondeo_resuelve_por_http_un_pago_que_el_webhook_confirma_despues(tmp_pa
     config = _config(tmp_path)
     config["PAGADOR_EMAIL"] = "pendiente@correo.com"  # fuerza EstadoCobro.PENDIENTE
     contenedor = construir(leer_configuracion(config))
-    contenedor.enrolar_medio("3001234567", "titular@correo.com", "tit_1")
     comercio_id, producto_id = _producto_barato(contenedor)
+    contenedor.enrolar_medio("3001234567", "titular@correo.com", "tit_1", comercio_id)
 
     contenedor = replace(contenedor, modelo_lenguaje=_ModeloProgramable(comercio_id, producto_id))
     agente = construir_agente(contenedor)

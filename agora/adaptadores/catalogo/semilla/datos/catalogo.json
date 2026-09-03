@@ -1,361 +1,26 @@
 {
   "comercios": [
     {
-      "comercio_id": "com_d58d8fe80a87",
-      "nombre": "TecnoAndes",
-      "categoria": "tecnologia",
-      "descripcion": "Tienda de tecnología y gadgets en Bogotá, con envíos a todo Colombia.",
-      "simulado": true
-    },
-    {
-      "comercio_id": "com_ec5fa92da173",
-      "nombre": "Moda Andina",
-      "categoria": "moda",
-      "descripcion": "Ropa y accesorios modernos con inspiración en la cultura andina colombiana.",
-      "simulado": true
-    },
-    {
-      "comercio_id": "com_7b5b69704135",
-      "nombre": "Hogar Esmeralda",
-      "categoria": "hogar",
-      "descripcion": "Tienda colombiana de artículos para el hogar: muebles, decoración y textiles con estilo tropical.",
-      "simulado": true
-    },
-    {
-      "comercio_id": "com_1436a00979e5",
-      "nombre": "La Fogata de la Abuela",
-      "categoria": "restaurantes",
-      "descripcion": "Restaurante tradicional colombiano con recetas de la abuela, especializado en platos típicos de la región Andina.",
-      "simulado": true
-    },
-    {
-      "comercio_id": "com_261844005640",
-      "nombre": "Librería El Ilustrado",
-      "categoria": "libros",
-      "descripcion": "Librería bogotana especializada en literatura colombiana, latinoamericana y clásicos universales, con catálogo actualizado mensualmente.",
-      "simulado": true
-    },
-    {
-      "comercio_id": "com_6fb0a13bdd8b",
+      "comercio_id": "com_a6066287f648",
       "nombre": "Dulcería La Golosina",
       "categoria": "confites",
-      "descripcion": "Dulcería de barrio en Bogotá con confites, chocolates y golosinas colombianas de toda la vida.",
-      "simulado": true
+      "descripcion": "Dulcería de barrio en Bogotá: chocolates, gomitas y confites al detal, para el antojo de cada día.",
+      "simulado": false
     },
     {
-      "comercio_id": "com_787e7bee6302",
+      "comercio_id": "com_77405f295d71",
       "nombre": "Papelería El Lápiz Feliz",
       "categoria": "papeleria",
-      "descripcion": "Papelería de barrio en Medellín con útiles escolares y de oficina a precios económicos.",
-      "simulado": true
+      "descripcion": "Papelería y miscelánea escolar en Bogotá: lo básico para el colegio o la oficina, al detal y a buen precio.",
+      "simulado": false
     }
   ],
   "productos": [
     {
-      "producto_id": "prd_6dcf3abfe9fb",
-      "comercio_id": "com_d58d8fe80a87",
-      "nombre": "Smartphone X200 Pro",
-      "descripcion": "Pantalla AMOLED de 6.7 pulgadas, cámara de 108 MP, batería de 5000 mAh, 5G.",
-      "precio": {
-        "centavos": 249990000,
-        "moneda": "COP"
-      },
-      "categoria": "tecnologia",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_7330bf6ca041",
-      "comercio_id": "com_d58d8fe80a87",
-      "nombre": "Laptop Ultrabook 14",
-      "descripcion": "Ultrabook con procesador Intel Core i7, 16GB RAM, SSD 512GB, pantalla táctil Full HD.",
-      "precio": {
-        "centavos": 459990000,
-        "moneda": "COP"
-      },
-      "categoria": "tecnologia",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_5c2b93bdb84b",
-      "comercio_id": "com_d58d8fe80a87",
-      "nombre": "Auriculares Inalámbricos SoundMax",
-      "descripcion": "Auriculares over-ear con cancelación activa de ruido, Bluetooth 5.3, batería de 40 horas.",
-      "precio": {
-        "centavos": 49990000,
-        "moneda": "COP"
-      },
-      "categoria": "tecnologia",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_e8619c6078b7",
-      "comercio_id": "com_d58d8fe80a87",
-      "nombre": "Smartwatch FitTrack",
-      "descripcion": "Reloj inteligente con monitor de frecuencia cardíaca, GPS, resistencia al agua 5 ATM.",
-      "precio": {
-        "centavos": 89990000,
-        "moneda": "COP"
-      },
-      "categoria": "tecnologia",
-      "disponibilidad": "agotado"
-    },
-    {
-      "producto_id": "prd_4c5bf8ffc754",
-      "comercio_id": "com_d58d8fe80a87",
-      "nombre": "Tablet TabPro 11",
-      "descripcion": "Tablet con pantalla 11 pulgadas, 128GB almacenamiento, compatible con lápiz táctil.",
-      "precio": {
-        "centavos": 189990000,
-        "moneda": "COP"
-      },
-      "categoria": "tecnologia",
-      "disponibilidad": "pedido_anticipado"
-    },
-    {
-      "producto_id": "prd_1c35779b40e9",
-      "comercio_id": "com_ec5fa92da173",
-      "nombre": "Bufanda Tejida Wayuu",
-      "descripcion": "Bufanda artesanal tejida a mano con lana de oveja, colores vibrantes y diseño geométrico.",
-      "precio": {
-        "centavos": 8500000,
-        "moneda": "COP"
-      },
-      "categoria": "moda",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_90d4f59b485a",
-      "comercio_id": "com_ec5fa92da173",
-      "nombre": "Chaqueta de Jean Reciclado",
-      "descripcion": "Chaqueta vaquera confeccionada con denim reciclado, corte moderno y botones metálicos.",
-      "precio": {
-        "centavos": 12000000,
-        "moneda": "COP"
-      },
-      "categoria": "moda",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_9c2944cfbacb",
-      "comercio_id": "com_ec5fa92da173",
-      "nombre": "Vestido Floral Boho",
-      "descripcion": "Vestido largo con estampado floral, tela ligera y caída fluida ideal para clima cálido.",
-      "precio": {
-        "centavos": 9800000,
-        "moneda": "COP"
-      },
-      "categoria": "moda",
-      "disponibilidad": "pedido_anticipado"
-    },
-    {
-      "producto_id": "prd_03db8c781897",
-      "comercio_id": "com_ec5fa92da173",
-      "nombre": "Sombrero Vueltiao",
-      "descripcion": "Sombrero tradicional colombiano tejido en fibra de caña flecha, con diseños únicos.",
-      "precio": {
-        "centavos": 6500000,
-        "moneda": "COP"
-      },
-      "categoria": "moda",
-      "disponibilidad": "agotado"
-    },
-    {
-      "producto_id": "prd_be623963f826",
-      "comercio_id": "com_ec5fa92da173",
-      "nombre": "Bolso Wayuu Mediano",
-      "descripcion": "Bolso de mano tejido a mano con algodón, colores llamativos y asa larga.",
-      "precio": {
-        "centavos": 13500000,
-        "moneda": "COP"
-      },
-      "categoria": "moda",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_cb00037b2ef6",
-      "comercio_id": "com_7b5b69704135",
-      "nombre": "Sofá modular 'Bogotá' en tela gris",
-      "descripcion": "Sofá de tres puestos con chaise longue, estructura en madera y tela resistente.",
-      "precio": {
-        "centavos": 289900000,
-        "moneda": "COP"
-      },
-      "categoria": "hogar",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_50e45e830fd4",
-      "comercio_id": "com_7b5b69704135",
-      "nombre": "Juego de sábanas king 'Cafetal' 500 hilos",
-      "descripcion": "Sábanas de algodón egipcio, colores tierra, para cama king.",
-      "precio": {
-        "centavos": 21950000,
-        "moneda": "COP"
-      },
-      "categoria": "hogar",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_3830b8abd98a",
-      "comercio_id": "com_7b5b69704135",
-      "nombre": "Lámpara de pie 'Bambuco' en ratán",
-      "descripcion": "Lámpara artesanal con pantalla de ratán natural, iluminación cálida.",
-      "precio": {
-        "centavos": 28900000,
-        "moneda": "COP"
-      },
-      "categoria": "hogar",
-      "disponibilidad": "pedido_anticipado"
-    },
-    {
-      "producto_id": "prd_988bc8638ec2",
-      "comercio_id": "com_7b5b69704135",
-      "nombre": "Cocina integral 'Santander' medida 2.4m",
-      "descripcion": "Módulos de cocina en MDF con acabado mate y herrajes importados.",
-      "precio": {
-        "centavos": 379000000,
-        "moneda": "COP"
-      },
-      "categoria": "hogar",
-      "disponibilidad": "agotado"
-    },
-    {
-      "producto_id": "prd_8d4b0c872f5f",
-      "comercio_id": "com_7b5b69704135",
-      "nombre": "Espejo redondo 'Malecón' con marco dorado",
-      "descripcion": "Espejo decorativo de 80cm de diámetro, marco metálico en dorado antiguo.",
-      "precio": {
-        "centavos": 14850000,
-        "moneda": "COP"
-      },
-      "categoria": "hogar",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_3b5b2fe1255a",
-      "comercio_id": "com_1436a00979e5",
-      "nombre": "Bandeja Paisa",
-      "descripcion": "Frijoles, arroz, carne molida, chicharrón, huevo frito, aguacate, arepa, morcilla y chorizo.",
-      "precio": {
-        "centavos": 2890000,
-        "moneda": "COP"
-      },
-      "categoria": "restaurantes",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_6d8c6ae5f550",
-      "comercio_id": "com_1436a00979e5",
-      "nombre": "Ajiaco Santafereño",
-      "descripcion": "Sopa cremosa de papa con pollo, maíz y guascas, acompañada de alcaparras, crema de leche y aguacate.",
-      "precio": {
-        "centavos": 2350000,
-        "moneda": "COP"
-      },
-      "categoria": "restaurantes",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_9b5dff3e38f5",
-      "comercio_id": "com_1436a00979e5",
-      "nombre": "Sancocho de Gallina",
-      "descripcion": "Caldo de gallina criolla con yuca, plátano, papa y mazorca, servido con arroz y ají.",
-      "precio": {
-        "centavos": 2590000,
-        "moneda": "COP"
-      },
-      "categoria": "restaurantes",
-      "disponibilidad": "pedido_anticipado"
-    },
-    {
-      "producto_id": "prd_666e751435f3",
-      "comercio_id": "com_1436a00979e5",
-      "nombre": "Mazamorra con Queso",
-      "descripcion": "Postre tradicional de maíz blanco con queso costeño, ideal para compartir.",
-      "precio": {
-        "centavos": 800000,
-        "moneda": "COP"
-      },
-      "categoria": "restaurantes",
-      "disponibilidad": "agotado"
-    },
-    {
-      "producto_id": "prd_56a0c926aec3",
-      "comercio_id": "com_1436a00979e5",
-      "nombre": "Limonada de Coco",
-      "descripcion": "Bebida refrescante de coco con limón, endulzada con panela, servida con hielo.",
-      "precio": {
-        "centavos": 750000,
-        "moneda": "COP"
-      },
-      "categoria": "restaurantes",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_0a9fef9638e1",
-      "comercio_id": "com_261844005640",
-      "nombre": "Cien años de soledad (Edición conmemorativa)",
-      "descripcion": "Edición especial de la novela de Gabriel García Márquez, con tapa dura y prólogo de Juan Gabriel Vásquez. Incluye ilustraciones de la cienañera Macondo.",
-      "precio": {
-        "centavos": 6800000,
-        "moneda": "COP"
-      },
-      "categoria": "libros",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_22b85a178427",
-      "comercio_id": "com_261844005640",
-      "nombre": "La vorágine (Edición crítica)",
-      "descripcion": "Edición anotada de la obra de José Eustasio Rivera, con estudios introductorios y mapas de la selva amazónica. Ideal para académicos y amantes de la literatura.",
-      "precio": {
-        "centavos": 4250000,
-        "moneda": "COP"
-      },
-      "categoria": "libros",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_9fc5b48be055",
-      "comercio_id": "com_261844005640",
-      "nombre": "El olvido que seremos",
-      "descripcion": "Novela de Héctor Abad Faciolince sobre su padre, el médico Héctor Abad Gómez, y la violencia en Medellín. Nueva edición conmemorativa.",
-      "precio": {
-        "centavos": 5400000,
-        "moneda": "COP"
-      },
-      "categoria": "libros",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_a0803527e71f",
-      "comercio_id": "com_261844005640",
-      "nombre": "Poesía completa de Piedad Bonnett",
-      "descripcion": "Recopilación de todos los poemarios de Piedad Bonnett hasta 2024, incluyendo inéditos. Incluye entrevista y cronología.",
-      "precio": {
-        "centavos": 7800000,
-        "moneda": "COP"
-      },
-      "categoria": "libros",
-      "disponibilidad": "pedido_anticipado"
-    },
-    {
-      "producto_id": "prd_a0a4e2e5387f",
-      "comercio_id": "com_261844005640",
-      "nombre": "Historia secreta de Bogotá",
-      "descripcion": "Ensayo ilustrado del historiador Andrés Otálora sobre los mitos y orígenes ocultos de la capital, desde la leyenda de la Llorona hasta los túneles de la Candelaria.",
-      "precio": {
-        "centavos": 6200000,
-        "moneda": "COP"
-      },
-      "categoria": "libros",
-      "disponibilidad": "agotado"
-    },
-    {
-      "producto_id": "prd_4597d64a1fe9",
-      "comercio_id": "com_6fb0a13bdd8b",
-      "nombre": "Bombón de chocolate relleno",
-      "descripcion": "Bombón de chocolate con leche relleno de arequipe.",
+      "producto_id": "prd_e4544c48a5f2",
+      "comercio_id": "com_a6066287f648",
+      "nombre": "Chocolatina Cremosa",
+      "descripcion": "Chocolatina de leche cremosa, tableta individual de 30 g.",
       "precio": {
         "centavos": 150000,
         "moneda": "COP"
@@ -364,10 +29,10 @@
       "disponibilidad": "en_stock"
     },
     {
-      "producto_id": "prd_a66204e53faf",
-      "comercio_id": "com_6fb0a13bdd8b",
-      "nombre": "Paquete de gomitas surtidas",
-      "descripcion": "Gomitas de frutas surtidas, bolsa de 100 gramos.",
+      "producto_id": "prd_6d62e0e1ebe9",
+      "comercio_id": "com_a6066287f648",
+      "nombre": "Bolsa de Gomitas Surtidas",
+      "descripcion": "Gomitas de frutas surtidas, bolsa individual de 40 g.",
       "precio": {
         "centavos": 160000,
         "moneda": "COP"
@@ -376,10 +41,10 @@
       "disponibilidad": "en_stock"
     },
     {
-      "producto_id": "prd_acaa9eddfd7d",
-      "comercio_id": "com_6fb0a13bdd8b",
-      "nombre": "Chicle de menta x10",
-      "descripcion": "Paquete de 10 unidades de chicle sabor menta.",
+      "producto_id": "prd_80ef505c3fa7",
+      "comercio_id": "com_a6066287f648",
+      "nombre": "Paleta de Caramelo Grande",
+      "descripcion": "Paleta de caramelo macizo sabor a fresa, tamaño grande.",
       "precio": {
         "centavos": 150000,
         "moneda": "COP"
@@ -388,10 +53,10 @@
       "disponibilidad": "en_stock"
     },
     {
-      "producto_id": "prd_b2fc1c39a178",
-      "comercio_id": "com_6fb0a13bdd8b",
-      "nombre": "Caramelo de leche artesanal",
-      "descripcion": "Caramelo de leche hecho a mano, receta tradicional.",
+      "producto_id": "prd_691275d14b1f",
+      "comercio_id": "com_a6066287f648",
+      "nombre": "Chicles de Menta x10",
+      "descripcion": "Paquete de 10 chicles sabor menta fuerte.",
       "precio": {
         "centavos": 170000,
         "moneda": "COP"
@@ -400,10 +65,10 @@
       "disponibilidad": "en_stock"
     },
     {
-      "producto_id": "prd_3548881d813a",
-      "comercio_id": "com_6fb0a13bdd8b",
-      "nombre": "Paleta de dulce de coco",
-      "descripcion": "Paleta artesanal de coco rallado y panela.",
+      "producto_id": "prd_1c70dcd42208",
+      "comercio_id": "com_a6066287f648",
+      "nombre": "Galletas Rellenas de Chocolate",
+      "descripcion": "Paquete de galletas rellenas con crema de chocolate, 3 unidades.",
       "precio": {
         "centavos": 180000,
         "moneda": "COP"
@@ -412,10 +77,70 @@
       "disponibilidad": "en_stock"
     },
     {
-      "producto_id": "prd_27fbff26f62f",
-      "comercio_id": "com_6fb0a13bdd8b",
-      "nombre": "Rollo de regaliz",
-      "descripcion": "Rollo de regaliz de frutas, 80 gramos.",
+      "producto_id": "prd_0d054f0f2dec",
+      "comercio_id": "com_a6066287f648",
+      "nombre": "Bombones de Leche x6",
+      "descripcion": "Caja pequeña con 6 bombones de chocolate con leche.",
+      "precio": {
+        "centavos": 190000,
+        "moneda": "COP"
+      },
+      "categoria": "confites",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_fa42366af765",
+      "comercio_id": "com_a6066287f648",
+      "nombre": "Caramelos Ácidos Surtidos",
+      "descripcion": "Bolsa de caramelos ácidos de sabores surtidos, 50 g.",
+      "precio": {
+        "centavos": 150000,
+        "moneda": "COP"
+      },
+      "categoria": "confites",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_73d6e86a9afc",
+      "comercio_id": "com_a6066287f648",
+      "nombre": "Barra de Maní Garrapiñado",
+      "descripcion": "Barra crocante de maní garrapiñado, 35 g.",
+      "precio": {
+        "centavos": 170000,
+        "moneda": "COP"
+      },
+      "categoria": "confites",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_0fa2d060b922",
+      "comercio_id": "com_a6066287f648",
+      "nombre": "Mini Donas Glaseadas x3",
+      "descripcion": "Paquete de 3 mini donas con glaseado dulce.",
+      "precio": {
+        "centavos": 190000,
+        "moneda": "COP"
+      },
+      "categoria": "confites",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_35448c400ac4",
+      "comercio_id": "com_a6066287f648",
+      "nombre": "Chupetas de Frutas x5",
+      "descripcion": "Paquete de 5 chupetas pequeñas sabor a frutas.",
+      "precio": {
+        "centavos": 160000,
+        "moneda": "COP"
+      },
+      "categoria": "confites",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_63d879a4e272",
+      "comercio_id": "com_a6066287f648",
+      "nombre": "Chocolate con Almendras",
+      "descripcion": "Tableta de chocolate con trozos de almendra, 25 g.",
       "precio": {
         "centavos": 200000,
         "moneda": "COP"
@@ -424,10 +149,22 @@
       "disponibilidad": "en_stock"
     },
     {
-      "producto_id": "prd_19cacb2b27ac",
-      "comercio_id": "com_787e7bee6302",
-      "nombre": "Lápiz de grafito HB",
-      "descripcion": "Lápiz de grafito HB, ideal para escritura y dibujo escolar.",
+      "producto_id": "prd_58d5584b71cc",
+      "comercio_id": "com_a6066287f648",
+      "nombre": "Malvaviscos Cubiertos de Chocolate",
+      "descripcion": "Bolsa de malvaviscos bañados en chocolate, 6 unidades.",
+      "precio": {
+        "centavos": 180000,
+        "moneda": "COP"
+      },
+      "categoria": "confites",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_9bf6b5f4049c",
+      "comercio_id": "com_77405f295d71",
+      "nombre": "Lápiz de Grafito HB",
+      "descripcion": "Lápiz de grafito HB, cuerpo hexagonal de madera.",
       "precio": {
         "centavos": 150000,
         "moneda": "COP"
@@ -436,9 +173,9 @@
       "disponibilidad": "en_stock"
     },
     {
-      "producto_id": "prd_39c81d34f2fb",
-      "comercio_id": "com_787e7bee6302",
-      "nombre": "Borrador blanco",
+      "producto_id": "prd_3f444f752686",
+      "comercio_id": "com_77405f295d71",
+      "nombre": "Borrador de Nata Blanco",
       "descripcion": "Borrador de nata blanco, no mancha el papel.",
       "precio": {
         "centavos": 150000,
@@ -448,34 +185,22 @@
       "disponibilidad": "en_stock"
     },
     {
-      "producto_id": "prd_9ddf5731f1e2",
-      "comercio_id": "com_787e7bee6302",
-      "nombre": "Sacapuntas manual",
-      "descripcion": "Sacapuntas metálico de un solo orificio.",
+      "producto_id": "prd_f5ded03ed040",
+      "comercio_id": "com_77405f295d71",
+      "nombre": "Sacapuntas Metálico",
+      "descripcion": "Sacapuntas metálico de un solo orificio, con depósito.",
       "precio": {
-        "centavos": 170000,
+        "centavos": 160000,
         "moneda": "COP"
       },
       "categoria": "papeleria",
       "disponibilidad": "en_stock"
     },
     {
-      "producto_id": "prd_610d4a12e232",
-      "comercio_id": "com_787e7bee6302",
-      "nombre": "Paquete de post-its",
-      "descripcion": "Bloc de notas adhesivas, 50 hojas, colores surtidos.",
-      "precio": {
-        "centavos": 190000,
-        "moneda": "COP"
-      },
-      "categoria": "papeleria",
-      "disponibilidad": "en_stock"
-    },
-    {
-      "producto_id": "prd_4d3b12cf4fa1",
-      "comercio_id": "com_787e7bee6302",
-      "nombre": "Marcador resaltador",
-      "descripcion": "Resaltador fluorescente, punta biselada.",
+      "producto_id": "prd_2ccc9b640d47",
+      "comercio_id": "com_77405f295d71",
+      "nombre": "Cuaderno Pequeño Cuadriculado",
+      "descripcion": "Cuaderno de 50 hojas cuadriculadas, tamaño bolsillo.",
       "precio": {
         "centavos": 200000,
         "moneda": "COP"
@@ -484,12 +209,96 @@
       "disponibilidad": "en_stock"
     },
     {
-      "producto_id": "prd_dd08a1f0d0e9",
-      "comercio_id": "com_787e7bee6302",
-      "nombre": "Regla de 20 cm",
-      "descripcion": "Regla plástica transparente de 20 centímetros.",
+      "producto_id": "prd_0eaa5421cf4a",
+      "comercio_id": "com_77405f295d71",
+      "nombre": "Marcador Fluorescente",
+      "descripcion": "Marcador resaltador de punta biselada, tinta fluorescente.",
+      "precio": {
+        "centavos": 180000,
+        "moneda": "COP"
+      },
+      "categoria": "papeleria",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_30eb1af7efa3",
+      "comercio_id": "com_77405f295d71",
+      "nombre": "Bolígrafo de Gel Negro",
+      "descripcion": "Bolígrafo de tinta gel negra, punta de 0.7 mm.",
+      "precio": {
+        "centavos": 170000,
+        "moneda": "COP"
+      },
+      "categoria": "papeleria",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_9d9040b0c865",
+      "comercio_id": "com_77405f295d71",
+      "nombre": "Corrector Líquido",
+      "descripcion": "Corrector líquido tipo lápiz, secado rápido.",
+      "precio": {
+        "centavos": 190000,
+        "moneda": "COP"
+      },
+      "categoria": "papeleria",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_859b1770e640",
+      "comercio_id": "com_77405f295d71",
+      "nombre": "Regla de 15 cm",
+      "descripcion": "Regla plástica transparente de 15 centímetros.",
       "precio": {
         "centavos": 160000,
+        "moneda": "COP"
+      },
+      "categoria": "papeleria",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_d627480f9c64",
+      "comercio_id": "com_77405f295d71",
+      "nombre": "Tijeras Escolares Punta Roma",
+      "descripcion": "Tijeras escolares de punta roma, mango ergonómico.",
+      "precio": {
+        "centavos": 190000,
+        "moneda": "COP"
+      },
+      "categoria": "papeleria",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_4124742a3a1a",
+      "comercio_id": "com_77405f295d71",
+      "nombre": "Pegante en Barra",
+      "descripcion": "Barra de pegante escolar, 8 g, lavable.",
+      "precio": {
+        "centavos": 170000,
+        "moneda": "COP"
+      },
+      "categoria": "papeleria",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_1827833e4fa4",
+      "comercio_id": "com_77405f295d71",
+      "nombre": "Resaltador Amarillo",
+      "descripcion": "Resaltador de tinta amarilla, punta biselada.",
+      "precio": {
+        "centavos": 160000,
+        "moneda": "COP"
+      },
+      "categoria": "papeleria",
+      "disponibilidad": "en_stock"
+    },
+    {
+      "producto_id": "prd_39d17a5f5c28",
+      "comercio_id": "com_77405f295d71",
+      "nombre": "Paquete de Post-it Pequeño",
+      "descripcion": "Bloc de notas adhesivas pequeñas, 50 hojas.",
+      "precio": {
+        "centavos": 200000,
         "moneda": "COP"
       },
       "categoria": "papeleria",

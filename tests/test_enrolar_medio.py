@@ -1,17 +1,28 @@
 """`EnrolarMedio`: token -> sondeo -> confirmacion -> `RepositorioMedios.
 guardar`. Un doble de pasarela controla exactamente cuantas veces hay que
 sondear antes de llegar a un estado final, para no depender de `time.sleep`
-real en la prueba (se pasa `pausa_seg=0`)."""
+real en la prueba (se pasa `pausa_seg=0`).
+
+MULTI-COMERCIO: los tres pasos y `EnrolarMedio` reciben un
+`SelectorDePasarela`, no una `PasarelaDePagos` fija. Estas pruebas usan
+`RegistroDePasarelas({}, por_defecto=pasarela)` -- la unica pasarela falsa
+resuelve para cualquier `comercio_id`, que es exactamente el comportamiento
+de `AGORA_PASARELA=simulada` en produccion -- y mandan un `comercio_id` fijo
+("com_1") en cada llamada, ya que lo que se prueba aca es el sondeo, no el
+ruteo por comercio (eso lo cubre `test_emitir_mandato.py`)."""
 
 from __future__ import annotations
 
 import pytest
 
+from agora.adaptadores.pasarelas.registro import RegistroDePasarelas
 from agora.adaptadores.persistencia.memoria import RepositorioMediosEnMemoria
 from agora.aplicacion.enrolar_medio import EnrolarMedio
 from agora.dominio.comun.errores import MedioNoAprobado
 from agora.dominio.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
 from agora.puertos.pasarela import EstadoMedio, MedioEnProceso
+
+COMERCIO_ID = "com_1"
 
 
 class _BitacoraEnLista:
@@ -50,10 +61,14 @@ class _PasarelaFalsa:
         return EstadoMedio(estado="AVAILABLE", ref=ref)
 
 
+def _selector(pasarela: _PasarelaFalsa) -> RegistroDePasarelas:
+    return RegistroDePasarelas({}, por_defecto=pasarela)
+
+
 def _armar(pasarela: _PasarelaFalsa) -> tuple[EnrolarMedio, RepositorioMediosEnMemoria]:
     medios = RepositorioMediosEnMemoria()
     enrolar = EnrolarMedio(
-        pasarela=pasarela, medios=medios, bitacora=_BitacoraEnLista(),
+        selector_pasarela=_selector(pasarela), medios=medios, bitacora=_BitacoraEnLista(),
         ambiente=Ambiente.SANDBOX, espera_seg=0.05, pausa_seg=0,
     )
     return enrolar, medios
@@ -63,7 +78,7 @@ def test_camino_feliz_sondea_hasta_aprobado_y_guarda_el_medio():
     pasarela = _PasarelaFalsa(estados_token=["PENDING", "PENDING", "APPROVED"])
     enrolar, medios = _armar(pasarela)
 
-    ref = enrolar("3001234567", "titular@correo.com", "tit_1")
+    ref = enrolar("3001234567", "titular@correo.com", "tit_1", COMERCIO_ID)
 
     assert ref.id_externo == "src_nuevo"
     assert medios.vivos("tit_1", Ambiente.SANDBOX) == [ref]
@@ -74,7 +89,7 @@ def test_token_que_nunca_llega_a_approved_levanta():
     enrolar, medios = _armar(pasarela)
 
     with pytest.raises(MedioNoAprobado):
-        enrolar("3001234567", "titular@correo.com", "tit_1")
+        enrolar("3001234567", "titular@correo.com", "tit_1", COMERCIO_ID)
     assert medios.vivos("tit_1", Ambiente.SANDBOX) == []
 
 
@@ -83,7 +98,7 @@ def test_token_declinado_levanta_sin_llamar_a_confirmar():
     enrolar, _ = _armar(pasarela)
 
     with pytest.raises(MedioNoAprobado):
-        enrolar("3001234567", "titular@correo.com", "tit_1")
+        enrolar("3001234567", "titular@correo.com", "tit_1", COMERCIO_ID)
     assert pasarela.llamadas_confirmar == 0
 
 
@@ -92,7 +107,7 @@ def test_confirmacion_que_no_queda_disponible_levanta():
     enrolar, medios = _armar(pasarela)
 
     with pytest.raises(MedioNoAprobado):
-        enrolar("3001234567", "titular@correo.com", "tit_1")
+        enrolar("3001234567", "titular@correo.com", "tit_1", COMERCIO_ID)
     assert medios.vivos("tit_1", Ambiente.SANDBOX) == []
 
 
@@ -101,7 +116,10 @@ def test_al_avanzar_recibe_las_etapas():
     enrolar, _ = _armar(pasarela)
     vistas: list[str] = []
 
-    enrolar("3001234567", "titular@correo.com", "tit_1", al_avanzar=lambda etapa, _d: vistas.append(etapa))
+    enrolar(
+        "3001234567", "titular@correo.com", "tit_1", COMERCIO_ID,
+        al_avanzar=lambda etapa, _d: vistas.append(etapa),
+    )
 
     assert vistas == ["token", "sondeo", "lista"]
 
@@ -119,9 +137,9 @@ from agora.aplicacion.enrolar_medio import (
 
 def test_iniciar_enrolamiento_devuelve_el_proceso_sin_bloquear():
     pasarela = _PasarelaFalsa(estados_token=["PENDING"])
-    iniciar = IniciarEnrolamiento(pasarela=pasarela, ambiente=Ambiente.SANDBOX)
+    iniciar = IniciarEnrolamiento(selector_pasarela=_selector(pasarela), ambiente=Ambiente.SANDBOX)
 
-    proceso = iniciar("3001234567", "titular@correo.com")
+    proceso = iniciar("3001234567", "titular@correo.com", COMERCIO_ID)
 
     assert proceso.token == "tok_1"
     assert proceso.estado == "PENDING"
@@ -130,9 +148,9 @@ def test_iniciar_enrolamiento_devuelve_el_proceso_sin_bloquear():
 def test_consultar_enrolamiento_delega_en_la_pasarela():
     pasarela = _PasarelaFalsa(estados_token=["PENDING", "APPROVED"])
     pasarela.preparar_medio(None)  # consume el primer estado, como haria iniciar()
-    consultar = ConsultarEnrolamiento(pasarela=pasarela)
+    consultar = ConsultarEnrolamiento(selector_pasarela=_selector(pasarela))
 
-    estado = consultar("tok_1")
+    estado = consultar("tok_1", COMERCIO_ID)
 
     assert estado.estado == "APPROVED"
 
@@ -141,9 +159,9 @@ def test_confirmar_enrolamiento_guarda_el_medio_cuando_el_estado_es_approved():
     pasarela = _PasarelaFalsa(estados_token=["APPROVED"])
     medios = RepositorioMediosEnMemoria()
     bitacora = _BitacoraEnLista()
-    confirmar = ConfirmarEnrolamiento(pasarela=pasarela, medios=medios, bitacora=bitacora)
+    confirmar = ConfirmarEnrolamiento(selector_pasarela=_selector(pasarela), medios=medios, bitacora=bitacora)
 
-    ref = confirmar("tok_1", "titular@correo.com", "tit_1", "APPROVED")
+    ref = confirmar("tok_1", "titular@correo.com", "tit_1", "APPROVED", COMERCIO_ID)
 
     assert ref.id_externo == "src_nuevo"
     assert medios.vivos("tit_1", Ambiente.SANDBOX) == [ref]
@@ -154,10 +172,10 @@ def test_confirmar_enrolamiento_guarda_el_medio_cuando_el_estado_es_approved():
 def test_confirmar_enrolamiento_no_confirma_si_el_estado_token_no_es_approved():
     pasarela = _PasarelaFalsa(estados_token=["DECLINED"])
     medios = RepositorioMediosEnMemoria()
-    confirmar = ConfirmarEnrolamiento(pasarela=pasarela, medios=medios, bitacora=_BitacoraEnLista())
+    confirmar = ConfirmarEnrolamiento(selector_pasarela=_selector(pasarela), medios=medios, bitacora=_BitacoraEnLista())
 
     with pytest.raises(MedioNoAprobado):
-        confirmar("tok_1", "titular@correo.com", "tit_1", "DECLINED")
+        confirmar("tok_1", "titular@correo.com", "tit_1", "DECLINED", COMERCIO_ID)
 
     assert pasarela.llamadas_confirmar == 0
     assert medios.vivos("tit_1", Ambiente.SANDBOX) == []
@@ -166,9 +184,9 @@ def test_confirmar_enrolamiento_no_confirma_si_el_estado_token_no_es_approved():
 def test_confirmar_enrolamiento_levanta_si_la_pasarela_no_deja_el_medio_disponible():
     pasarela = _PasarelaFalsa(estados_token=["APPROVED"], estado_confirmacion="DECLINED")
     medios = RepositorioMediosEnMemoria()
-    confirmar = ConfirmarEnrolamiento(pasarela=pasarela, medios=medios, bitacora=_BitacoraEnLista())
+    confirmar = ConfirmarEnrolamiento(selector_pasarela=_selector(pasarela), medios=medios, bitacora=_BitacoraEnLista())
 
     with pytest.raises(MedioNoAprobado):
-        confirmar("tok_1", "titular@correo.com", "tit_1", "APPROVED")
+        confirmar("tok_1", "titular@correo.com", "tit_1", "APPROVED", COMERCIO_ID)
 
     assert medios.vivos("tit_1", Ambiente.SANDBOX) == []

@@ -98,9 +98,36 @@ class RepositorioMandatos(Protocol):
 
 
 class RepositorioMedios(Protocol):
-    def guardar(self, ref: MedioDePagoRef, titular_id: str) -> None: ...
+    """Multi-comercio (evaluacion del 1 de septiembre de 2026, `docs/
+    viabilidad-multi-comercio-wompi.md`): un `payment_source_id` de Wompi
+    esta atado al comercio (a la llave publica) que lo creo, no es portable
+    entre comercios aunque los tres usen Wompi -- asi que "vinculo" no es
+    "vivo": un titular puede tener varios medios vivos y ninguno vinculado
+    al comercio en el que quiere comprar ahora. `guardar` registra bajo que
+    comercio nacio cada medio; `vinculado_con` es la pregunta que evita
+    pedirle al titular un enrolamiento (un push mas) que ya hizo antes para
+    ese comercio puntual."""
+
+    def guardar(self, ref: MedioDePagoRef, titular_id: str, comercio_id: str) -> None: ...
 
     def vivos(self, titular_id: str, ambiente: Ambiente) -> list[MedioDePagoRef]: ...
+
+    def vinculado_con(
+        self, titular_id: str, comercio_id: str, ambiente: Ambiente
+    ) -> MedioDePagoRef | None:
+        """El medio vivo mas reciente que este titular ya vinculo con este
+        comercio, o `None` si nunca enrolo uno para el -- en ese caso hace
+        falta un enrolamiento nuevo, dirigido a `comercio_id`
+        (`aplicacion/enrolar_medio.py`), antes de poder firmar un mandato
+        contra el (`aplicacion/emitir_mandato.py`)."""
+        ...
+
+    def comercio_de(self, ref: MedioDePagoRef) -> str | None:
+        """Bajo que comercio se creo este medio, o `None` si el medio no
+        esta registrado. Lo usa `RevocarMedio` para resolver con que
+        pasarela pedir la revocacion sin que quien llame tenga que volver a
+        pasar el `comercio_id` a mano."""
+        ...
 
     def marcar_estado(self, ref: MedioDePagoRef, estado: str) -> None: ...
 

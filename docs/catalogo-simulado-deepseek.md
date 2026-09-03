@@ -37,10 +37,24 @@ prueba nueva toca la red real ni una llave de DeepSeek de verdad —
 que el adaptador usa (`.chat.completions.create(...)`), y
 `GenerarCatalogoSemilla` con un `ModeloDeLenguaje` que devuelve texto fijo.
 
+## Actualizacion (1 de septiembre de 2026): el placeholder ya no es TecnoX/LibroSur
+
+El catalogo de esta seccion (TecnoX, LibroSur) fue reemplazado por uno
+nuevo — 2 comercios reales del proyecto (Dulceria La Golosina, Papeleria
+El Lapiz Feliz), 12 productos cada uno, precios entre 1.500 y 2.000 COP —
+escrito a mano igual que el original, todavia sin pasar por
+`scripts/generar_catalogo_semilla.py`/DeepSeek. El resto de esta seccion
+describe el catalogo VIEJO (por que existia, como se generaria con
+DeepSeek) y sigue siendo valido como explicacion del mecanismo; solo el
+contenido concreto de `catalogo.json` cambio. Ver `docs/
+viabilidad-multi-comercio-wompi.md` para el porque del reemplazo
+(multi-comercio).
+
 ## El `catalogo.json` que se entrega es un placeholder
 
 `adaptadores/catalogo/semilla/datos/catalogo.json` trae dos comercios de
-ejemplo (TecnoX, LibroSur) escritos a mano con el propio código de
+ejemplo (TecnoX, LibroSur, al momento de escribir esta seccion — ver la
+actualizacion de arriba) escritos a mano con el propio código de
 serialización del proyecto — **no** se generaron con DeepSeek todavía,
 porque esta sesión no tiene una llave de DeepSeek configurada. Están ahí
 únicamente para que `RepositorioCatalogoSemilla` (y `Contenedor.construir()`,

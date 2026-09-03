@@ -26,6 +26,7 @@ from agora.dominio.comun.errores import (
     PropuestaDesconocida,
     PropuestaInvalida,
     SinMedioDePagoVivo,
+    SinMedioVinculadoAlComercio,
 )
 from agora.dominio.mandato.modelo import PropuestaDeMandato
 from agora.dominio.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
@@ -73,7 +74,9 @@ def _armar(tmp_path, con_medio: bool = True):
     propuestas.guardar(_propuesta())
     medios = RepositorioMediosEnMemoria()
     if con_medio:
-        medios.guardar(MedioDePagoRef(Proveedor.SIMULADA, Ambiente.SANDBOX, "src_1"), "tit_1")
+        # "com_1": el mismo comercio de `_carrito()`/`_propuesta()` -- este
+        # medio esta VINCULADO a ese comercio, no solo "vivo".
+        medios.guardar(MedioDePagoRef(Proveedor.SIMULADA, Ambiente.SANDBOX, "src_1"), "tit_1", "com_1")
     mandatos = RepositorioMandatosEnMemoria()
     firmante = cargar_o_generar_firmante(tmp_path / "firma.sk", tmp_path / "firma.pk")
     emitir = EmitirMandato(
@@ -117,14 +120,21 @@ def test_propuesta_desconocida_levanta(tmp_path):
         emitir("prp_nunca_existio", "tit_1")
 
 
-def test_usa_el_medio_mas_reciente(tmp_path):
+def test_usa_el_medio_mas_reciente_vinculado_a_ese_comercio(tmp_path):
+    """Multi-comercio: "el mas reciente" ya no es global -- es el mas
+    reciente ENTRE los vinculados a `propuesta.comercio_id` ("com_1"). Un
+    medio vinculado a otro comercio ("com_ajeno") no es candidato aunque sea
+    mas nuevo que cualquiera de los de "com_1"."""
     carritos = RepositorioCarritosEnMemoria()
     carritos.guardar(_carrito())
     propuestas = RepositorioPropuestasEnMemoria()
     propuestas.guardar(_propuesta())
     medios = RepositorioMediosEnMemoria()
-    medios.guardar(MedioDePagoRef(Proveedor.SIMULADA, Ambiente.SANDBOX, "src_viejo"), "tit_1")
-    medios.guardar(MedioDePagoRef(Proveedor.SIMULADA, Ambiente.SANDBOX, "src_nuevo"), "tit_1")
+    medios.guardar(MedioDePagoRef(Proveedor.SIMULADA, Ambiente.SANDBOX, "src_viejo"), "tit_1", "com_1")
+    medios.guardar(MedioDePagoRef(Proveedor.SIMULADA, Ambiente.SANDBOX, "src_nuevo"), "tit_1", "com_1")
+    # Mas nuevo que los dos anteriores, pero vinculado a OTRO comercio: no
+    # deberia poder elegirse para firmar contra "com_1".
+    medios.guardar(MedioDePagoRef(Proveedor.SIMULADA, Ambiente.SANDBOX, "src_ajeno"), "tit_1", "com_ajeno")
     firmante = cargar_o_generar_firmante(tmp_path / "firma.sk", tmp_path / "firma.pk")
     emitir = EmitirMandato(
         carritos=carritos, propuestas=propuestas, medios=medios,
@@ -135,3 +145,28 @@ def test_usa_el_medio_mas_reciente(tmp_path):
     mandato = emitir("prp_1", "tit_1")
 
     assert mandato.medio.id_externo == "src_nuevo"
+
+
+def test_medio_vivo_pero_de_otro_comercio_levanta_sin_medio_vinculado(tmp_path):
+    """El caso central de la vinculacion por comercio (1 de septiembre de
+    2026): el titular SI tiene un medio vivo -- lo enrolo para comprar en
+    otro comercio -- pero nunca lo vinculo con "com_1". Tiene que levantar
+    `SinMedioVinculadoAlComercio`, NUNCA `SinMedioDePagoVivo` (esa es para
+    "no enrolo nada todavia") -- son dos situaciones distintas y quien
+    reciba el error necesita distinguirlas para saber si hay que enrolar
+    por primera vez o solo vincular un comercio nuevo."""
+    carritos = RepositorioCarritosEnMemoria()
+    carritos.guardar(_carrito())
+    propuestas = RepositorioPropuestasEnMemoria()
+    propuestas.guardar(_propuesta())
+    medios = RepositorioMediosEnMemoria()
+    medios.guardar(MedioDePagoRef(Proveedor.SIMULADA, Ambiente.SANDBOX, "src_1"), "tit_1", "com_otro")
+    firmante = cargar_o_generar_firmante(tmp_path / "firma.sk", tmp_path / "firma.pk")
+    emitir = EmitirMandato(
+        carritos=carritos, propuestas=propuestas, medios=medios,
+        mandatos=RepositorioMandatosEnMemoria(), firmante=firmante, ids=GeneradorIdsUuid(),
+        reloj=_RelojFijo(AHORA), bitacora=_BitacoraEnLista(), ambiente=Ambiente.SANDBOX,
+    )
+
+    with pytest.raises(SinMedioVinculadoAlComercio):
+        emitir("prp_1", "tit_1")

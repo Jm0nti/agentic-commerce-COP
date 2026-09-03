@@ -8,6 +8,18 @@ para estar completa: que pasarela usar.
 
 `docs/arquitectura-v2.md`, tabla de la seccion 2: `composicion/` puede
 importar todo; nadie puede importar a `composicion/`.
+
+MULTI-COMERCIO (1 de septiembre de 2026)
+-----------------------------------------
+Antes se armaba UNA `PasarelaDePagos` por proceso. Ahora se arma un
+`SelectorDePasarela` (`RegistroDePasarelas`): con `AGORA_PASARELA=wompi`,
+UN `AdaptadorWompi` por cada comercio de `config.wompi` (cada uno con sus
+propias credenciales -- HTTP y verificacion de checksum de eventos
+completamente separados entre comercios, ni un secreto se mezcla con el de
+otro); con `AGORA_PASARELA=simulada` (el default), un unico `AdaptadorSimulado`
+que resuelve para cualquier `comercio_id` -- no hace falta credenciales por
+comercio para una demo sin dinero real. Ver `docs/viabilidad-multi-comercio-
+wompi.md`.
 """
 
 from __future__ import annotations
@@ -16,6 +28,7 @@ from dataclasses import dataclass
 
 from ..adaptadores.catalogo.semilla import RepositorioCatalogoSemilla
 from ..adaptadores.llm.deepseek import AdaptadorDeepSeek, ConfiguracionDeepSeek
+from ..adaptadores.pasarelas.registro import RegistroDePasarelas
 from ..adaptadores.pasarelas.simulada import AdaptadorSimulado, GuionSimulado
 from ..adaptadores.pasarelas.wompi import AdaptadorWompi
 from ..adaptadores.persistencia.memoria import (
@@ -58,7 +71,7 @@ from ..dominio.pago.topes import TopesDuros
 from ..puertos.catalogo import RepositorioCatalogo
 from ..puertos.firma import Firmante
 from ..puertos.modelo_lenguaje import ModeloDeLenguaje
-from ..puertos.pasarela import PasarelaDePagos
+from ..puertos.pasarela import SelectorDePasarela
 from ..puertos.repositorios import (
     LibroDeConsumo,
     RegistroDeEstados,
@@ -93,7 +106,11 @@ class Contenedor:
     mandatos: RepositorioMandatos
     medios: RepositorioMedios
     consumo: LibroDeConsumo
-    pasarela: PasarelaDePagos
+    # Multi-comercio: ya no una `PasarelaDePagos` fija -- ver el docstring
+    # del modulo. `scripts/demo_etapa_4.py` y cualquier otro punto de
+    # entrada que necesite "la pasarela" ahora pide `selector_pasarela.
+    # para(comercio_id)`.
+    selector_pasarela: SelectorDePasarela
     catalogo: RepositorioCatalogo
     reloj: Reloj
     ids: GeneradorIds
@@ -158,12 +175,22 @@ def construir(
         consumo = LibroDeConsumoEnMemoria(reloj, ids)
     topes = TopesDuros()
 
-    pasarela: PasarelaDePagos
+    # Multi-comercio: un `AdaptadorWompi` por cada entrada del registro de
+    # credenciales (`config.wompi`), o un unico `AdaptadorSimulado` que
+    # resuelve para cualquier comercio. Nunca las dos cosas a la vez --
+    # `ConfiguracionAgora.__post_init__` ya exige `config.wompi` no vacio
+    # cuando `pasarela == "wompi"`, y `leer_configuracion` nunca lo llena
+    # cuando `pasarela == "simulada"`.
+    selector_pasarela: SelectorDePasarela
     if config.pasarela == "wompi":
-        assert config.wompi is not None  # ConfiguracionAgora.__post_init__ ya lo exige
-        pasarela = AdaptadorWompi(config.wompi)
+        pasarelas_por_comercio = {
+            comercio_id: AdaptadorWompi(cfg_wompi)
+            for comercio_id, cfg_wompi in config.wompi.items()
+        }
+        selector_pasarela = RegistroDePasarelas(pasarelas_por_comercio)
     else:
-        pasarela = AdaptadorSimulado(ids, config.ambiente, guion_simulado)
+        unica = AdaptadorSimulado(ids, config.ambiente, guion_simulado)
+        selector_pasarela = RegistroDePasarelas({}, por_defecto=unica)
 
     # Etapa 6 (segunda parte): sqlite si `retomar` puede correr en otra
     # terminal que la del `chat` -- que, con `agente/herramientas.py`
@@ -177,7 +204,7 @@ def construir(
     ejecutar_intencion = EjecutarIntencion(
         mandatos=mandatos,
         consumo=consumo,
-        pasarela=pasarela,
+        selector_pasarela=selector_pasarela,
         topes=topes,
         reloj=reloj,
         bitacora=bitacora,
@@ -188,7 +215,7 @@ def construir(
         estados=estados,
     )
     conciliar_evento = ConciliarEvento(
-        consumo=consumo, pasarela=pasarela, bitacora=bitacora, estados=estados,
+        consumo=consumo, selector_pasarela=selector_pasarela, bitacora=bitacora, estados=estados,
     )
     catalogo = RepositorioCatalogoSemilla()
 
@@ -224,16 +251,16 @@ def construir(
         firmante=firmante, ids=ids, reloj=reloj, bitacora=bitacora, ambiente=config.ambiente,
     )
     enrolar_medio = EnrolarMedio(
-        pasarela=pasarela, medios=medios, bitacora=bitacora, ambiente=config.ambiente,
+        selector_pasarela=selector_pasarela, medios=medios, bitacora=bitacora, ambiente=config.ambiente,
     )
     # Mismas dependencias que enrolar_medio, pero sueltas -- entradas/api/
     # las necesita para sondear el push de Nequi desde el navegador sin
     # bloquear una peticion HTTP (ver el docstring de aplicacion/
     # enrolar_medio.py).
-    iniciar_enrolamiento = IniciarEnrolamiento(pasarela, config.ambiente)
-    consultar_enrolamiento = ConsultarEnrolamiento(pasarela)
-    confirmar_enrolamiento = ConfirmarEnrolamiento(pasarela, medios, bitacora)
-    revocar_medio = RevocarMedio(pasarela=pasarela, medios=medios, bitacora=bitacora)
+    iniciar_enrolamiento = IniciarEnrolamiento(selector_pasarela, config.ambiente)
+    consultar_enrolamiento = ConsultarEnrolamiento(selector_pasarela)
+    confirmar_enrolamiento = ConfirmarEnrolamiento(selector_pasarela, medios, bitacora)
+    revocar_medio = RevocarMedio(selector_pasarela=selector_pasarela, medios=medios, bitacora=bitacora)
     consultar_estado = ConsultarEstado(estados=estados)
 
     modelo_lenguaje: ModeloDeLenguaje | None = None
@@ -251,7 +278,7 @@ def construir(
         mandatos=mandatos,
         medios=medios,
         consumo=consumo,
-        pasarela=pasarela,
+        selector_pasarela=selector_pasarela,
         catalogo=catalogo,
         reloj=reloj,
         ids=ids,

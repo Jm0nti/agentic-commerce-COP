@@ -19,28 +19,6 @@ from agora.composicion.contenedor import construir
 from agora.dominio.mandato.modelo import Intencion
 
 
-def _contenedor_con_agente(tmp_path):
-    config = leer_configuracion({
-        "AGORA_BITACORA": str(tmp_path / "recibos.jsonl"),
-        "AGORA_LLAVE_FIRMA_SK": str(tmp_path / "firma.sk"),
-        "AGORA_LLAVE_FIRMA_PK": str(tmp_path / "firma.pk"),
-        "AGORA_PERSISTENCIA": "sqlite",
-        "AGORA_SQLITE_PATH": str(tmp_path / "agora.db"),
-        "PAGADOR_EMAIL": "juan@correo-real.com",
-    })
-    contenedor = construir(config)
-    contenedor.enrolar_medio("3001234567", "titular@correo.com", "tit_1")
-    # `construir_agente` solo mira si `modelo_lenguaje` es `None` -- con
-    # cualquier otra cosa arma el Agente de verdad, con las herramientas de
-    # verdad. Las pruebas de aca abajo nunca llaman a `agente.turno`
-    # (lo unico que de verdad hablaria con un modelo), asi que un stub
-    # alcanza.
-    contenedor = replace(contenedor, modelo_lenguaje=object())
-    agente = construir_agente(contenedor)
-    assert agente is not None
-    return contenedor, agente
-
-
 def _producto_barato(contenedor):
     """Cualquier producto EN_STOCK por 20.000 COP o menos -- tiene que caber
     bajo `TopesDuros.por_transaccion` para que `pagar()` llegue hasta la
@@ -56,9 +34,35 @@ def _producto_barato(contenedor):
     raise AssertionError("el catalogo no tiene ningun producto <= 20.000 COP")
 
 
-def test_armar_carrito_le_pasa_a_la_persona_el_comando_firmar_exacto(tmp_path):
-    contenedor, agente = _contenedor_con_agente(tmp_path)
+def _contenedor_con_agente(tmp_path):
+    config = leer_configuracion({
+        "AGORA_BITACORA": str(tmp_path / "recibos.jsonl"),
+        "AGORA_LLAVE_FIRMA_SK": str(tmp_path / "firma.sk"),
+        "AGORA_LLAVE_FIRMA_PK": str(tmp_path / "firma.pk"),
+        "AGORA_PERSISTENCIA": "sqlite",
+        "AGORA_SQLITE_PATH": str(tmp_path / "agora.db"),
+        "PAGADOR_EMAIL": "juan@correo-real.com",
+    })
+    contenedor = construir(config)
+    # Multi-comercio: enrolar vincula el medio con ESTE comercio (ver el
+    # docstring de aplicacion/enrolar_medio.py) -- el comercio se descubre
+    # antes de enrolar, no despues, para que quede vinculado con el mismo
+    # comercio que usan las pruebas de aca abajo.
     comercio_id, producto_id = _producto_barato(contenedor)
+    contenedor.enrolar_medio("3001234567", "titular@correo.com", "tit_1", comercio_id)
+    # `construir_agente` solo mira si `modelo_lenguaje` es `None` -- con
+    # cualquier otra cosa arma el Agente de verdad, con las herramientas de
+    # verdad. Las pruebas de aca abajo nunca llaman a `agente.turno`
+    # (lo unico que de verdad hablaria con un modelo), asi que un stub
+    # alcanza.
+    contenedor = replace(contenedor, modelo_lenguaje=object())
+    agente = construir_agente(contenedor)
+    assert agente is not None
+    return contenedor, agente, comercio_id, producto_id
+
+
+def test_armar_carrito_le_pasa_a_la_persona_el_comando_firmar_exacto(tmp_path):
+    contenedor, agente, comercio_id, producto_id = _contenedor_con_agente(tmp_path)
 
     resultado = agente._herramientas["armar_carrito"].ejecutar(
         comercio_id=comercio_id, items=[{"producto_id": producto_id, "cantidad": 1}],
@@ -72,8 +76,7 @@ def test_armar_carrito_le_pasa_a_la_persona_el_comando_firmar_exacto(tmp_path):
 
 
 def test_pagar_le_pasa_a_la_persona_el_comando_retomar_exacto_si_queda_esperando(tmp_path):
-    contenedor, agente = _contenedor_con_agente(tmp_path)
-    comercio_id, producto_id = _producto_barato(contenedor)
+    contenedor, agente, comercio_id, producto_id = _contenedor_con_agente(tmp_path)
 
     armado = agente._herramientas["armar_carrito"].ejecutar(
         comercio_id=comercio_id, items=[{"producto_id": producto_id, "cantidad": 1}],
@@ -98,8 +101,7 @@ def test_estado_confirmado_en_otro_proceso_se_ve_desde_consultar_estado(tmp_path
     """El corazon de esta etapa: `retomar` corre en un `Contenedor`
     SEPARADO (misma sqlite) -- nunca en el que tiene el chat -- y aun asi
     `consultar_estado` del chat original tiene que ver el resultado."""
-    contenedor, agente = _contenedor_con_agente(tmp_path)
-    comercio_id, producto_id = _producto_barato(contenedor)
+    contenedor, agente, comercio_id, producto_id = _contenedor_con_agente(tmp_path)
 
     armado = agente._herramientas["armar_carrito"].ejecutar(
         comercio_id=comercio_id, items=[{"producto_id": producto_id, "cantidad": 1}],

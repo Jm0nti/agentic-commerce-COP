@@ -368,6 +368,7 @@
     <ul class="medios-lista" id="medios-lista"></ul>
 
     <form class="enrolar" id="form-enrolar">
+      <input id="enrolar-comercio" type="text" placeholder="comercio_id (con que comercio vincular)" required>
       <input id="enrolar-telefono" type="text" placeholder="Telefono (ej: 3001234567)" required>
       <input id="enrolar-correo" type="email" placeholder="Correo del titular" required>
       <button type="submit" id="enrolar-boton">Enrolar nuevo medio</button>
@@ -725,6 +726,7 @@
   const listaMedios = document.getElementById("medios-lista");
   const medioVacio = document.getElementById("medios-vacio");
   const formEnrolar = document.getElementById("form-enrolar");
+  const campoComercio = document.getElementById("enrolar-comercio");
   const campoTelefono = document.getElementById("enrolar-telefono");
   const campoCorreo = document.getElementById("enrolar-correo");
   const botonEnrolar = document.getElementById("enrolar-boton");
@@ -824,12 +826,14 @@
     else if (modalMedios.classList.contains("visible")) cerrarModalMedios();
   });
 
-  async function confirmarEnrolamiento(token, correo, titularId) {
+  async function confirmarEnrolamiento(token, correo, titularId, comercioId) {
     try {
       const resp = await fetch("/medios/enrolar/confirmar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: token, correo: correo, titular_id: titularId }),
+        body: JSON.stringify({
+          token: token, correo: correo, titular_id: titularId, comercio_id: comercioId,
+        }),
       });
       const datos = await resp.json();
       if (!resp.ok) { mostrarErrorEnrolar("No se pudo confirmar: " + (datos.detail || resp.status)); return; }
@@ -841,7 +845,7 @@
     }
   }
 
-  function sondearEnrolamiento(token, correo, titularId) {
+  function sondearEnrolamiento(token, correo, titularId, comercioId) {
     const limite = Date.now() + 5 * 60 * 1000; // 300s, igual que ESPERA_PUSH_SEG
     detenerSondeoEnrolamiento();
     sondeoEnrolamiento = setInterval(async function () {
@@ -851,13 +855,16 @@
         return;
       }
       try {
-        const resp = await fetch("/medios/enrolar/" + encodeURIComponent(token) + "/estado");
+        const resp = await fetch(
+          "/medios/enrolar/" + encodeURIComponent(token) + "/estado?comercio_id="
+            + encodeURIComponent(comercioId)
+        );
         if (!resp.ok) throw new Error("no se pudo consultar el estado");
         const datos = await resp.json();
         if (datos.estado === "APPROVED") {
           detenerSondeoEnrolamiento();
           mostrarProgreso("Push aceptado, confirmando...");
-          confirmarEnrolamiento(token, correo, titularId);
+          confirmarEnrolamiento(token, correo, titularId, comercioId);
         } else if (["DECLINED", "ERROR", "VOIDED"].indexOf(datos.estado) !== -1) {
           detenerSondeoEnrolamiento();
           mostrarErrorEnrolar("El enrolamiento termino en '" + datos.estado + "'.");
@@ -875,9 +882,10 @@
     e.preventDefault();
     const titularId = titularIdActual();
     if (!titularId) { alert("Falta el titular_id (arriba a la derecha)."); return; }
+    const comercioId = campoComercio.value.trim();
     const telefono = campoTelefono.value.trim();
     const correo = campoCorreo.value.trim();
-    if (!telefono || !correo) return;
+    if (!comercioId || !telefono || !correo) return;
     limpiarMensajesEnrolar();
     botonEnrolar.disabled = true;
     mostrarProgreso("Iniciando enrolamiento...");
@@ -885,16 +893,16 @@
       const resp = await fetch("/medios/enrolar/iniciar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ telefono: telefono, correo: correo }),
+        body: JSON.stringify({ telefono: telefono, correo: correo, comercio_id: comercioId }),
       });
       const datos = await resp.json();
       if (!resp.ok) { mostrarErrorEnrolar("No se pudo iniciar: " + (datos.detail || resp.status)); return; }
       if (datos.estado === "APPROVED") {
         mostrarProgreso("Aprobado de inmediato, confirmando...");
-        await confirmarEnrolamiento(datos.token, correo, titularId);
+        await confirmarEnrolamiento(datos.token, correo, titularId, comercioId);
       } else {
         mostrarProgreso("Push enviado. Esperando que " + titularId + " lo acepte en la app Nequi...");
-        sondearEnrolamiento(datos.token, correo, titularId);
+        sondearEnrolamiento(datos.token, correo, titularId, comercioId);
       }
     } catch (err) {
       mostrarErrorEnrolar("Error al iniciar: " + err.message);

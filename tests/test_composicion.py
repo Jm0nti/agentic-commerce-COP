@@ -4,8 +4,10 @@ efectivamente el unico lugar que lee el entorno.
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -23,6 +25,23 @@ from agora.dominio.mandato.modelo import Intencion, Mandato
 from agora.dominio.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
 
 
+def _registro_wompi(tmp_path: Path, comercio_id: str = "com_x", **credenciales) -> str:
+    """Escribe el JSON de credenciales por comercio (`AGORA_WOMPI_COMERCIOS`)
+    que `leer_configuracion` exige desde multi-comercio -- ver el docstring
+    de `composicion/configuracion.py`. `credenciales` sobreescribe las
+    llaves de sandbox por defecto (para las pruebas que necesitan un
+    prefijo de produccion)."""
+    entrada = {
+        "public_key": "pub_test_x",
+        "private_key": "prv_test_x",
+        "integrity_secret": "s",
+    }
+    entrada.update(credenciales)
+    ruta = tmp_path / "comercios_wompi.json"
+    ruta.write_text(json.dumps({comercio_id: entrada}), encoding="utf-8")
+    return str(ruta)
+
+
 def test_configuracion_por_defecto_es_sandbox_y_simulada():
     config = leer_configuracion({})
     assert config.ambiente is Ambiente.SANDBOX
@@ -35,16 +54,13 @@ def test_pasarela_wompi_sin_credenciales_es_invalida():
         leer_configuracion({"AGORA_PASARELA": "wompi"})
 
 
-def test_pasarela_wompi_con_credenciales_arma_configuracion_wompi():
+def test_pasarela_wompi_con_credenciales_arma_configuracion_wompi(tmp_path):
     config = leer_configuracion({
         "AGORA_PASARELA": "wompi",
         "AGORA_AMBIENTE": "sandbox",
-        "WOMPI_PUBLIC_KEY": "pub_test_x",
-        "WOMPI_PRIVATE_KEY": "prv_test_x",
-        "WOMPI_INTEGRITY_SECRET": "s",
+        "AGORA_WOMPI_COMERCIOS": _registro_wompi(tmp_path),
     })
-    assert config.wompi is not None
-    assert config.wompi.llave_publica == "pub_test_x"
+    assert config.wompi["com_x"].llave_publica == "pub_test_x"
 
 
 def test_perfil_del_pagador_omite_tipo_de_documento_sin_documento():
@@ -65,42 +81,38 @@ def test_persistencia_invalida_es_invalida():
         leer_configuracion({"AGORA_PERSISTENCIA": "redis"})
 
 
-def test_wompi_en_produccion_con_persistencia_en_memoria_es_invalida():
+def test_wompi_en_produccion_con_persistencia_en_memoria_es_invalida(tmp_path):
     """El guardarrail de la etapa 3: `LibroDeConsumoEnMemoria` pierde el
     consumo acumulado si el proceso reinicia, y contra dinero real
     (wompi + produccion) eso permitiria reusar un mandato agotado."""
+    registro = _registro_wompi(tmp_path, public_key="pub_prod_x", private_key="prv_prod_x")
     with pytest.raises(ConfiguracionInvalida, match="AGORA_PERSISTENCIA=sqlite"):
         leer_configuracion({
             "AGORA_PASARELA": "wompi",
             "AGORA_AMBIENTE": "produccion",
             "AGORA_PERSISTENCIA": "memoria",
-            "WOMPI_PUBLIC_KEY": "pub_prod_x",
-            "WOMPI_PRIVATE_KEY": "prv_prod_x",
-            "WOMPI_INTEGRITY_SECRET": "s",
+            "AGORA_WOMPI_COMERCIOS": registro,
         })
 
 
-def test_wompi_en_produccion_con_sqlite_es_valida():
+def test_wompi_en_produccion_con_sqlite_es_valida(tmp_path):
+    registro = _registro_wompi(tmp_path, public_key="pub_prod_x", private_key="prv_prod_x")
     config = leer_configuracion({
         "AGORA_PASARELA": "wompi",
         "AGORA_AMBIENTE": "produccion",
         "AGORA_PERSISTENCIA": "sqlite",
-        "WOMPI_PUBLIC_KEY": "pub_prod_x",
-        "WOMPI_PRIVATE_KEY": "prv_prod_x",
-        "WOMPI_INTEGRITY_SECRET": "s",
+        "AGORA_WOMPI_COMERCIOS": registro,
     })
     assert config.persistencia == "sqlite"
 
 
-def test_wompi_en_sandbox_con_persistencia_en_memoria_sigue_siendo_valida():
+def test_wompi_en_sandbox_con_persistencia_en_memoria_sigue_siendo_valida(tmp_path):
     """El guardarrail es especifico de produccion: en sandbox, memoria sigue
     siendo una eleccion legitima (pruebas, demos)."""
     config = leer_configuracion({
         "AGORA_PASARELA": "wompi",
         "AGORA_AMBIENTE": "sandbox",
-        "WOMPI_PUBLIC_KEY": "pub_test_x",
-        "WOMPI_PRIVATE_KEY": "prv_test_x",
-        "WOMPI_INTEGRITY_SECRET": "s",
+        "AGORA_WOMPI_COMERCIOS": _registro_wompi(tmp_path),
     })
     assert config.persistencia == "memoria"
 
@@ -198,8 +210,8 @@ def test_construir_arma_el_catalogo_sin_depender_de_la_pasarela_ni_la_persistenc
 def test_construir_encadena_navegar_emitir_pagar_y_consultar_de_punta_a_punta(tmp_path):
     """El flujo completo de la etapa 5, con las piezas que arma `Contenedor`
     de verdad (sin wiring manual): enrolar -> armar_carrito -> firmar ->
-    pagar -> consultar_estado. Usa el catalogo placeholder que se entrega
-    con el repo (`docs/catalogo-simulado-deepseek.md`)."""
+    pagar -> consultar_estado. Usa el catalogo semilla que se entrega con el
+    repo (`agora/adaptadores/catalogo/semilla/datos/catalogo.json`)."""
     config = leer_configuracion({
         "AGORA_BITACORA": str(tmp_path / "recibos.jsonl"),
         "AGORA_LLAVE_FIRMA_SK": str(tmp_path / "firma.sk"),
@@ -208,14 +220,22 @@ def test_construir_encadena_navegar_emitir_pagar_y_consultar_de_punta_a_punta(tm
     })
     contenedor = construir(config)
 
-    ref = contenedor.enrolar_medio("3001234567", "titular@correo.com", "tit_1")
+    # El catalogo semilla no es un dato fijo de esta prueba (mismo hallazgo
+    # que en test_cli.py): se descubre el comercio y el producto contra lo
+    # que `Contenedor` de verdad trae cargado, en vez de un id fijo. Todo el
+    # catalogo nuevo va de 1.500 a 2.000 COP, muy por debajo del tope duro
+    # por transaccion (20.000 COP, `TopesDuros`) -- cualquier producto sirve.
+    comercio = contenedor.navegar_catalogo.buscar_comercios()[0]
+    producto = contenedor.navegar_catalogo.buscar_productos(comercio.comercio_id)[0]
+
+    # Multi-comercio: enrolar ahora vincula el medio con ESTE comercio (ver
+    # el docstring de aplicacion/enrolar_medio.py) -- por eso el comercio se
+    # descubre antes de enrolar, no despues.
+    ref = contenedor.enrolar_medio("3001234567", "titular@correo.com", "tit_1", comercio.comercio_id)
     assert contenedor.medios.vivos("tit_1", Ambiente.SANDBOX) == [ref]
 
-    # La libreta (12.000 COP) y no los audifonos (120.000 COP): tiene que
-    # caber bajo el tope duro por transaccion (20.000 COP, `TopesDuros`) para
-    # que esta prueba llegue hasta `aprobado` sin toparselo.
     carrito, propuesta = contenedor.navegar_catalogo.armar_carrito(
-        "com_placeholder_librosur", [ItemPedido("prd_placeholder_libreta")],
+        comercio.comercio_id, [ItemPedido(producto.producto_id)],
     )
     mandato = contenedor.emitir_mandato(propuesta.propuesta_id, "tit_1")
     assert mandato.medio == ref

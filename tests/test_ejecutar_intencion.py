@@ -17,6 +17,7 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from agora.adaptadores.pasarelas.registro import RegistroDePasarelas
 from agora.adaptadores.pasarelas.simulada import AdaptadorSimulado
 from agora.adaptadores.persistencia.memoria import (
     LibroDeConsumoEnMemoria,
@@ -96,7 +97,11 @@ def _armar(correo: str = "juan@correo-real.com", estados=None):
     ejecutar = EjecutarIntencion(
         mandatos=mandatos,
         consumo=consumo,
-        pasarela=pasarela,
+        # Multi-comercio: `EjecutarIntencion` recibe un `SelectorDePasarela`,
+        # no una pasarela fija. `por_defecto` hace que CUALQUIER comercio_id
+        # (esta prueba usa "com_x") resuelva a la misma pasarela simulada --
+        # no hace falta credenciales por comercio para una prueba de dominio.
+        selector_pasarela=RegistroDePasarelas({}, por_defecto=pasarela),
         topes=TopesDuros(),
         reloj=reloj,
         bitacora=bitacora,
@@ -277,7 +282,8 @@ def test_retomar_revalida_la_politica_y_bloquea_si_el_mandato_vencio_mientras_es
     pasarela = AdaptadorSimulado(ids, Ambiente.SANDBOX)
     bitacora = _BitacoraEnLista()
     ejecutar = EjecutarIntencion(
-        mandatos=mandatos, consumo=consumo, pasarela=pasarela, topes=TopesDuros(),
+        mandatos=mandatos, consumo=consumo,
+        selector_pasarela=RegistroDePasarelas({}, por_defecto=pasarela), topes=TopesDuros(),
         reloj=reloj, bitacora=bitacora, verificador=VerificadorEd25519(),
         ambiente=Ambiente.SANDBOX, correo_pagador="juan@correo-real.com", datos_pagador={},
     )
