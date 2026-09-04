@@ -1,11 +1,19 @@
 # Arquitectura v2 — de PoC a app demostrativa
 
-**Propuesta de refactorización** · 19 de agosto de 2026
+**Propuesta de refactorización** · 19 de agosto de 2026 — **implementada en
+`agora/`**; actualizado el 3 de septiembre de 2026 para reflejar el soporte
+multi-comercio agregado después de este plan (ver ADR-8 y
+`docs/viabilidad-multi-comercio-wompi.md`).
 
 Objetivo: una app donde un agente con DeepSeek V4 navega comercios simulados por
-chat y el pago final sale de una cuenta Nequi real vía mandatos firmados.
+chat y el pago final sale de una cuenta Nequi real vía mandatos firmados. **Ese
+objetivo ya está construido**; este documento se conserva como referencia de
+arquitectura y de las decisiones (ADRs) detrás de cada capa, no solo como plan
+histórico.
 
 Diagramas: `docs/diagramas/`. Análisis del código actual: `docs/analisis-codigo.md`.
+El recorrido completo del sistema de mandatos (dónde vive cada cosa, la
+criptografía, cómo firma la persona) está en `docs/flujo-propuesta-mandato.md`.
 
 ---
 
@@ -91,7 +99,7 @@ agora/
 │       └── topes.py             TopesDuros — el guardarrail no configurable
 │
 ├── puertos/                     interfaces. typing.Protocol, sin implementacion
-│   ├── pasarela.py              PasarelaDePagos
+│   ├── pasarela.py              PasarelaDePagos, SelectorDePasarela (multi-comercio)
 │   ├── repositorios.py          RepositorioMandatos, RepositorioMedios, LibroDeConsumo
 │   ├── catalogo.py              RepositorioCatalogo
 │   ├── modelo_lenguaje.py       ModeloDeLenguaje
@@ -108,7 +116,8 @@ agora/
 │
 ├── adaptadores/
 │   ├── pasarelas/
-│   │   ├── wompi/               dinero real
+│   │   ├── registro.py          RegistroDePasarelas: resuelve la pasarela por comercio_id
+│   │   ├── wompi/               dinero real (credenciales por comercio, multi-comercio)
 │   │   └── simulada/            demos y pruebas. ciudadano de primera
 │   ├── persistencia/
 │   │   ├── sqlite/              con transacciones de verdad
@@ -157,6 +166,22 @@ antifraude** y pendiente.
 
 Esa última capacidad es la que te deja demostrar el hallazgo del AFE en una
 presentación sin depender de que Wompi coopere ese día.
+
+**Multi-comercio (agregado el 1 de septiembre de 2026, después de este plan):**
+con varios comercios reales de Wompi en el mismo proceso, cada uno con sus
+propias credenciales, resolver "la" pasarela ya no alcanza — hace falta
+resolver la pasarela **de ese comercio**:
+
+```python
+# puertos/pasarela.py
+class SelectorDePasarela(Protocol):
+    def para(self, comercio_id: str) -> PasarelaDePagos: ...
+```
+
+Implementado por `RegistroDePasarelas` (`adaptadores/pasarelas/registro.py`):
+un diccionario `comercio_id -> PasarelaDePagos` más un `por_defecto` opcional
+para el caso `AGORA_PASARELA=simulada` (una sola pasarela sirve para todos los
+comercios). Ver ADR-8.
 
 ```python
 # puertos/repositorios.py
@@ -248,7 +273,8 @@ comparación y tiene que seguir existiendo.
 3. El agente navega el catalogo        → RepositorioCatalogo (comercios simulados)
 4. El agente arma un carrito           → Carrito + PropuestaDeMandato
 5. La app le muestra la propuesta      → UI
-6. El titular firma                    → Firmante → Mandato (ed25519)
+6. El titular firma (multi-comercio:
+   el medio vinculado a ESE comercio)  → Firmante → Mandato (ed25519)
 7. El agente pide pagar                → EjecutarIntencion
      7a. TopesDuros                    → nunca se apagan
      7b. LibroDeConsumo.reservar       → atomico
@@ -301,6 +327,20 @@ poder duplicar un cobro.
 Se pueden mover de archivo, no de naturaleza. Si se vuelven configurables, dejan
 de ser el guardarraíl que permite estudiar el mandato apagándolo.
 
+**ADR-8 · Multi-comercio: vinculación medio↔comercio procedimental, no dentro de la firma.**
+Agregado el 1 de septiembre de 2026, después de este plan
+(`docs/viabilidad-multi-comercio-wompi.md`). Un `payment_source_id` de Wompi
+queda atado al comercio que lo creó, así que `RepositorioMedios` guarda con
+qué `comercio_id` se vinculó cada medio, y `EmitirMandato` exige ese vínculo
+antes de firmar. Se evaluaron dos caminos: esta opción, liviana, y un mandato
+v3 con `comercio_id` dentro de `MedioDePagoRef` (viajaría dentro de la carga
+firmada, como pide ADR-4, pero exigiría conservar un tercer verificador junto
+a los de v1 y v2). Se eligió la liviana porque `EmitirMandato` es el único
+punto que construye un `Mandato` de verdad — la correspondencia queda
+garantizada ahí, aunque no viaje dentro de la firma ni se reverifique al
+cobrar. Documentado como deuda técnica consciente, no como descuido (ver
+`docs/flujo-propuesta-mandato.md`, sección 6).
+
 ---
 
 ## 8. Plan de migración
@@ -319,6 +359,13 @@ Cinco etapas. Cada una deja el repo funcionando y las pruebas en verde.
 datos existentes: `boveda/secretos/estado.json` tiene mandatos y consumo reales,
 y `recibos.jsonl` es evidencia del experimento. Migración con script y respaldo,
 no a mano.
+
+**Estado (3 de septiembre de 2026): las cinco etapas de este plan están
+completas** — ver `docs/etapa-2-completa.md` a
+`docs/etapa-7-chat-con-firma-en-una-pestana.md` para el detalle de la
+construcción real, que agregó además un par de incrementos que este plan no
+anticipó: el sondeo de pagos pendientes (etapa 9) y el soporte multi-comercio
+del 1 de septiembre (ADR-8).
 
 Antes de empezar: **congelar `wompi_lab/` y borrar `mandato/`.** El segundo es
 código muerto duplicado; el primero es scratch que vale conservar sólo por la

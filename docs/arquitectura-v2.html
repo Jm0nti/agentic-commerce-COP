@@ -60,12 +60,13 @@
 </style></head><body>
 <header>
   <h1>Arquitectura v2 &mdash; PoC de comercio agentico sobre rieles colombianos</h1>
-  <p class="sub">De banco de pruebas a app demostrativa. 19 de agosto de 2026.</p>
+  <p class="sub">De banco de pruebas a app demostrativa. 19 de agosto de 2026 &mdash; implementada en <code>agora/</code>. Estos diagramas son del plan original: no reflejan todavia el soporte multi-comercio agregado el 1 de septiembre (ver el chip de abajo y <code>docs/arquitectura-v2.md</code>, ADR-8).</p>
   <div class="hitos">
     <div class="hito verde"><b>Fase A y B</b> verificadas con dinero real</div>
     <div class="hito verde"><b>2.050 COP</b> debitados de Nequi al comercio</div>
     <div class="hito ambar"><b>afe_decision</b> DECLINE y FRAUD_CHECK observados</div>
     <div class="hito"><b>4.287</b> lineas hoy &middot; <b>45%</b> codigo muerto</div>
+    <div class="hito ambar"><b>3 sep 2026</b> multi-comercio agregado &mdash; estos diagramas no lo incluyen todavia</div>
   </div>
 </header>
 <nav><button class="tab activo" data-k="01-capas">Capas</button>
@@ -185,9 +186,11 @@
   <h2>Documentos</h2>
   <ul>
     <li><code>docs/analisis-codigo.md</code> &mdash; 13 hallazgos con archivo y linea</li>
-    <li><code>docs/arquitectura-v2.md</code> &mdash; puertos, ADRs y migracion en 5 etapas</li>
-    <li><code>docs/diagramas/*.mermaid</code> &mdash; las fuentes de estos diagramas</li>
-    <li><code>agora/</code> &mdash; esqueleto con las interfaces y la prueba de fronteras</li>
+    <li><code>docs/arquitectura-v2.md</code> &mdash; puertos, ADRs (incluido ADR-8, multi-comercio) y migracion en 5 etapas, todas completas</li>
+    <li><code>docs/flujo-propuesta-mandato.md</code> &mdash; el sistema de mandatos de punta a punta: donde vive cada cosa, la criptografia, como firma la persona</li>
+    <li><code>docs/viabilidad-multi-comercio-wompi.md</code> &mdash; por que y como <code>agora/</code> soporta varios comercios reales de Wompi</li>
+    <li><code>docs/diagramas/*.mermaid</code> &mdash; las fuentes de estos diagramas (del plan original, sin multi-comercio)</li>
+    <li><code>agora/</code> &mdash; implementacion real, con las interfaces y la prueba de fronteras</li>
   </ul>
 </footer>
 <script>

@@ -1,7 +1,10 @@
 # Documentación técnica
 
-Estado del código al 31 de agosto de 2026, después de la etapa 7 (chat con
-firma integrada en una sola pestaña). Este documento complementa al `README.md`
+Estado del código al 3 de septiembre de 2026, después de la etapa 7 (chat con
+firma integrada en una sola pestaña) y de agregar soporte multi-comercio
+(varios comercios reales de Wompi en el mismo proceso, ver
+`docs/viabilidad-multi-comercio-wompi.md`). Este documento complementa al
+`README.md`
 (que explica qué es el proyecto y cómo correrlo) con el detalle de cada módulo,
 cómo se integran entre sí, y los hallazgos relevantes que se fueron
 encontrando en el camino.
@@ -44,9 +47,11 @@ módulo plano, sin capas, con persistencia en archivos JSON.
 
 Es la aplicación demostrativa: mismo principio, pero con arquitectura por
 capas, persistencia en SQLite con reserva/confirmación atómica, un catálogo de
-comercios simulados generado con IA, un agente conversacional (DeepSeek) con
-una frontera de herramientas verificada por prueba, y dos interfaces de
-usuario (línea de comandos y una página web de chat con firma integrada).
+comercios simulados generado con IA (dos comercios reales de Wompi conviven en
+el mismo proceso desde el 1 de septiembre de 2026), un agente conversacional
+(DeepSeek) con una frontera de herramientas verificada por prueba, y dos
+interfaces de usuario (línea de comandos y una página web de chat con firma
+integrada).
 
 `agora/` se construyó en seis etapas, documentadas cada una en `docs/` y en la
 memoria del proyecto, migrando funcionalidad de `boveda/` sin tocarla mientras
@@ -150,8 +155,8 @@ herede de nada):
 
 | Puerto | Qué abstrae |
 |---|---|
-| `pasarela.py` → `PasarelaDePagos` | Enrolar, cobrar, consultar, revocar, y traducir webhooks. Ningún método bloquea esperando un estado final. |
-| `repositorios.py` → `LibroDeConsumo`, `RepositorioMandatos`, `RepositorioMedios`, `RepositorioCarritos`, `RepositorioPropuestas`, `RegistroDeEstados` | Persistencia de cada tipo de dato. `LibroDeConsumo` es el más importante: reserva el cupo *antes* de cobrar y lo confirma o libera *después* — una escritura condicional atómica, no un "leer, sumar, escribir" que se rompe bajo concurrencia. |
+| `pasarela.py` → `PasarelaDePagos`, `SelectorDePasarela` | `PasarelaDePagos`: enrolar, cobrar, consultar, revocar, y traducir webhooks — ningún método bloquea esperando un estado final. `SelectorDePasarela.para(comercio_id)`: multi-comercio — resuelve la pasarela (con sus propias credenciales) que corresponde a cada comercio; implementada por `RegistroDePasarelas` (`adaptadores/pasarelas/registro.py`). |
+| `repositorios.py` → `LibroDeConsumo`, `RepositorioMandatos`, `RepositorioMedios`, `RepositorioCarritos`, `RepositorioPropuestas`, `RegistroDeEstados` | Persistencia de cada tipo de dato. `LibroDeConsumo` es el más importante: reserva el cupo *antes* de cobrar y lo confirma o libera *después* — una escritura condicional atómica, no un "leer, sumar, escribir" que se rompe bajo concurrencia. `RepositorioMedios` guarda, además del medio de pago, con qué `comercio_id` quedó vinculado (`vinculado_con`) — multi-comercio, ver sección 18.5. |
 | `catalogo.py` → `RepositorioCatalogo` | Tres métodos separados (`buscar_comercios`, `buscar_productos`, `ver_producto`) en vez de uno solo — refleja cómo navega el agente: primero elige comercio, después busca adentro. |
 | `modelo_lenguaje.py` → `ModeloDeLenguaje` | `generar(sistema, instruccion)` para tareas simples (generar catálogo) y `responder(mensajes, herramientas)` para el agente conversacional con tool-calling real. |
 | `firma.py` → `Firmante` | Firmar y verificar son interfaces separadas a propósito: verificar solo necesita la llave pública (que ya viaja dentro del mandato); firmar necesita la privada, y solo `EmitirMandato` la usa. |
@@ -164,7 +169,7 @@ herede de nada):
 | Caso de uso | Qué hace |
 |---|---|
 | `EjecutarIntencion` | El corazón del sistema. Ver la sección 11 para el flujo completo. Expone `__call__` (primer intento) y `retomar` (resuelve una intención que quedó en `CONFIRMAR`). |
-| `EmitirMandato` | Donde firma el humano. Recibe `propuesta_id` (no el objeto), busca la propuesta y el carrito por su cuenta contra los repositorios, y firma con el `Firmante` real. El agente nunca llama a este caso de uso: no está en su catálogo de herramientas y no tiene acceso a un `Firmante`. |
+| `EmitirMandato` | Donde firma el humano. Recibe `propuesta_id` (no el objeto), busca la propuesta y el carrito por su cuenta contra los repositorios, resuelve el medio de pago vinculado a ESE comercio (`RepositorioMedios.vinculado_con`, multi-comercio) y firma con el `Firmante` real. El agente nunca llama a este caso de uso: no está en su catálogo de herramientas y no tiene acceso a un `Firmante`. |
 | `EnrolarMedio` / `RevocarMedio` | Fase A: autorizar y desautorizar un medio de pago. Actos exclusivos del titular. |
 | `NavegarCatalogo` | Las tres búsquedas del catálogo, más `armar_carrito` — que es donde vive la única regla real: un carrito no puede mezclar productos de más de un comercio, y un producto agotado nunca puede entrar a un carrito. También persiste la `PropuestaDeMandato` resultante para que otro proceso (la firma) pueda encontrarla después. |
 | `ConciliarEvento` | Traduce un webhook ya verificado en "confirmar esta reserva" o "liberarla". Nunca levanta una excepción: cada desenlace (incluido "no me corresponde") es un resultado normal, para que el receptor HTTP siempre pueda responder 200. |
@@ -181,7 +186,11 @@ herede de nada):
   `AdaptadorWompi` (traduce entre los tipos del dominio y la API real de
   Wompi). Mueve dinero real. Nunca bloquea esperando un estado final: `cobrar`
   devuelve lo que Wompi contesta al crear la transacción (típicamente
-  `PENDING`), y el desenlace llega por webhook.
+  `PENDING`), y el desenlace llega por webhook. Multi-comercio: cada comercio
+  real tiene su propio `AdaptadorWompi`, con sus propias credenciales (leídas
+  de `agora_datos/secretos/comercios_wompi.json`, `AGORA_WOMPI_COMERCIOS`) —
+  `registro.py` (`RegistroDePasarelas`) resuelve cuál usar para cada
+  `comercio_id`.
 - **`simulada/`** — `AdaptadorSimulado`, con un `GuionSimulado` inyectable.
   **No es un mock de pruebas**: es un adaptador de producción para el modo
   demo, capaz de reproducir los cuatro desenlaces que también da Wompi real
@@ -215,10 +224,11 @@ el catálogo) como `responder()` (tool-calling real, para el chat).
 
 `RepositorioCatalogoSemilla` lee `datos/catalogo.json` sin red — el catálogo
 que ve el agente en cada corrida es estático, fabricado de antemano con
-`scripts/generar_catalogo_semilla.py`. Al momento de este documento contiene 5
-comercios (TecnoAndes, Moda Andina, Hogar Esmeralda, La Fogata de la Abuela,
-Librería El Ilustrado) y 25 productos, generados con DeepSeek en una corrida
-anterior.
+`scripts/generar_catalogo_semilla.py`. Al momento de este documento contiene 2
+comercios (Dulcería La Golosina, Papelería El Lápiz Feliz) y 24 productos,
+generados con DeepSeek — regenerado el 1 de septiembre de 2026, más angosto
+que el catálogo de 5 comercios de las etapas anteriores, para tener dos
+comercios reales de Wompi con los que estudiar multi-comercio.
 
 ### Sistema (`adaptadores/sistema/`)
 
@@ -271,7 +281,7 @@ mismo nunca importa `aplicacion/`.
 
 | Comando | Qué hace |
 |---|---|
-| `enrolar` | Fase A: autoriza un medio de pago por push. |
+| `enrolar` | Fase A: autoriza un medio de pago por push, vinculado a un `--comercio` puntual (obligatorio desde el soporte multi-comercio). |
 | `fuentes` | Lista los medios de pago vivos de un titular. |
 | `revocar` | Apaga un medio de pago. |
 | `comercios` / `productos` / `producto` | Navegar el catálogo simulado. |
@@ -327,15 +337,19 @@ no se inventó un concepto de sesión nuevo para esto.
 
 ### Webhook (`entradas/webhooks/wompi.py`)
 
-Receptor HTTP del webhook de Wompi (`POST /pagos/wompi/transacciones`).
-Siempre responde 200 — un checksum inválido o un evento que no pertenece a
+Receptor HTTP del webhook de Wompi (`POST
+/pagos/wompi/transacciones/{comercio_id}` — multi-comercio: la ruta trae el
+`comercio_id` para saber con qué `events_secret` validar el
+`X-Event-Checksum` del evento, ya que cada comercio real de Wompi tiene el
+suyo). Siempre responde 200 — un checksum inválido o un evento que no pertenece a
 esta app no es un fallo del receptor, y devolver otra cosa solo le daría a un
 atacante una forma barata de hacer reintentar a Wompi sin límite. **Corre en
 un proceso aparte** (`scripts/servir_webhook_wompi.py`, puerto 8001 por
 defecto) del que sirve el chat (`scripts/servir_api.py`, puerto 8002) — dos
 composition roots deliberadamente independientes. Contra Wompi real, este
 proceso tiene que estar corriendo y expuesto públicamente (`ngrok`/
-`cloudflared`) con esa URL cargada en el dashboard de Wompi (Desarrolladores
+`cloudflared`), con esa URL — un segmento de ruta por comercio, un solo
+túnel — cargada en el dashboard de Wompi de CADA comercio (Desarrolladores
 → Eventos) para que un cobro alguna vez salga de `PENDING`.
 
 ### Sondeo de pagos pendientes (`entradas/api/sondeo_pagos.py`) — etapa 9
@@ -433,6 +447,12 @@ Cada punto de entrada tiene su propio *composition root* específico fuera de
 8. Wompi (o la simulada) manda el evento  → ConciliarEvento confirma o libera
 9. El chat se entera                      → SSE dispara el recuadro; consultar_estado confirma
 ```
+
+Multi-comercio (paso 6): antes de armar el `Mandato`, `EmitirMandato` resuelve
+qué medio de pago del titular está vinculado con el comercio de la propuesta
+(`RepositorioMedios.vinculado_con`) — no "el último medio vivo", que podría
+pertenecer a otro comercio y que Wompi rechazaría al cobrar. Ver la sección
+18.5 y `docs/flujo-propuesta-mandato.md`.
 
 Si el paso 7c da `CONFIRMAR` (algo cabe dentro del mandato pero "huele raro" —
 por ejemplo, agota el mandato de una sola vez, o es el último uso disponible),
@@ -552,25 +572,18 @@ adelante.
   infraestructura (`httpx`, `sqlite3`, `fastapi`, `os`).
 - El resto de la suite cubre cada adaptador, cada caso de uso, la
   compatibilidad con mandatos v1 (`test_compat_v1.py`), el flujo completo por
-  CLI (`test_cli.py`) y por HTTP (`test_api_app.py`), y la concurrencia real
-  del `LibroDeConsumo` en SQLite. Última corrida confirmada (31 de agosto de
-  2026, tras agregar el sondeo de pagos pendientes de la etapa 9): **466
-  pruebas en verde, 2 fallando** (las mismas dos, preexistentes, que se
-  describen abajo — nada de las etapas 8 ni 9 las causó ni las agravó). Esa
-  corrida se hizo instalando `requirements.txt` en un entorno Python aparte
-  accesible desde esta sesión; el venv de Windows del proyecto
-  (`.agentic-fraud-venv/`) sigue sin ser accesible desde aquí, así que
-  conviene repetirla con ese venv antes de dar por buena una release.
-- **Dos pruebas fallan de forma preexistente y conocida**:
-  `test_cli.py::test_flujo_completo_enrolar_emitir_pagar_retomar` y
-  `test_composicion.py::test_construir_encadena_navegar_emitir_pagar_y_consultar_de_punta_a_punta`.
-  Esperan ids de catálogo de ejemplo (`com_placeholder_librosur`,
-  `prd_placeholder_libreta`) que ya no existen en
-  `agora/adaptadores/catalogo/semilla/datos/catalogo.json` — el catálogo real
-  generado con DeepSeek los reemplazó. No están relacionadas con ningún
-  cambio reciente; corregirlas implica decidir si el catálogo de pruebas debe
-  ser determinista y separado del catálogo de demo, o si las pruebas deberían
-  descubrir productos dinámicamente.
+  CLI (`test_cli.py`) y por HTTP (`test_api_app.py`), la concurrencia real del
+  `LibroDeConsumo` en SQLite, y — desde el soporte multi-comercio — la
+  vinculación medio↔comercio (`RepositorioMedios.vinculado_con`) y el
+  enrutamiento por `SelectorDePasarela`. Última corrida confirmada (3 de
+  septiembre de 2026): **478 pruebas en verde, 0 fallando**.
+- Las dos pruebas que antes fallaban de forma preexistente
+  (`test_cli.py::test_flujo_completo_enrolar_emitir_pagar_retomar` y
+  `test_composicion.py::test_construir_encadena_navegar_emitir_pagar_y_consultar_de_punta_a_punta`,
+  que esperaban ids de catálogo de ejemplo ya reemplazados por el catálogo
+  real) se corrigieron: ahora descubren en tiempo de ejecución un producto
+  válido del catálogo vigente en vez de asumir un id fijo. Ya no hay pruebas
+  conocidas fallando.
 
 ---
 
@@ -587,8 +600,8 @@ comentada completa en `docs/variables-de-entorno.md`.
 | `AGORA_SQLITE_PATH` | ídem | `agora_datos/agora.db` | Solo se usa si `AGORA_PERSISTENCIA=sqlite` |
 | `AGORA_BITACORA` | ídem | `agora_datos/recibos.jsonl` | Ruta del registro de auditoría de `agora/` |
 | `AGORA_LLAVE_FIRMA_SK` / `AGORA_LLAVE_FIRMA_PK` | ídem | `agora_datos/secretos/firma.{sk,pk}` | Par ed25519 del titular; se genera solo si no existe |
-| `WOMPI_PUBLIC_KEY` / `WOMPI_PRIVATE_KEY` / `WOMPI_INTEGRITY_SECRET` | ídem (solo si `AGORA_PASARELA=wompi`) y `boveda/nucleo.py` | — | Credenciales de Wompi. El prefijo de la llave (`pub_test_`/`pub_prod_`) debe coincidir con el ambiente. |
-| `WOMPI_EVENTS_SECRET` | `boveda/eventos.py`, adaptador Wompi de `agora/` | — | Valida el `X-Event-Checksum` de los webhooks |
+| `AGORA_WOMPI_COMERCIOS` | `agora/composicion/configuracion.py`, `adaptadores/pasarelas/registro.py` | `agora_datos/secretos/comercios_wompi.json` | Multi-comercio: ruta al registro JSON con credenciales de Wompi por `comercio_id` (`public_key`, `private_key`, `integrity_secret`, `events_secret`) — reemplaza, para `agora/`, a las variables `WOMPI_*` sueltas de un solo comercio. Solo se usa si `AGORA_PASARELA=wompi`. |
+| `WOMPI_PUBLIC_KEY` / `WOMPI_PRIVATE_KEY` / `WOMPI_INTEGRITY_SECRET` / `WOMPI_EVENTS_SECRET` | Únicamente `boveda/nucleo.py` y `boveda/eventos.py` (v1, un solo comercio) | — | Credenciales de Wompi del sistema original. `agora/` ya no las lee: desde el soporte multi-comercio usa `AGORA_WOMPI_COMERCIOS` en su lugar. El prefijo de la llave (`pub_test_`/`pub_prod_`) debe coincidir con el ambiente. |
 | `PAGADOR_EMAIL` / `PAGADOR_NOMBRE` / `PAGADOR_TELEFONO` / `PAGADOR_DOCUMENTO` / `PAGADOR_TIPO_DOC` | ambos sistemas | `demo@agora.local` en `agora/` (nunca un dominio reservado — ver hallazgo AFE) | Perfil que ve el motor antifraude de Wompi en cada cobro |
 | `DEEPSEEK_API_KEY` | `agora/composicion/configuracion.py`, `scripts/generar_catalogo_semilla.py` | — (opcional) | Sin ella, el resto de `agora/` funciona igual; solo `chat` y `POST /sesiones` avisan que no hay agente disponible |
 | `DEEPSEEK_MODELO` | ídem | `deepseek-chat` | Modelo de DeepSeek a usar |
@@ -635,12 +648,7 @@ modificación puntual para una prueba con montos mayores que quedó sin
 revertir). **Se recomienda confirmar si es intencional y, si no, revertirlo a
 20.000 antes de volver a operar `boveda.cli` contra producción.**
 
-### 18.3 Catálogo de pruebas desactualizado
-
-Ver sección 16 — dos pruebas preexistentes esperan productos de ejemplo que
-ya no están en el catálogo real generado con DeepSeek.
-
-### 18.4 `RegistroDeEstados` sin persistencia SQLite propia hasta la etapa 6
+### 18.3 `RegistroDeEstados` sin persistencia SQLite propia hasta la etapa 6
 
 Corregido durante la etapa 6 (`gap-chat-firma-mandato`): antes de esa etapa,
 `consultar_estado` solo veía lo que había pasado en el *mismo proceso*, así
@@ -651,12 +659,34 @@ siempre aunque ya se hubiera resuelto. Ya tiene adaptador SQLite
 `AGORA_PERSISTENCIA=sqlite`** — con el valor por defecto (`memoria`), el
 problema original vuelve a aparecer.
 
-### 18.5 Migración de fuentes de pago v1 → v2, construida pero no ejecutada
+### 18.4 Migración de fuentes de pago v1 → v2, construida pero no ejecutada
 
 `scripts/migrar_fuentes_a_sqlite.py` migra `boveda/secretos/fuentes.json` a la
 tabla `medio_de_pago` de `agora/`. Corre en modo dry-run por defecto y está
 probado contra datos de ejemplo, pero **nunca se corrió contra los datos
 reales** — es una decisión pendiente, no un olvido.
+
+### 18.5 Multi-comercio: la correspondencia medio↔comercio no viaja dentro de la firma
+
+Desde el 1 de septiembre de 2026, `agora/` soporta varios comercios reales de
+Wompi en el mismo proceso (`docs/viabilidad-multi-comercio-wompi.md`). Un
+`payment_source_id` de Wompi queda atado al comercio que lo creó, así que
+`EmitirMandato` resuelve el medio vinculado a ESE comercio
+(`RepositorioMedios.vinculado_con`) antes de firmar, y nunca firma con un
+medio de otro comercio.
+
+Lo que esa garantía **no** hace es viajar dentro de la carga firmada del
+mandato (`Mandato.canonico()`) ni volver a chequearse en `EjecutarIntencion`
+al cobrar — `violaciones_contra` no tiene un
+`medio_vinculado_a_otro_comercio` entre sus violaciones. Es una decisión
+consciente, documentada a propósito (ver `docs/flujo-propuesta-mandato.md`,
+sección 6, y `docs/viabilidad-multi-comercio-wompi.md`, sección "Amarre
+medio → comercio"): la alternativa era un mandato v3 con `comercio_id`
+dentro de `MedioDePagoRef`, más robusto pero con más superficie (exigiría
+conservar el verificador v2, igual que se conserva el de v1). Se eligió la
+opción liviana porque `EmitirMandato` es el único punto del sistema que
+construye un `Mandato` de verdad — un bug en otra parte que armara uno a
+mano con el medio equivocado no lo detectaría este chequeo.
 
 ---
 
@@ -685,6 +715,10 @@ Completo a la fecha de este documento:
 
 - Arquitectura completa de `agora/` (dominio, puertos, aplicación,
   adaptadores, agente, composición).
+- Multi-comercio: varios comercios reales de Wompi (con sus propias
+  credenciales) conviviendo en el mismo proceso, con vinculación
+  medio↔comercio en el enrolamiento y en la firma del mandato
+  (`docs/viabilidad-multi-comercio-wompi.md`).
 - Dos interfaces de usuario: CLI completa y una API web de una sola página
   con chat, firma y confirmación integradas.
 - Enrolar un medio de pago y ver los medios enrolados de un titular desde la
@@ -706,11 +740,12 @@ Pendiente o fuera de alcance a propósito:
 - Un motor de riesgo real más allá de las heurísticas fijas de
   `_senales_blandas` en `dominio/mandato/politica.py`.
 - Migrar de verdad `boveda/secretos/fuentes.json` (el script ya existe, ver
-  18.5).
+  18.4).
 - Resolver la discrepancia de topes duros en `boveda/nucleo.py` (ver 18.2).
 - Probar el segundo brazo del experimento (`--sin-mandato` /
   `exigir_mandato=False`) contra Wompi real con un `APPROVED` de verdad —
   mientras el antifraude de Wompi siga rechazando ambos brazos, el
   experimento no mide el efecto del mandato, mide el del antifraude.
-- Un segundo comercio real (o el lado de payouts) para poder estudiar desvío
-  de beneficiario, no solo de monto.
+- Meter la correspondencia medio↔comercio dentro de la carga firmada del
+  mandato (mandato v3) en vez de garantizarla solo procedimentalmente al
+  firmar — ver 18.5.

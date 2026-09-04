@@ -11,8 +11,8 @@ un peso.
 > **El agente propone. El humano firma. La bóveda ejecuta.**
 > Ninguno de los tres puede hacer el trabajo de otro.
 
-En la práctica: una persona chatea con un agente de IA para comprarle algo a un
-comercio (simulado, para esta demo). El agente busca productos, arma un
+En la práctica: una persona chatea con un agente de IA para comprarle algo a uno
+de los comercios (simulados, para esta demo). El agente busca productos, arma un
 carrito y *propone* una autorización de pago — nunca la firma él mismo, porque
 no tiene la llave para hacerlo. La persona ve exactamente qué se le pide
 autorizar (qué comercio, qué monto máximo, por cuánto tiempo, para cuántos
@@ -35,12 +35,12 @@ Conviven dos árboles de código con roles distintos:
 | Estado | Ya movió dinero real en producción (Fase A + Fase B) | Arquitectura completa y probada (dominio, adaptadores, agente, CLI, API web, webhook) |
 | Interfaz | Solo línea de comandos | CLI **y** una página web de chat con firma integrada |
 | Agente de IA | No tiene | Sí — DeepSeek, con seis herramientas y una frontera dura verificada por pruebas |
-| Catálogo de comercios | No tiene | Sí, simulado y generado con IA |
+| Catálogo de comercios | No tiene | Sí, simulado y generado con IA (2 comercios: Dulcería La Golosina, Papelería El Lápiz Feliz) |
 | Se recomienda para | Referencia histórica del primer hallazgo (ver más abajo) | Usar y extender de acá en adelante |
 
 `agora/` es la reescritura ordenada de la misma idea de `boveda/`, siguiendo
 una arquitectura por capas (`docs/arquitectura-v2.md`). Está construida en
-seis etapas, todas completas a la fecha de este documento, con más de 400
+seis etapas, todas completas a la fecha de este documento, con 478
 pruebas automatizadas en verde. La diferencia importante frente a `boveda/`:
 **se puede correr contra la pasarela simulada sin gastar un peso**, o contra
 Wompi real cambiando una sola variable de entorno.
@@ -116,9 +116,7 @@ variables (Wompi, el perfil del pagador, DeepSeek).
 python -m pytest tests/ -q
 ```
 
-(Nota: dos pruebas preexistentes fallan por un desfase entre el catálogo de
-ejemplo y datos que esas pruebas esperaban — ver "Hallazgos" en
-`Documentacion.md`. No están relacionadas con nada de lo demás.)
+Deberían quedar las 478 en verde.
 
 ### 4. Explorar el catálogo simulado
 
@@ -132,10 +130,12 @@ python -m agora.entradas.cli producto <producto_id>
 
 Con `AGORA_PASARELA=simulada` esto no toca ninguna cuenta real — genera un
 medio de pago de mentiras al instante. Con `AGORA_PASARELA=wompi` en
-producción, esto le manda un push de verdad a la app Nequi del titular:
+producción, esto le manda un push de verdad a la app Nequi del titular.
+Multi-comercio: `--comercio` es obligatorio — el medio queda vinculado a ESE
+comercio, no a "cualquiera" (ver `docs/flujo-propuesta-mandato.md`, sección 6):
 
 ```bash
-python -m agora.entradas.cli enrolar --telefono 3001234567 --titular tit_demo
+python -m agora.entradas.cli enrolar --telefono 3001234567 --titular tit_demo --comercio <comercio_id>
 python -m agora.entradas.cli fuentes tit_demo
 ```
 
@@ -225,10 +225,14 @@ Cualquiera de las dos imprime una URL pública (`https://algo.trycloudflare.com`
 o `https://algo.ngrok-free.app`).
 
 **Panel de Wompi:** Desarrolladores → Eventos, y ahí pegá la URL completa
-**con la ruta incluida**:
+**con la ruta incluida, terminada en el `comercio_id` de ESE comercio**
+(multi-comercio: un solo túnel y un solo puerto sirven para todos los
+comercios, pero cada uno tiene su propia entrada en el panel de Wompi, con
+su propio segmento de URL — ver `AGORA_WOMPI_COMERCIOS` en
+`docs/variables-de-entorno.md`):
 
 ```
-https://algo-al-azar.trycloudflare.com/pagos/wompi/transacciones
+https://algo-al-azar.trycloudflare.com/pagos/wompi/transacciones/<comercio_id>
 ```
 
 Con las tres terminales corriendo (chat, webhook, túnel), la consola de
@@ -273,6 +277,7 @@ apagaría también la protección del dinero real.
 | Archivo | Qué controla |
 |---|---|
 | `.env` (raíz, no versionado) | Todas las credenciales y el modo de arranque. Plantilla completa y comentada en `docs/variables-de-entorno.md`. |
+| `agora_datos/secretos/comercios_wompi.json` (no versionado, ruta en `AGORA_WOMPI_COMERCIOS`) | Multi-comercio: credenciales de Wompi por comercio (`public_key`, `private_key`, `integrity_secret`, `events_secret`), indexadas por el mismo `comercio_id` del catálogo — reemplaza las variables `WOMPI_*` sueltas de un solo comercio. Plantilla en `docs/variables-de-entorno.md`. |
 | `agora/composicion/configuracion.py` | Lee y valida esas variables para `agora/`: valores por defecto, y reglas que impiden arrancar con una combinación insegura (por ejemplo, Wompi real con persistencia en memoria). |
 | `agora/dominio/pago/topes.py` | Los topes duros de `agora/`: **20.000 COP por transacción, 100.000 COP por día**. Son constantes en el código a propósito — si se volvieran configurables, dejarían de ser la protección que permite estudiar el mandato apagándolo. |
 | `boveda/nucleo.py` (líneas 46-47) | Los topes duros del sistema original (v1). **Advertencia:** hoy dicen `2.000.000` COP por transacción y `100.000` COP por día — no coincide con los `20.000` que describen este documento y `docs/flujo.md`. Ver el detalle en `Documentacion.md`, sección "Hallazgos", antes de operar `boveda.cli` contra producción. |
@@ -299,21 +304,33 @@ Prueba que un agente conversacional puede completar una compra sobre
 infraestructura de pagos colombiana real, dentro de límites que una persona
 autorizó explícitamente y que un sistema aparte hace cumplir — y que ese
 sistema efectivamente detiene los casos donde el agente pide más de lo
-autorizado.
+autorizado. Con dos comercios reales de Wompi conviviendo en el mismo
+proceso (`AGORA_WOMPI_COMERCIOS`), también ejercita que un mandato firmado
+para un comercio cobra contra las credenciales de ESE comercio, y no las de
+otro.
 
-No prueba nada sobre desvío del dinero hacia un beneficiario distinto: con un
-solo comercio de prueba, el dinero siempre llega adonde debe.
+No prueba una separación criptográfica completa entre comercios: la
+correspondencia entre el medio de pago y el comercio la garantiza
+`EmitirMandato` al firmar (`RepositorioMedios.vinculado_con`), pero no viaja
+dentro de la firma del mandato ni se reverifica al cobrar — una deuda
+técnica documentada a propósito, no un descuido (ver
+`docs/flujo-propuesta-mandato.md`, sección 6).
 
 ## Documentos
 
 - **`Documentacion.md`** (raíz del repo) — el detalle técnico completo: cada
   módulo, cada capa, el modelo de mandato, las variables de entorno, y los
   hallazgos encontrados hasta ahora.
-- `docs/arquitectura-v2.md` — la arquitectura objetivo y las decisiones detrás
-  de cada una (ADRs).
+- `docs/arquitectura-v2.md` (y su resumen visual, `docs/arquitectura-v2.html`)
+  — la arquitectura objetivo y las decisiones detrás de cada una (ADRs).
+- `docs/flujo-propuesta-mandato.md` — el recorrido completo del sistema de
+  mandatos: dónde se guarda cada cosa, la criptografía detrás de la firma,
+  cómo firma la persona, y por qué el agente nunca puede hacerlo él mismo.
+- `docs/viabilidad-multi-comercio-wompi.md` — por qué y cómo `agora/` soporta
+  varios comercios reales de Wompi en el mismo proceso.
 - `docs/variables-de-entorno.md` — la plantilla comentada del `.env`.
 - `docs/flujo.md` — runbook de comandos para el sistema v1 (`boveda/`).
 - `docs/informe-viabilidad-pagos-agenticos-co.md` — por qué Wompi + Nequi y no
   otro riel colombiano.
-- `docs/decline-afe.md`, `docs/hallazgo-afe.md` — el primer cobro real y por
-  qué lo rechazó el antifraude de Wompi.
+- `docs/decline-afe.md` — el primer cobro real y por qué lo rechazó el
+  antifraude de Wompi.

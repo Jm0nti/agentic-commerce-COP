@@ -27,7 +27,7 @@ sequenceDiagram
     T->>UI: busco unos audifonos bluetooth
     UI->>AG: turno de conversacion
     AG->>CAT: buscar_productos("audifonos bluetooth")
-    CAT-->>AG: 12 productos de 3 comercios
+    CAT-->>AG: 12 productos de 2 comercios
     AG-->>UI: te encontre estas opciones...
     T->>UI: el segundo, dos unidades
     AG->>AG: armar_carrito(items)
@@ -36,7 +36,7 @@ sequenceDiagram
 
     rect rgb(255, 235, 235)
     Note over T,FIR: LA FRONTERA · el agente no puede cruzarla
-    UI-->>T: vas a autorizar hasta 45.000 COP<br/>en TiendaX, 1 uso, 30 minutos
+    UI-->>T: vas a autorizar hasta 45.000 COP<br/>en Dulceria La Golosina, 1 uso, 30 minutos
     T->>FIR: firma
     FIR-->>UI: Mandato ed25519 firmado
     UI-->>AG: mandato_id  (opaco)

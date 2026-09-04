@@ -3,7 +3,7 @@ flowchart TB
         direction LR
         CLI["cli/<br/>operacion y experimentos"]
         API["api/<br/>FastAPI · REST + SSE"]
-        WH["webhooks/<br/>transaction.updated"]
+        WH["webhooks/<br/>transaction.updated (por comercio_id)"]
     end
 
     subgraph AGENTE["agente/ · FRONTERA DURA"]
@@ -25,7 +25,8 @@ flowchart TB
     subgraph PUERTOS["puertos/ · interfaces · typing.Protocol"]
         direction LR
         PP["PasarelaDePagos"]
-        PR["LibroDeConsumo<br/>RepositorioMandatos<br/>RepositorioMedios"]
+        PSEL["SelectorDePasarela<br/>multi-comercio: para(comercio_id)"]
+        PR["LibroDeConsumo<br/>RepositorioMandatos<br/>RepositorioMedios (+comercio_id)"]
         PC["RepositorioCatalogo"]
         PL["ModeloDeLenguaje"]
         PS["Reloj · GeneradorIds<br/>Firmante · Bitacora"]
@@ -41,7 +42,8 @@ flowchart TB
 
     subgraph ADAP["adaptadores/ · adaptadores secundarios"]
         direction LR
-        AW["pasarelas/wompi<br/>dinero real"]
+        ARP["pasarelas/registro<br/>RegistroDePasarelas: por comercio_id"]
+        AW["pasarelas/wompi<br/>dinero real, credenciales por comercio"]
         AS["pasarelas/simulada<br/>demo y pruebas"]
         AQ["persistencia/sqlite"]
         AM["persistencia/memoria"]
@@ -73,8 +75,8 @@ flowchart TB
     classDef raiz fill:#5c2f3d,stroke:#d96f8f,color:#f8e8ee
 
     class MAN,DIN,TOP,CAT dominio
-    class PP,PR,PC,PL,PS puerto
-    class AW,AS,AQ,AM,AD,AC adaptador
+    class PP,PSEL,PR,PC,PL,PS puerto
+    class ARP,AW,AS,AQ,AM,AD,AC adaptador
     class HERR,CONV,POL agente
     class CLI,API,WH entrada
     class COMP raiz

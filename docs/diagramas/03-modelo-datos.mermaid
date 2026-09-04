@@ -1,6 +1,7 @@
 erDiagram
     TITULAR ||--o{ MEDIO_DE_PAGO : "enrola"
     TITULAR ||--o{ CONVERSACION : "sostiene"
+    COMERCIO ||--o{ MEDIO_DE_PAGO : "vincula (multi-comercio)"
     MEDIO_DE_PAGO ||--o{ MANDATO : "respalda"
     CONVERSACION ||--o{ TURNO : "contiene"
     TURNO ||--o{ CARRITO : "produce"
@@ -30,6 +31,7 @@ erDiagram
         string modo "sandbox | produccion"
         string referencia_publica "300****567"
         string estado "AVAILABLE | VOIDED"
+        uuid comercio_id FK "multi-comercio: a que comercio quedo vinculado (vinculado_con)"
         datetime creado_en
     }
 
@@ -37,7 +39,7 @@ erDiagram
         string id PK "mnd_..."
         int version "1 legado, 2 con MedioDePagoRef"
         uuid medio_id FK
-        string comercio_id
+        string comercio_id "resuelto via medio.comercio_id al firmar; no cruza contra el mismo campo del medio dentro de la firma"
         int monto_max_centavos
         int tope_total_centavos
         int usos_max
@@ -82,7 +84,7 @@ erDiagram
         uuid id PK
         uuid cobro_id FK
         string tipo "transaction.updated"
-        bool checksum_valido
+        bool checksum_valido "validado con el events_secret DEL COMERCIO (multi-comercio)"
         string cuerpo_crudo "la evidencia, sin recortar"
         datetime recibido_en
     }
