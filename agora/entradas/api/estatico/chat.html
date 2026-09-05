@@ -57,6 +57,24 @@
       font-size: 14px;
     }
 
+    /* -- #app envuelve header/#chat/form#entrada desde el login multi-usuario
+       (4 de septiembre de 2026). Sin esto, el div deja de ser un contenedor
+       flex de altura completa y la barra de escribir mensajes ya no queda
+       fija abajo -- ver hallazgo del 5 de septiembre de 2026. */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      min-height: 0;
+    }
+
+    /* Sin esto, la especificidad de #app le gana a la regla nativa del
+       navegador para [hidden] y la app quedaria visible antes de iniciar
+       sesion. */
+    #app[hidden] {
+      display: none;
+    }
+
     /* -- encabezado -------------------------------------------------------- */
 
     header {
