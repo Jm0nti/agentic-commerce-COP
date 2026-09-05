@@ -146,6 +146,32 @@ CREATE TABLE IF NOT EXISTS estado_intencion (
     estado                       TEXT NOT NULL,
     detalle                       TEXT NOT NULL
 );
+
+-- Multi-usuario (4 de septiembre de 2026): quien puede iniciar sesion.
+-- `nombre_usuario` UNIQUE porque es la clave con la que la persona inicia
+-- sesion (`aplicacion/autenticacion.py:IniciarSesion`); `titular_id` sigue
+-- siendo la clave primaria porque es lo que el resto del esquema (mandato,
+-- medio_de_pago, ...) ya usa para referenciar a un titular -- agregar una
+-- tabla `usuario` no cambia esa convencion, solo le da una identidad con
+-- login a un `titular_id` que antes era un string sin dueño verificado.
+CREATE TABLE IF NOT EXISTS usuario (
+    titular_id                TEXT PRIMARY KEY,
+    nombre_usuario              TEXT NOT NULL UNIQUE,
+    contrasena_hash               TEXT NOT NULL,
+    creado_en                      TEXT NOT NULL
+);
+
+-- La llave de firma ed25519 de cada titular, una fila por titular. Separada
+-- de `usuario` a proposito -- ver el docstring de `puertos.repositorios.
+-- RepositorioLlaves`. Antes de esta version habia UNA sola llave para todo
+-- el proceso, en un archivo (`agora_datos/secretos/firma.sk`/`firma.pk`,
+-- `composicion/configuracion.py:LLAVE_FIRMA_SK_POR_DEFECTO`); esta tabla la
+-- reemplaza -- cada titular firma con la suya, nunca con la de otro.
+CREATE TABLE IF NOT EXISTS llave_firma (
+    titular_id                TEXT PRIMARY KEY,
+    llave_privada                BLOB NOT NULL,
+    llave_publica                 BLOB NOT NULL
+);
 """
 
 

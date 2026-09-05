@@ -214,11 +214,13 @@ def test_construir_encadena_navegar_emitir_pagar_y_consultar_de_punta_a_punta(tm
     repo (`agora/adaptadores/catalogo/semilla/datos/catalogo.json`)."""
     config = leer_configuracion({
         "AGORA_BITACORA": str(tmp_path / "recibos.jsonl"),
-        "AGORA_LLAVE_FIRMA_SK": str(tmp_path / "firma.sk"),
-        "AGORA_LLAVE_FIRMA_PK": str(tmp_path / "firma.pk"),
         "PAGADOR_EMAIL": "juan@correo-real.com",
     })
     contenedor = construir(config)
+    # Multi-usuario: `emitir_mandato` ya no acepta cualquier titular_id --
+    # hace falta un usuario (y su llave) creado de antemano, igual que
+    # exigiria `scripts/crear_usuario.py` en produccion.
+    contenedor.registrar_usuario("tit_1", "clave-de-prueba", titular_id="tit_1")
 
     # El catalogo semilla no es un dato fijo de esta prueba (mismo hallazgo
     # que en test_cli.py): se descubre el comercio y el producto contra lo

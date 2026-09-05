@@ -95,3 +95,38 @@ def cargar_o_generar_firmante(ruta_sk: Path, ruta_pk: Path) -> FirmanteEd25519:
             )
         )
     return FirmanteEd25519(sk)
+
+
+def generar_par_ed25519() -> tuple[bytes, bytes]:
+    """Un par ed25519 nuevo, crudo -- implementa `puertos.firma.
+    GeneradorDeLlaves` (via `GeneradorDeLlavesEd25519`, mas abajo). Misma
+    codificacion que `cargar_o_generar_firmante`: `Raw`/`Raw`, sin cifrar,
+    32 bytes cada una."""
+    sk = Ed25519PrivateKey.generate()
+    llave_privada = sk.private_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PrivateFormat.Raw,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    llave_publica = sk.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    return llave_privada, llave_publica
+
+
+def firmante_desde_bytes(llave_privada: bytes) -> FirmanteEd25519:
+    """Arma un `FirmanteEd25519` a partir de una llave privada cruda ya
+    guardada (multi-usuario: `RepositorioLlaves.llave_privada_de`), sin
+    pasar por disco -- a diferencia de `cargar_o_generar_firmante`, que lee
+    o escribe un archivo. Lo usa `adaptadores/sistema/
+    registro_firmantes.py:RegistroDeFirmantes` para resolver el `Firmante`
+    de cada titular en el momento de firmar."""
+    return FirmanteEd25519(Ed25519PrivateKey.from_private_bytes(llave_privada))
+
+
+class GeneradorDeLlavesEd25519:
+    """Implementa `puertos.firma.GeneradorDeLlaves`."""
+
+    def generar(self) -> tuple[bytes, bytes]:
+        return generar_par_ed25519()

@@ -36,8 +36,6 @@ def test_parsear_item_con_y_sin_cantidad():
 def _config(tmp_path) -> dict:
     return {
         "AGORA_BITACORA": str(tmp_path / "recibos.jsonl"),
-        "AGORA_LLAVE_FIRMA_SK": str(tmp_path / "firma.sk"),
-        "AGORA_LLAVE_FIRMA_PK": str(tmp_path / "firma.pk"),
         "AGORA_PERSISTENCIA": "sqlite",
         "AGORA_SQLITE_PATH": str(tmp_path / "agora.db"),
         "PAGADOR_EMAIL": "juan@correo-real.com",
@@ -45,7 +43,13 @@ def _config(tmp_path) -> dict:
 
 
 def _contenedor(tmp_path):
-    return construir(leer_configuracion(_config(tmp_path)))
+    contenedor = construir(leer_configuracion(_config(tmp_path)))
+    # Multi-usuario: "tit_1" (el titular que usan las pruebas de aca abajo)
+    # necesita un usuario -- y por lo tanto una llave de firma -- creado de
+    # antemano, igual que exigiria `scripts/crear_usuario.py` en
+    # produccion.
+    contenedor.registrar_usuario("tit_1", "clave-de-prueba", titular_id="tit_1")
+    return contenedor
 
 
 def test_flujo_completo_enrolar_emitir_pagar_retomar(tmp_path, capsys):
@@ -118,6 +122,10 @@ def test_chat_arma_propuesta_y_titular_la_firma_en_otro_proceso(tmp_path, capsys
     # sin pasar por `emitir`, que es el camino del humano operando la CLI
     # de punta a punta.
     proceso_chat = construir(leer_configuracion(config))
+    # Multi-usuario: "tit_1" necesita un usuario (y su llave) creado de
+    # antemano -- misma sqlite que "proceso_terminal" mas abajo, asi que
+    # alcanza con registrarlo una sola vez aca.
+    proceso_chat.registrar_usuario("tit_1", "clave-de-prueba", titular_id="tit_1")
     comercio = proceso_chat.navegar_catalogo.buscar_comercios()[0]
     producto = proceso_chat.navegar_catalogo.buscar_productos(comercio.comercio_id)[0]
     # Multi-comercio: enrolar vincula el medio con ESTE comercio (ver el

@@ -237,6 +237,51 @@ class EstadoDesconocido(ErrorDeDominio):
     id, o el registro (en memoria en esta etapa) se reinicio."""
 
 
+# -- autenticacion ----------------------------------------------------------- #
+
+
+class ErrorDeAutenticacion(ErrorDeDominio):
+    pass
+
+
+class SinLlaveDeFirma(ErrorDeAutenticacion):
+    """El titular no tiene una llave de firma ed25519 asociada.
+
+    Antes de esta version (multi-usuario, 4 de septiembre de 2026),
+    `composicion/contenedor.py` armaba UNA sola llave para todo el proceso
+    con `cargar_o_generar_firmante`, generandola sola la primera vez que
+    hacia falta -- cualquier `titular_id` firmaba con la misma llave. Ahora
+    cada titular tiene la suya, guardada en `RepositorioLlaves`, y
+    `SelectorDeFirmante.para(titular_id)` (`adaptadores/sistema/
+    registro_firmantes.py:RegistroDeFirmantes`) NUNCA genera una al vuelo:
+    un `titular_id` que llega hasta aca sin llave es siempre un error de
+    operacion -- falta correr `scripts/crear_usuario.py`, no algo que la
+    app deba resolver en silencio."""
+
+
+class CredencialesInvalidas(ErrorDeAutenticacion):
+    """El nombre de usuario no existe, o la contrasena no coincide con el
+    hash guardado -- deliberadamente el MISMO error para los dos casos:
+    distinguirlos permitiria enumerar nombres de usuario validos probando
+    contra `POST /auth/iniciar-sesion` (`aplicacion/autenticacion.py:
+    IniciarSesion`)."""
+
+
+class SesionInvalida(ErrorDeAutenticacion):
+    """La cookie de sesion de `entradas/api/` no corresponde a ninguna
+    sesion viva -- nunca existio, ya expiro, o la persona cerro sesion.
+    `entradas/api/app.py` la traduce a 401, nunca a 400: no es un dato mal
+    formado en la peticion, es una peticion sin autenticar."""
+
+
+class NombreDeUsuarioYaExiste(ErrorDeAutenticacion):
+    """`aplicacion/autenticacion.py:RegistrarUsuario` (el unico camino es
+    `scripts/crear_usuario.py`, no hay registro por HTTP) con un nombre de
+    usuario que ya existe. Se verifica ANTES de generar la llave de firma
+    nueva, para no dejar una llave huerfana sin usuario dueño si el nombre
+    ya estaba tomado."""
+
+
 # -- modelo de lenguaje ---------------------------------------------------- #
 
 

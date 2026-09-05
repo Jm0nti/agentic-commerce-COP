@@ -41,6 +41,22 @@ hasta 5 minutos mientras el titular acepta el push de Nequi
 (`aplicacion/enrolar_medio.py:ESPERA_PUSH_SEG`): ninguna peticion HTTP se
 queda esperando eso, el navegador sondea `estado` a su propio ritmo hasta
 ver un estado final y recien entonces llama a `confirmar`.
+
+LOGIN (multi-usuario, 4 de septiembre de 2026)
+---------------------------------------------------
+Antes de esta version, `titular_id` llegaba como texto libre desde
+`chat.html` (un `<input>` guardado en `localStorage`), sin ninguna
+verificacion -- cualquiera podia escribir el `titular_id` de otro y ver
+sus medios de pago. Ahora `POST /auth/iniciar-sesion` verifica usuario y
+contrasena (`contenedor.iniciar_sesion`, `aplicacion/autenticacion.py`,
+usuarios creados de antemano con `scripts/crear_usuario.py` -- no hay
+registro por HTTP) y deja una cookie httponly (`entradas/api/
+autenticacion.py:AlmacenDeSesionesWeb`). Toda ruta que antes aceptaba
+`titular_id` por parametro (`firmar`, `confirmar_enrolamiento`,
+`listar_medios`) ahora lo resuelve de esa cookie via la dependencia
+`_requiere_titular` -- nunca de un campo que mande el cliente. Crear una
+sesion de chat (`POST /sesiones`) tambien exige estar autenticado, y queda
+atada al `titular_id` que la creo (`entradas/api/sesiones.py`).
 """
 
 from __future__ import annotations
@@ -50,14 +66,20 @@ import queue
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from ...agente.conversacion import Agente, LimiteDeTurnosExcedido
 from ...composicion.contenedor import Contenedor
-from ...dominio.comun.errores import ErrorDeDominio, PasarelaNoDisponible
+from ...dominio.comun.errores import (
+    CredencialesInvalidas,
+    ErrorDeDominio,
+    PasarelaNoDisponible,
+    SesionInvalida,
+)
 from ...dominio.mandato.modelo import Intencion
+from .autenticacion import COOKIE_SESION, DURACION_SESION, AlmacenDeSesionesWeb
 from .sesiones import AlmacenDeSesiones, SesionDesconocida
 
 RAIZ_ESTATICO = Path(__file__).resolve().parent / "estatico"
@@ -68,8 +90,12 @@ class _MensajeEntrante(BaseModel):
 
 
 class _FirmarEntrante(BaseModel):
-    titular_id: str
     sesion_id: str
+
+
+class _IniciarSesionEntrante(BaseModel):
+    nombre_usuario: str
+    contrasena: str
 
 
 class _RetomarEntrante(BaseModel):
@@ -91,7 +117,6 @@ class _IniciarEnrolamientoEntrante(BaseModel):
 class _ConfirmarEnrolamientoEntrante(BaseModel):
     token: str
     correo: str
-    titular_id: str
     comercio_id: str
 
 
@@ -102,6 +127,7 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
     una charla que no puede hablarle a ningun modelo."""
 
     sesiones = AlmacenDeSesiones(agente, contenedor) if agente is not None else None
+    sesiones_web = AlmacenDeSesionesWeb(contenedor.reloj)
     app = FastAPI(title="agora -- chat con firma en una sola pestana")
     # Expuesto para pruebas (`tests/test_api_app.py`): leer la cola de
     # eventos de una sesion directo, sin pelear con como el `TestClient` de
@@ -109,6 +135,21 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
     # que nunca termina -- la ruta HTTP sigue siendo el unico camino real
     # para un navegador.
     app.state.sesiones = sesiones
+
+    def _requiere_titular(request: Request) -> str:
+        """Dependencia de FastAPI: el `titular_id` detras de la cookie de
+        sesion (`COOKIE_SESION`), NUNCA de un campo que mande el cliente.
+        401 (no 400) si no hay cookie o si `AlmacenDeSesionesWeb` la
+        rechaza -- no es un dato mal formado, es una peticion sin
+        autenticar (ver `dominio/comun/errores.py:SesionInvalida`)."""
+        token = request.cookies.get(COOKIE_SESION)
+        if not token:
+            raise HTTPException(status_code=401, detail="no hay sesion iniciada")
+        try:
+            titular_id, _nombre_usuario = sesiones_web.titular_de(token)
+        except SesionInvalida as exc:
+            raise HTTPException(status_code=401, detail=exc.mensaje) from exc
+        return titular_id
 
     @app.get("/salud")
     def salud() -> dict[str, Any]:
@@ -118,21 +159,62 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
     def index() -> FileResponse:
         return FileResponse(RAIZ_ESTATICO / "chat.html")
 
+    # -- Autenticacion (multi-usuario, 4 de septiembre de 2026) --------------- #
+    #
+    # Sin registro por HTTP: los usuarios se crean de antemano con
+    # `scripts/crear_usuario.py`. Estas tres rutas son las UNICAS que no
+    # exigen la cookie de sesion via `_requiere_titular` -- son las que la
+    # arman o la destruyen.
+
+    @app.post("/auth/iniciar-sesion")
+    def iniciar_sesion(cuerpo: _IniciarSesionEntrante, response: Response) -> dict[str, Any]:
+        try:
+            usuario = contenedor.iniciar_sesion(cuerpo.nombre_usuario, cuerpo.contrasena)
+        except CredencialesInvalidas as exc:
+            raise HTTPException(status_code=401, detail=exc.mensaje) from exc
+        token = sesiones_web.crear(usuario)
+        response.set_cookie(
+            COOKIE_SESION, token, httponly=True, samesite="lax",
+            max_age=int(DURACION_SESION.total_seconds()),
+        )
+        return {"titular_id": usuario.titular_id, "nombre_usuario": usuario.nombre_usuario}
+
+    @app.post("/auth/cerrar-sesion")
+    def cerrar_sesion(request: Request, response: Response) -> dict[str, Any]:
+        token = request.cookies.get(COOKIE_SESION)
+        if token:
+            sesiones_web.cerrar(token)
+        response.delete_cookie(COOKIE_SESION)
+        return {"ok": True}
+
+    @app.get("/auth/quien-soy")
+    def quien_soy(request: Request) -> dict[str, Any]:
+        token = request.cookies.get(COOKIE_SESION)
+        if not token:
+            raise HTTPException(status_code=401, detail="no hay sesion iniciada")
+        try:
+            titular_id, nombre_usuario = sesiones_web.titular_de(token)
+        except SesionInvalida as exc:
+            raise HTTPException(status_code=401, detail=exc.mensaje) from exc
+        return {"titular_id": titular_id, "nombre_usuario": nombre_usuario}
+
     @app.post("/sesiones")
-    def crear_sesion() -> dict[str, Any]:
+    def crear_sesion(titular_id: str = Depends(_requiere_titular)) -> dict[str, Any]:
         if sesiones is None:
             raise HTTPException(
                 status_code=503,
                 detail="no hay DEEPSEEK_API_KEY configurada -- sin ella no hay agente de chat",
             )
-        return {"sesion_id": sesiones.crear()}
+        return {"sesion_id": sesiones.crear(titular_id)}
 
     @app.post("/sesiones/{sesion_id}/mensajes")
-    def enviar_mensaje(sesion_id: str, cuerpo: _MensajeEntrante) -> dict[str, Any]:
+    def enviar_mensaje(
+        sesion_id: str, cuerpo: _MensajeEntrante, titular_id: str = Depends(_requiere_titular),
+    ) -> dict[str, Any]:
         if sesiones is None:
             raise HTTPException(status_code=503, detail="no hay agente de chat disponible")
         try:
-            respuesta = sesiones.enviar_mensaje(sesion_id, cuerpo.texto)
+            respuesta = sesiones.enviar_mensaje(sesion_id, cuerpo.texto, titular_id)
         except SesionDesconocida as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ErrorDeDominio as exc:
@@ -145,23 +227,28 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         return {"respuesta": respuesta}
 
     @app.get("/sesiones/{sesion_id}/eventos")
-    def eventos(sesion_id: str) -> StreamingResponse:
+    def eventos(sesion_id: str, titular_id: str = Depends(_requiere_titular)) -> StreamingResponse:
         if sesiones is None:
             raise HTTPException(status_code=503, detail="no hay agente de chat disponible")
         try:
-            cola = sesiones.eventos(sesion_id)
+            cola = sesiones.eventos(sesion_id, titular_id)
         except SesionDesconocida as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         return StreamingResponse(_flujo_sse(cola), media_type="text/event-stream")
 
     @app.post("/propuestas/{propuesta_id}/firmar")
-    def firmar(propuesta_id: str, cuerpo: _FirmarEntrante) -> dict[str, Any]:
+    def firmar(
+        propuesta_id: str, cuerpo: _FirmarEntrante, titular_id: str = Depends(_requiere_titular),
+    ) -> dict[str, Any]:
         """Mismo llamado que `entradas/cli/__main__.py:cmd_firmar`: busca
         la propuesta y el carrito por id, nunca arma un carrito nuevo. La
         diferencia es que aca la persona lo dispara apretando "Firmar" en
-        el popup, no corriendo un comando en otra terminal."""
+        el popup, no corriendo un comando en otra terminal. `titular_id`
+        sale de la cookie de sesion (`_requiere_titular`), nunca del cuerpo
+        de la peticion -- antes de esta version cualquiera podia mandar el
+        `titular_id` que quisiera y firmar en nombre de otro."""
         try:
-            mandato = contenedor.emitir_mandato(propuesta_id, cuerpo.titular_id)
+            mandato = contenedor.emitir_mandato(propuesta_id, titular_id)
             carrito_id = contenedor.propuestas.obtener(propuesta_id).carrito_id
         except ErrorDeDominio as exc:
             raise HTTPException(status_code=400, detail=exc.mensaje) from exc
@@ -183,7 +270,9 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         }
 
     @app.post("/intenciones/{intencion_id}/retomar")
-    def retomar(intencion_id: str, cuerpo: _RetomarEntrante) -> dict[str, Any]:
+    def retomar(
+        intencion_id: str, cuerpo: _RetomarEntrante, _titular_id: str = Depends(_requiere_titular),
+    ) -> dict[str, Any]:
         """Mismo llamado que `entradas/cli/__main__.py:cmd_retomar`: pide
         de nuevo `mandato_id`/`carrito_id` porque `EjecutarIntencion.
         retomar` vuelve a evaluar la politica completa contra el mismo
@@ -249,7 +338,9 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
     # segundos) hasta ver un estado final.
 
     @app.post("/medios/enrolar/iniciar")
-    def iniciar_enrolamiento(cuerpo: _IniciarEnrolamientoEntrante) -> dict[str, Any]:
+    def iniciar_enrolamiento(
+        cuerpo: _IniciarEnrolamientoEntrante, _titular_id: str = Depends(_requiere_titular),
+    ) -> dict[str, Any]:
         """Paso 1: crea el token y dispara el push (Wompi real) o lo
         aprueba de inmediato (la simulada). El mismo paso que usa
         `EnrolarMedio` para la CLI -- aca no se queda bloqueado sondeando,
@@ -263,7 +354,9 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         return {"token": proceso.token, "estado": proceso.estado}
 
     @app.get("/medios/enrolar/{token}/estado")
-    def estado_enrolamiento(token: str, comercio_id: str) -> dict[str, Any]:
+    def estado_enrolamiento(
+        token: str, comercio_id: str, _titular_id: str = Depends(_requiere_titular),
+    ) -> dict[str, Any]:
         """Paso 2, repetido por el navegador a su propio ritmo -- nunca
         bloquea esperando un estado final, igual que el resto del puerto
         de pasarela. `comercio_id` tiene que ser el mismo que se uso en
@@ -278,16 +371,19 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         return {"estado": estado.estado}
 
     @app.post("/medios/enrolar/confirmar")
-    def confirmar_enrolamiento(cuerpo: _ConfirmarEnrolamientoEntrante) -> dict[str, Any]:
+    def confirmar_enrolamiento(
+        cuerpo: _ConfirmarEnrolamientoEntrante, titular_id: str = Depends(_requiere_titular),
+    ) -> dict[str, Any]:
         """Paso 3: vuelve a consultar el estado del token ACA, en vez de
         confiar en lo que el navegador dice haber visto en su ultimo
         sondeo -- mismo argumento que `carrito_hash` en `composicion/
         agente.py:pagar`: lo que decide si algo se autoriza nunca sale de
-        un dato que el cliente podria inventar."""
+        un dato que el cliente podria inventar. Mismo criterio con
+        `titular_id`: sale de la cookie de sesion, nunca del cuerpo."""
         try:
             estado = contenedor.consultar_enrolamiento(cuerpo.token, cuerpo.comercio_id).estado
             ref = contenedor.confirmar_enrolamiento(
-                cuerpo.token, cuerpo.correo, cuerpo.titular_id, estado, cuerpo.comercio_id
+                cuerpo.token, cuerpo.correo, titular_id, estado, cuerpo.comercio_id
             )
         except PasarelaNoDisponible as exc:
             raise HTTPException(status_code=502, detail=exc.mensaje) from exc
@@ -296,12 +392,15 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         return ref.to_json()
 
     @app.get("/medios")
-    def listar_medios(titular_id: str) -> dict[str, Any]:
-        """Los medios vivos de un titular en el ambiente que ya tiene
-        configurado este proceso (`contenedor.config.ambiente`) -- mismo
-        criterio que `entradas/cli/__main__.py:cmd_fuentes`, sin selector
-        de ambiente en la peticion: la pasarela (simulada/wompi) y el
-        ambiente los fija el .env del servidor, no el navegador."""
+    def listar_medios(titular_id: str = Depends(_requiere_titular)) -> dict[str, Any]:
+        """Los medios vivos del titular AUTENTICADO (cookie de sesion, ver
+        `_requiere_titular`) en el ambiente que ya tiene configurado este
+        proceso (`contenedor.config.ambiente`) -- mismo criterio que
+        `entradas/cli/__main__.py:cmd_fuentes`, sin selector de ambiente en
+        la peticion: la pasarela (simulada/wompi) y el ambiente los fija
+        el .env del servidor, no el navegador. Antes de esta version
+        `titular_id` viajaba como query param que cualquiera podia cambiar
+        para ver los medios de otro."""
         vivos = contenedor.medios.vivos(titular_id, contenedor.config.ambiente)
         return {"medios": [ref.to_json() for ref in vivos]}
 

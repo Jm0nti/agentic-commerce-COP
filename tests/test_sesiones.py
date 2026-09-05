@@ -48,7 +48,7 @@ def _mensaje_pagar(motivo: str, intencion_id: str = "int_1") -> Mensaje:
 def test_un_pagar_que_queda_pending_se_registra_solo_como_pendiente():
     agente = _AgenteFalso()
     sesiones = AlmacenDeSesiones(agente, contenedor=None)
-    sesion_id = sesiones.crear()
+    sesion_id = sesiones.crear("tit_1")
     agente.proximos_mensajes_tool = [_mensaje_pagar("PENDING", "int_1")]
 
     sesiones.enviar_mensaje(sesion_id, "paga por favor")
@@ -59,7 +59,7 @@ def test_un_pagar_que_queda_pending_se_registra_solo_como_pendiente():
 def test_un_pagar_ya_resuelto_no_se_registra():
     agente = _AgenteFalso()
     sesiones = AlmacenDeSesiones(agente, contenedor=None)
-    sesion_id = sesiones.crear()
+    sesion_id = sesiones.crear("tit_1")
     agente.proximos_mensajes_tool = [_mensaje_pagar("APPROVED", "int_2")]
 
     sesiones.enviar_mensaje(sesion_id, "paga por favor")
@@ -70,7 +70,7 @@ def test_un_pagar_ya_resuelto_no_se_registra():
 def test_resolver_pendiente_avisa_a_la_conversacion_y_encola_un_evento_sse():
     agente = _AgenteFalso()
     sesiones = AlmacenDeSesiones(agente, contenedor=None)
-    sesion_id = sesiones.crear()
+    sesion_id = sesiones.crear("tit_1")
     sesiones.registrar_pendiente(sesion_id, "int_3")
     agente.proxima_respuesta = "genial, tu pago ya quedo aprobado"
 

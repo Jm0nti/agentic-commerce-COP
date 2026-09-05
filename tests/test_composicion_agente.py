@@ -37,13 +37,15 @@ def _producto_barato(contenedor):
 def _contenedor_con_agente(tmp_path):
     config = leer_configuracion({
         "AGORA_BITACORA": str(tmp_path / "recibos.jsonl"),
-        "AGORA_LLAVE_FIRMA_SK": str(tmp_path / "firma.sk"),
-        "AGORA_LLAVE_FIRMA_PK": str(tmp_path / "firma.pk"),
         "AGORA_PERSISTENCIA": "sqlite",
         "AGORA_SQLITE_PATH": str(tmp_path / "agora.db"),
         "PAGADOR_EMAIL": "juan@correo-real.com",
     })
     contenedor = construir(config)
+    # Multi-usuario: "tit_1" necesita un usuario (y su llave) creado de
+    # antemano para que `emitir_mandato` pueda resolverle un Firmante --
+    # igual que exigiria `scripts/crear_usuario.py` en produccion.
+    contenedor.registrar_usuario("tit_1", "clave-de-prueba", titular_id="tit_1")
     # Multi-comercio: enrolar vincula el medio con ESTE comercio (ver el
     # docstring de aplicacion/enrolar_medio.py) -- el comercio se descubre
     # antes de enrolar, no despues, para que quede vinculado con el mismo
@@ -122,8 +124,6 @@ def test_estado_confirmado_en_otro_proceso_se_ve_desde_consultar_estado(tmp_path
     # el objeto Python tienen nada en comun con el del chat.
     config_repetida = leer_configuracion({
         "AGORA_BITACORA": str(tmp_path / "recibos.jsonl"),
-        "AGORA_LLAVE_FIRMA_SK": str(tmp_path / "firma.sk"),
-        "AGORA_LLAVE_FIRMA_PK": str(tmp_path / "firma.pk"),
         "AGORA_PERSISTENCIA": "sqlite",
         "AGORA_SQLITE_PATH": str(tmp_path / "agora.db"),
         "PAGADOR_EMAIL": "juan@correo-real.com",

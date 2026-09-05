@@ -50,6 +50,14 @@ PROHIBIDAS = (
     "llave",
     "secreto",
     "credencial",
+    # Multi-usuario (4 de septiembre de 2026): el agente tampoco puede
+    # tocar nada de autenticacion -- ni la contrasena de nadie, ni la
+    # sesion de login de nadie. Mismo espiritu que el resto de la lista:
+    # una credencial de identidad es tan intocable para el agente como una
+    # credencial de pago.
+    "contrasena",
+    "password",
+    "sesion",
 )
 
 

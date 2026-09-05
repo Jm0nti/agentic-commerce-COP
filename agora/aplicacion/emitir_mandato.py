@@ -7,15 +7,16 @@
                                             |
                                        Mandato (ed25519)
 
-`agente/` nunca llama a este caso de uso: no tiene un `Firmante` (la llave
-del titular no esta en su proceso -- `test_fronteras.py` lo verifica) y no
-esta en `agente/herramientas.py:CATALOGO_DE_HERRAMIENTAS`. Lo llama
-`entradas/cli/`, del lado del titular, con el mismo `Firmante` que
-`composicion/contenedor.py` arma a partir de la llave en disco (etapa 5,
-"igual que v1"). Puede ser `entradas/cli/emitir` (arma y firma en un solo
-comando, para cuando el que opera la CLI YA es el humano) o
-`entradas/cli/firmar` (etapa 6: firma una propuesta que ya armo OTRO
-proceso -- tipicamente el agente, en una charla de `chat`).
+`agente/` nunca llama a este caso de uso: no tiene un `SelectorDeFirmante`
+(la llave del titular no esta en su proceso -- `test_fronteras.py` lo
+verifica) y no esta en `agente/herramientas.py:CATALOGO_DE_HERRAMIENTAS`.
+Lo llama `entradas/cli/`, del lado del titular, resolviendo el `Firmante`
+de ESE titular en el momento de firmar (multi-usuario, 4 de septiembre de
+2026: `puertos/firma.py:SelectorDeFirmante`, ya no una llave unica de
+proceso). Puede ser `entradas/cli/emitir` (arma y firma en un solo comando,
+para cuando el que opera la CLI YA es el humano) o `entradas/cli/firmar`
+(etapa 6: firma una propuesta que ya armo OTRO proceso -- tipicamente el
+agente, en una charla de `chat`).
 
 RECIBE `propuesta_id`, NO `PropuestaDeMandato`
 ------------------------------------------------
@@ -76,7 +77,7 @@ from datetime import timedelta
 from ..dominio.comun.errores import PropuestaInvalida, SinMedioDePagoVivo, SinMedioVinculadoAlComercio
 from ..dominio.mandato.modelo import Mandato
 from ..dominio.pago.modelo import Ambiente
-from ..puertos.firma import Firmante
+from ..puertos.firma import SelectorDeFirmante
 from ..puertos.repositorios import (
     RepositorioCarritos,
     RepositorioMandatos,
@@ -93,7 +94,7 @@ class EmitirMandato:
         propuestas: RepositorioPropuestas,
         medios: RepositorioMedios,
         mandatos: RepositorioMandatos,
-        firmante: Firmante,
+        selector_firmante: SelectorDeFirmante,
         ids: GeneradorIds,
         reloj: Reloj,
         bitacora: Bitacora,
@@ -103,7 +104,7 @@ class EmitirMandato:
         self._propuestas = propuestas
         self._medios = medios
         self._mandatos = mandatos
-        self._firmante = firmante
+        self._selector_firmante = selector_firmante
         self._ids = ids
         self._reloj = reloj
         self._bitacora = bitacora
@@ -141,6 +142,14 @@ class EmitirMandato:
                 "(aplicacion/enrolar_medio.py)"
             )
 
+        # Multi-usuario: se resuelve el `Firmante` de ESTE titular recien
+        # aca, al momento de firmar -- nunca uno fijo por constructor (ver
+        # el docstring de `puertos.firma.SelectorDeFirmante`). Si el
+        # titular nunca tuvo un usuario creado con `scripts/
+        # crear_usuario.py`, esto levanta `SinLlaveDeFirma` antes de que se
+        # arme ningun `Mandato`.
+        firmante = self._selector_firmante.para(titular_id)
+
         ahora = self._reloj.ahora()
         mandato = Mandato(
             mandato_id=self._ids.nuevo("mnd"),
@@ -155,11 +164,11 @@ class EmitirMandato:
             usos_max=propuesta.usos_max,
             expira_en=ahora + timedelta(minutes=propuesta.vigencia_minutos),
             creado_en=ahora,
-            llave_publica=self._firmante.llave_publica(),
+            llave_publica=firmante.llave_publica(),
             categorias=propuesta.categorias,
             carrito_hash=carrito.hash_canonico,
         )
-        firmado = replace(mandato, firma=self._firmante.firma(mandato.canonico()))
+        firmado = replace(mandato, firma=firmante.firma(mandato.canonico()))
 
         self._mandatos.guardar(firmado, self._ambiente)
         self._bitacora.anotar(

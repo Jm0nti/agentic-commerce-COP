@@ -790,6 +790,24 @@
 
 <body>
 
+  <!-- Pantalla de login -- gatea el acceso a todo lo demas (multi-usuario,
+       4 de septiembre de 2026). Los usuarios se crean con
+       scripts/crear_usuario.py -- no hay registro aca. -->
+  <div class="modal-fondo" id="pantalla-login">
+    <div class="modal">
+      <h2>Iniciar sesion</h2>
+      <p class="aviso">Los usuarios se crean con scripts/crear_usuario.py -- no hay registro aca.</p>
+      <form class="enrolar" id="form-login">
+        <input id="login-usuario" type="text" placeholder="Nombre de usuario" autocomplete="username" required>
+        <input id="login-contrasena" type="password" placeholder="Contrasena" autocomplete="current-password" required>
+        <button type="submit" id="login-boton">Iniciar sesion</button>
+      </form>
+      <p class="error-enrolar" id="login-error" hidden></p>
+    </div>
+  </div>
+
+  <div id="app" hidden>
+
   <header>
     <div class="contenedor-header">
       <div class="marca">
@@ -800,14 +818,14 @@
         </div>
       </div>
       <div class="campo-titular">
-        <label for="titular_id">titular_id</label>
-        <input id="titular_id" type="text" placeholder="tit_1">
+        <span id="nombre-usuario-actual"></span>
       </div>
       <div class="indicador-estado">
         <span class="punto-estado pendiente" id="estado-punto" aria-hidden="true"></span>
         <span id="estado">conectando...</span>
       </div>
       <button type="button" id="btn-medios">Medios de pago</button>
+      <button type="button" id="btn-cerrar-sesion">Cerrar sesion</button>
     </div>
   </header>
 
@@ -819,6 +837,8 @@
       <button type="submit" disabled>Enviar</button>
     </div>
   </form>
+
+  </div> <!-- /#app -->
 
   <!-- Popup: firmar propuesta (Cart Mandate sin firmar -> Mandato firmado) -->
   <div class="modal-fondo" id="modal-propuesta">
@@ -861,7 +881,7 @@
   <div class="modal-fondo" id="modal-medios">
     <div class="modal">
       <h2>Medios de pago</h2>
-      <p class="aviso">Se enrolan y se consultan para el titular_id de arriba a la derecha.</p>
+      <p class="aviso">Se enrolan y se consultan para tu usuario ya autenticado.</p>
 
       <p class="medios-vacio" id="medios-vacio" hidden></p>
       <ul class="medios-lista" id="medios-lista"></ul>
@@ -892,20 +912,90 @@
       const form = document.getElementById("entrada");
       const campoTexto = document.getElementById("texto");
       const botonEnviar = form.querySelector("button");
-      const campoTitular = document.getElementById("titular_id");
 
       const modalPropuesta = document.getElementById("modal-propuesta");
       const modalConfirmacion = document.getElementById("modal-confirmacion");
+
+      const pantallaLogin = document.getElementById("pantalla-login");
+      const appContenedor = document.getElementById("app");
+      const nombreUsuarioActual = document.getElementById("nombre-usuario-actual");
+      const formLogin = document.getElementById("form-login");
+      const campoLoginUsuario = document.getElementById("login-usuario");
+      const campoLoginContrasena = document.getElementById("login-contrasena");
+      const loginError = document.getElementById("login-error");
+      const btnCerrarSesion = document.getElementById("btn-cerrar-sesion");
 
       let sesionId = null;
       let eventSource = null;
       let propuestaActual = null;
       let confirmacionActual = null;
 
-      campoTitular.value = localStorage.getItem("agora_titular_id") || "";
-      campoTitular.addEventListener("change", function () {
-        localStorage.setItem("agora_titular_id", campoTitular.value.trim());
-      });
+      // -- Login (multi-usuario, 4 de septiembre de 2026) -------------------- //
+      //
+      // `titular_id` ya no es un campo de texto libre en el header: se
+      // resuelve del lado del servidor a partir de la cookie de sesion que
+      // deja `POST /auth/iniciar-sesion`. Esta pantalla es lo primero que
+      // se ve -- nada de lo demas (chat, medios) es alcanzable sin pasar
+      // por aca primero.
+
+      function mostrarErrorLogin(texto) {
+        loginError.textContent = texto;
+        loginError.hidden = false;
+      }
+
+      function mostrarApp(usuario) {
+        nombreUsuarioActual.textContent = usuario.nombre_usuario;
+        pantallaLogin.classList.remove("visible");
+        appContenedor.hidden = false;
+        iniciarChat();
+      }
+
+      async function manejarLogin(e) {
+        e.preventDefault();
+        loginError.hidden = true;
+        const nombreUsuario = campoLoginUsuario.value.trim();
+        const contrasena = campoLoginContrasena.value;
+        if (!nombreUsuario || !contrasena) return;
+        try {
+          const resp = await fetch("/auth/iniciar-sesion", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nombre_usuario: nombreUsuario, contrasena: contrasena }),
+          });
+          const datos = await resp.json();
+          if (!resp.ok) { mostrarErrorLogin(datos.detail || "no se pudo iniciar sesion"); return; }
+          campoLoginContrasena.value = "";
+          mostrarApp(datos);
+        } catch (err) {
+          mostrarErrorLogin("Error de red: " + err.message);
+        }
+      }
+
+      async function cerrarSesion() {
+        try {
+          await fetch("/auth/cerrar-sesion", { method: "POST" });
+        } catch (err) {
+          // Nada mas por hacer -- se recarga igual, y sin cookie valida la
+          // pantalla de login vuelve a aparecer.
+        }
+        location.reload();
+      }
+
+      async function verificarSesion() {
+        try {
+          const resp = await fetch("/auth/quien-soy");
+          if (resp.ok) {
+            mostrarApp(await resp.json());
+            return;
+          }
+        } catch (err) {
+          // Sin red: se queda en la pantalla de login, igual que un 401.
+        }
+        pantallaLogin.classList.add("visible");
+      }
+
+      formLogin.addEventListener("submit", manejarLogin);
+      btnCerrarSesion.addEventListener("click", cerrarSesion);
 
       function fijarEstado(texto, tipo) {
         estado.textContent = texto;
@@ -1097,11 +1187,17 @@
         if (habilitar) campoTexto.focus();
       }
 
-      async function iniciarSesion() {
+      async function iniciarChat() {
         try {
           const resp = await fetch("/sesiones", { method: "POST" });
           if (resp.status === 503) {
             fijarEstado("sin agente (falta DEEPSEEK_API_KEY en el servidor)", "error");
+            return;
+          }
+          if (resp.status === 401) {
+            // La cookie de sesion expiro entre que se verifico al cargar la
+            // pagina y este intento de crear la sesion de chat.
+            location.reload();
             return;
           }
           if (!resp.ok) throw new Error("no se pudo crear la sesion");
@@ -1165,8 +1261,6 @@
 
       document.getElementById("propuesta-firmar").addEventListener("click", async function () {
         if (!propuestaActual) return;
-        const titularId = campoTitular.value.trim();
-        if (!titularId) { alert("Falta el titular_id (arriba a la derecha)."); return; }
         const propuestaId = propuestaActual.propuesta_id;
         modalPropuesta.classList.remove("visible");
         burbuja("Firmando la propuesta " + propuestaId + "...", "sistema");
@@ -1174,7 +1268,7 @@
           const resp = await fetch("/propuestas/" + propuestaId + "/firmar", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ titular_id: titularId, sesion_id: sesionId }),
+            body: JSON.stringify({ sesion_id: sesionId }),
           });
           const datos = await resp.json();
           if (!resp.ok) { burbuja("No se pudo firmar: " + (datos.detail || resp.status), "sistema"); return; }
@@ -1234,10 +1328,6 @@
 
       let sondeoEnrolamiento = null;
 
-      function titularIdActual() {
-        return campoTitular.value.trim();
-      }
-
       function mostrarProgreso(texto) {
         progresoEnrolar.textContent = texto;
         progresoEnrolar.hidden = false;
@@ -1263,21 +1353,15 @@
       }
 
       async function cargarMedios() {
-        const titularId = titularIdActual();
         listaMedios.innerHTML = "";
         medioVacio.hidden = true;
-        if (!titularId) {
-          medioVacio.hidden = false;
-          medioVacio.textContent = "Escribe un titular_id arriba a la derecha para ver sus medios.";
-          return;
-        }
         try {
-          const resp = await fetch("/medios?titular_id=" + encodeURIComponent(titularId));
+          const resp = await fetch("/medios");
           if (!resp.ok) throw new Error("no se pudo consultar los medios");
           const datos = await resp.json();
           if (!datos.medios || datos.medios.length === 0) {
             medioVacio.hidden = false;
-            medioVacio.textContent = "Sin medios de pago vivos para '" + titularId + "'.";
+            medioVacio.textContent = "Sin medios de pago vivos para tu usuario.";
             return;
           }
           datos.medios.forEach(function (m) {
@@ -1325,13 +1409,13 @@
         else if (modalMedios.classList.contains("visible")) cerrarModalMedios();
       });
 
-      async function confirmarEnrolamiento(token, correo, titularId, comercioId) {
+      async function confirmarEnrolamiento(token, correo, comercioId) {
         try {
           const resp = await fetch("/medios/enrolar/confirmar", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              token: token, correo: correo, titular_id: titularId, comercio_id: comercioId,
+              token: token, correo: correo, comercio_id: comercioId,
             }),
           });
           const datos = await resp.json();
@@ -1344,7 +1428,7 @@
         }
       }
 
-      function sondearEnrolamiento(token, correo, titularId, comercioId) {
+      function sondearEnrolamiento(token, correo, comercioId) {
         const limite = Date.now() + 5 * 60 * 1000; // 300s, igual que ESPERA_PUSH_SEG
         detenerSondeoEnrolamiento();
         sondeoEnrolamiento = setInterval(async function () {
@@ -1363,7 +1447,7 @@
             if (datos.estado === "APPROVED") {
               detenerSondeoEnrolamiento();
               mostrarProgreso("Push aceptado, confirmando...");
-              confirmarEnrolamiento(token, correo, titularId, comercioId);
+              confirmarEnrolamiento(token, correo, comercioId);
             } else if (["DECLINED", "ERROR", "VOIDED"].indexOf(datos.estado) !== -1) {
               detenerSondeoEnrolamiento();
               mostrarErrorEnrolar("El enrolamiento termino en '" + datos.estado + "'.");
@@ -1379,8 +1463,6 @@
 
       formEnrolar.addEventListener("submit", async function (e) {
         e.preventDefault();
-        const titularId = titularIdActual();
-        if (!titularId) { alert("Falta el titular_id (arriba a la derecha)."); return; }
         const comercioId = campoComercio.value.trim();
         const telefono = campoTelefono.value.trim();
         const correo = campoCorreo.value.trim();
@@ -1398,10 +1480,10 @@
           if (!resp.ok) { mostrarErrorEnrolar("No se pudo iniciar: " + (datos.detail || resp.status)); return; }
           if (datos.estado === "APPROVED") {
             mostrarProgreso("Aprobado de inmediato, confirmando...");
-            await confirmarEnrolamiento(datos.token, correo, titularId, comercioId);
+            await confirmarEnrolamiento(datos.token, correo, comercioId);
           } else {
-            mostrarProgreso("Push enviado. Esperando que " + titularId + " lo acepte en la app Nequi...");
-            sondearEnrolamiento(datos.token, correo, titularId, comercioId);
+            mostrarProgreso("Push enviado. Esperando que se acepte en la app Nequi...");
+            sondearEnrolamiento(datos.token, correo, comercioId);
           }
         } catch (err) {
           mostrarErrorEnrolar("Error al iniciar: " + err.message);
@@ -1435,7 +1517,7 @@
         habilitarEntrada(true);
       });
 
-      iniciarSesion();
+      verificarSesion();
     })();
   </script>
 

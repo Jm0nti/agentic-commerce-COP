@@ -37,6 +37,20 @@ cmd_firmar`/`cmd_retomar`. Este modulo solo le avisa despues a la
 conversacion correspondiente (`continuar`) para que el agente se entere y
 conteste -- la persona sigue siendo quien decide firmar o confirmar, nunca
 el agente ni este modulo.
+
+DUEÑO DE LA SESION (multi-usuario, 4 de septiembre de 2026)
+------------------------------------------------------------------
+Antes de esta version, una sesion de chat no tenia ningun concepto de
+dueño -- cualquiera que adivinara un `sesion_id` (un UUID, en la practica
+imposible de adivinar, pero igual sin verificacion) podia mandarle
+mensajes. Ahora `crear()` recibe el `titular_id` autenticado (`entradas/
+api/app.py`, resuelto de la cookie de sesion web, nunca de un campo que
+mande el cliente) y lo guarda en la `_Sesion`; `enviar_mensaje`/`eventos`
+aceptan un `titular_id` opcional para verificarlo, y tratan un titular
+distinto exactamente igual que un `sesion_id` que no existe
+(`SesionDesconocida`) -- no hay una distincion "no es tuya" separada de
+"no existe": la primera se distingue de la segunda solo por quien mira, y
+no vale la pena revelarle a quien no es dueño cual de las dos paso.
 """
 
 from __future__ import annotations
@@ -63,6 +77,10 @@ class SesionDesconocida(Exception):
 class _Sesion:
     conversacion: Conversacion
     sesion_id: str = ""
+    # Multi-usuario: quien es dueño de esta sesion -- ver el docstring del
+    # modulo. Vacio solo es posible si algo construye una `_Sesion` sin
+    # pasar por `AlmacenDeSesiones.crear` (no pasa en este codigo).
+    titular_id: str = ""
     eventos: Queue = field(default_factory=Queue)
     lock: threading.Lock = field(default_factory=threading.Lock)
     # Cuanto de `conversacion.mensajes` ya se reviso en busca de eventos --
@@ -91,19 +109,26 @@ class AlmacenDeSesiones:
         # `entradas/api/sondeo_pagos.py`.
         self._pendientes: dict[str, str] = {}
 
-    def crear(self) -> str:
+    def crear(self, titular_id: str) -> str:
         sesion_id = uuid.uuid4().hex
-        sesion = _Sesion(conversacion=self._agente.iniciar(), sesion_id=sesion_id)
+        sesion = _Sesion(
+            conversacion=self._agente.iniciar(), sesion_id=sesion_id, titular_id=titular_id,
+        )
         with self._lock:
             self._sesiones[sesion_id] = sesion
         return sesion_id
 
-    def enviar_mensaje(self, sesion_id: str, texto: str) -> str:
+    def enviar_mensaje(self, sesion_id: str, texto: str, titular_id: str | None = None) -> str:
         """Un turno completo de charla: agrega lo que escribio la persona,
         deja correr `Agente.turno`, y antes de devolver el texto final
         escanea los mensajes nuevos en busca de eventos de atencion
-        requerida para encolarlos."""
-        sesion = self._obtener(sesion_id)
+        requerida para encolarlos.
+
+        `titular_id`, si se pasa, tiene que coincidir con el dueño de la
+        sesion (ver el docstring del modulo) -- `None` (el default) se usa
+        solo para las llamadas internas de este modulo (`continuar`), que
+        ya confian en el `sesion_id` que ellas mismas manejan."""
+        sesion = self._obtener(sesion_id, titular_id)
         with sesion.lock:
             respuesta = self._agente.turno(sesion.conversacion, texto)
             self._escanear_eventos(sesion)
@@ -118,8 +143,8 @@ class AlmacenDeSesiones:
         solo para que `app.py` deje clara la intencion en cada llamada."""
         return self.enviar_mensaje(sesion_id, texto)
 
-    def eventos(self, sesion_id: str) -> Queue:
-        return self._obtener(sesion_id).eventos
+    def eventos(self, sesion_id: str, titular_id: str | None = None) -> Queue:
+        return self._obtener(sesion_id, titular_id).eventos
 
     def registrar_pendiente(self, sesion_id: str, intencion_id: str) -> None:
         """`pagar()` (o `/intenciones/{id}/retomar` en `entradas/api/
@@ -166,10 +191,14 @@ class AlmacenDeSesiones:
         self._obtener(sesion_id).eventos.put({"tipo": "mensaje_agente", "texto": respuesta})
         return respuesta
 
-    def _obtener(self, sesion_id: str) -> _Sesion:
+    def _obtener(self, sesion_id: str, titular_id: str | None = None) -> _Sesion:
         with self._lock:
             sesion = self._sesiones.get(sesion_id)
         if sesion is None:
+            raise SesionDesconocida(f"no existe la sesion '{sesion_id}'")
+        if titular_id is not None and sesion.titular_id != titular_id:
+            # Mismo error que "no existe" -- ver el docstring del modulo
+            # sobre por que no distinguir las dos situaciones.
             raise SesionDesconocida(f"no existe la sesion '{sesion_id}'")
         return sesion
 

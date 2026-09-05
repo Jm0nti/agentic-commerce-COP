@@ -8,15 +8,19 @@ from __future__ import annotations
 from .libro_consumo import LibroDeConsumoSQLite
 from .registro_estados import RegistroDeEstadosSQLite
 from .repositorio_carritos import RepositorioCarritosSQLite
+from .repositorio_llaves import RepositorioLlavesSQLite
 from .repositorio_mandatos import RepositorioMandatosSQLite
 from .repositorio_medios import RepositorioMediosSQLite
 from .repositorio_propuestas import RepositorioPropuestasSQLite
+from .repositorio_usuarios import RepositorioUsuariosSQLite
 
 __all__ = [
     "LibroDeConsumoSQLite",
     "RegistroDeEstadosSQLite",
     "RepositorioCarritosSQLite",
+    "RepositorioLlavesSQLite",
     "RepositorioMandatosSQLite",
     "RepositorioMediosSQLite",
     "RepositorioPropuestasSQLite",
+    "RepositorioUsuariosSQLite",
 ]

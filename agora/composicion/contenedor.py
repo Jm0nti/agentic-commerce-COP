@@ -20,6 +20,21 @@ otro); con `AGORA_PASARELA=simulada` (el default), un unico `AdaptadorSimulado`
 que resuelve para cualquier `comercio_id` -- no hace falta credenciales por
 comercio para una demo sin dinero real. Ver `docs/viabilidad-multi-comercio-
 wompi.md`.
+
+MULTI-USUARIO (4 de septiembre de 2026)
+------------------------------------------
+Antes se armaba UNA sola llave de firma por proceso (`cargar_o_generar_
+firmante`, sobre un archivo en disco) y `EmitirMandato` la recibia fija por
+constructor -- cualquier titular firmaba con esa misma llave. Ahora se arma
+un `SelectorDeFirmante` (`RegistroDeFirmantes`) que resuelve la llave de
+CADA titular contra `RepositorioLlaves`, guardada junto con su `Usuario`
+(`RepositorioUsuarios`) en el momento en que `scripts/crear_usuario.py` lo
+crea (`aplicacion/autenticacion.py:RegistrarUsuario`). No hay ruta HTTP de
+auto-registro: `entradas/api/app.py` solo expone `/auth/iniciar-sesion` y
+`/auth/cerrar-sesion` sobre usuarios que ya existen. La CLI (`entradas/
+cli/`) sigue sin pedir login -- alcanza con pasar un `titular_id` que ya
+tenga usuario creado; si no lo tiene, `SinLlaveDeFirma` lo dice claro en
+vez de fallar en silencio o generar una llave nueva sobre la marcha.
 """
 
 from __future__ import annotations
@@ -35,25 +50,32 @@ from ..adaptadores.persistencia.memoria import (
     LibroDeConsumoEnMemoria,
     RegistroDeEstadosEnMemoria,
     RepositorioCarritosEnMemoria,
+    RepositorioLlavesEnMemoria,
     RepositorioMandatosEnMemoria,
     RepositorioMediosEnMemoria,
     RepositorioPropuestasEnMemoria,
+    RepositorioUsuariosEnMemoria,
 )
 from ..adaptadores.persistencia.sqlite import (
     LibroDeConsumoSQLite,
     RegistroDeEstadosSQLite,
     RepositorioCarritosSQLite,
+    RepositorioLlavesSQLite,
     RepositorioMandatosSQLite,
     RepositorioMediosSQLite,
     RepositorioPropuestasSQLite,
+    RepositorioUsuariosSQLite,
 )
 from ..adaptadores.sistema import (
     BitacoraJsonl,
+    GeneradorDeLlavesEd25519,
     GeneradorIdsUuid,
+    HasherPBKDF2,
+    RegistroDeFirmantes,
     RelojDelSistema,
     VerificadorEd25519,
-    cargar_o_generar_firmante,
 )
+from ..aplicacion.autenticacion import IniciarSesion, RegistrarUsuario
 from ..aplicacion.conciliar_evento import ConciliarEvento
 from ..aplicacion.consultar_estado import ConsultarEstado
 from ..aplicacion.ejecutar_intencion import EjecutarIntencion
@@ -68,17 +90,20 @@ from ..aplicacion.navegar_catalogo import NavegarCatalogo
 from ..aplicacion.revocar_medio import RevocarMedio
 from ..dominio.mandato.modelo import Verificador
 from ..dominio.pago.topes import TopesDuros
+from ..puertos.autenticacion import HasherDeContrasenas
 from ..puertos.catalogo import RepositorioCatalogo
-from ..puertos.firma import Firmante
+from ..puertos.firma import SelectorDeFirmante
 from ..puertos.modelo_lenguaje import ModeloDeLenguaje
 from ..puertos.pasarela import SelectorDePasarela
 from ..puertos.repositorios import (
     LibroDeConsumo,
     RegistroDeEstados,
     RepositorioCarritos,
+    RepositorioLlaves,
     RepositorioMandatos,
     RepositorioMedios,
     RepositorioPropuestas,
+    RepositorioUsuarios,
 )
 from ..puertos.sistema import Bitacora, GeneradorIds, Reloj
 from .configuracion import ConfiguracionAgora
@@ -121,7 +146,15 @@ class Contenedor:
     # -- etapa 6 -------------------------------------------------------- #
     propuestas: RepositorioPropuestas
     estados: RegistroDeEstados
-    firmante: Firmante
+    # Multi-usuario: ya no una llave fija -- ver el docstring del modulo.
+    # `usuarios`/`llaves` son los repositorios crudos (los usa `scripts/
+    # crear_usuario.py` indirecto, a traves de `registrar_usuario`);
+    # `registrar_usuario`/`iniciar_sesion` son los casos de uso completos.
+    usuarios: RepositorioUsuarios
+    llaves: RepositorioLlaves
+    selector_firmante: SelectorDeFirmante
+    registrar_usuario: RegistrarUsuario
+    iniciar_sesion: IniciarSesion
     navegar_catalogo: NavegarCatalogo
     emitir_mandato: EmitirMandato
     enrolar_medio: EnrolarMedio
@@ -165,14 +198,20 @@ def construir(
     mandatos: RepositorioMandatos
     medios: RepositorioMedios
     consumo: LibroDeConsumo
+    usuarios: RepositorioUsuarios
+    llaves: RepositorioLlaves
     if config.persistencia == "sqlite":
         mandatos = RepositorioMandatosSQLite(config.sqlite_path)
         medios = RepositorioMediosSQLite(config.sqlite_path, reloj)
         consumo = LibroDeConsumoSQLite(config.sqlite_path, reloj, ids)
+        usuarios = RepositorioUsuariosSQLite(config.sqlite_path)
+        llaves = RepositorioLlavesSQLite(config.sqlite_path)
     else:
         mandatos = RepositorioMandatosEnMemoria()
         medios = RepositorioMediosEnMemoria()
         consumo = LibroDeConsumoEnMemoria(reloj, ids)
+        usuarios = RepositorioUsuariosEnMemoria()
+        llaves = RepositorioLlavesEnMemoria()
     topes = TopesDuros()
 
     # Multi-comercio: un `AdaptadorWompi` por cada entrada del registro de
@@ -237,18 +276,28 @@ def construir(
     else:
         carritos = RepositorioCarritosEnMemoria()
         propuestas = RepositorioPropuestasEnMemoria()
-    # "Igual que v1: llave en disco" -- si no existe, se genera aca mismo, la
-    # primera vez que se arma un Contenedor. `agente/` nunca ve esta llamada
-    # (test_fronteras.py lo verifica): la firma solo llega a `emitir_mandato`,
-    # ya armada.
-    firmante = cargar_o_generar_firmante(config.llave_firma_sk, config.llave_firma_pk)
+    # Multi-usuario: ya no una llave fija cargada de disco -- se resuelve
+    # por titular contra `RepositorioLlaves` (`RegistroDeFirmantes`, que
+    # levanta `SinLlaveDeFirma` si el titular nunca tuvo un usuario creado
+    # con `scripts/crear_usuario.py`). `agente/` nunca ve nada de esto
+    # (test_fronteras.py lo verifica): la firma solo llega a
+    # `emitir_mandato`, ya resuelta.
+    selector_firmante = RegistroDeFirmantes(llaves)
+    hasher = HasherPBKDF2()
+    generador_llaves = GeneradorDeLlavesEd25519()
+    registrar_usuario = RegistrarUsuario(
+        usuarios=usuarios, llaves=llaves, hasher=hasher,
+        generador_llaves=generador_llaves, ids=ids, reloj=reloj,
+    )
+    iniciar_sesion = IniciarSesion(usuarios=usuarios, hasher=hasher)
 
     navegar_catalogo = NavegarCatalogo(
         catalogo=catalogo, carritos=carritos, ids=ids, propuestas=propuestas,
     )
     emitir_mandato = EmitirMandato(
         carritos=carritos, propuestas=propuestas, medios=medios, mandatos=mandatos,
-        firmante=firmante, ids=ids, reloj=reloj, bitacora=bitacora, ambiente=config.ambiente,
+        selector_firmante=selector_firmante, ids=ids, reloj=reloj, bitacora=bitacora,
+        ambiente=config.ambiente,
     )
     enrolar_medio = EnrolarMedio(
         selector_pasarela=selector_pasarela, medios=medios, bitacora=bitacora, ambiente=config.ambiente,
@@ -287,7 +336,11 @@ def construir(
         carritos=carritos,
         propuestas=propuestas,
         estados=estados,
-        firmante=firmante,
+        usuarios=usuarios,
+        llaves=llaves,
+        selector_firmante=selector_firmante,
+        registrar_usuario=registrar_usuario,
+        iniciar_sesion=iniciar_sesion,
         navegar_catalogo=navegar_catalogo,
         emitir_mandato=emitir_mandato,
         enrolar_medio=enrolar_medio,

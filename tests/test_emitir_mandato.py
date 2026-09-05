@@ -50,6 +50,20 @@ class _BitacoraEnLista:
         self.eventos.append((evento, cuerpo))
 
 
+class _SelectorFirmanteFijo:
+    """Test double de `puertos.firma.SelectorDeFirmante`: estas pruebas
+    ejercitan la logica PROPIA de `EmitirMandato` (limites, resolucion de
+    medio, comercio_id), no la resolucion multi-usuario de la llave -- un
+    selector que siempre devuelve el mismo `Firmante` alcanza, igual que
+    `RegistroDeFirmantes` haria con un solo titular ya provisto."""
+
+    def __init__(self, firmante) -> None:
+        self._firmante = firmante
+
+    def para(self, titular_id: str):
+        return self._firmante
+
+
 def _carrito() -> Carrito:
     return Carrito(
         carrito_id="car_1", comercio_id="com_1",
@@ -81,8 +95,8 @@ def _armar(tmp_path, con_medio: bool = True):
     firmante = cargar_o_generar_firmante(tmp_path / "firma.sk", tmp_path / "firma.pk")
     emitir = EmitirMandato(
         carritos=carritos, propuestas=propuestas, medios=medios, mandatos=mandatos,
-        firmante=firmante, ids=GeneradorIdsUuid(), reloj=_RelojFijo(AHORA),
-        bitacora=_BitacoraEnLista(), ambiente=Ambiente.SANDBOX,
+        selector_firmante=_SelectorFirmanteFijo(firmante), ids=GeneradorIdsUuid(),
+        reloj=_RelojFijo(AHORA), bitacora=_BitacoraEnLista(), ambiente=Ambiente.SANDBOX,
     )
     return emitir, mandatos, firmante, propuestas
 
@@ -138,8 +152,9 @@ def test_usa_el_medio_mas_reciente_vinculado_a_ese_comercio(tmp_path):
     firmante = cargar_o_generar_firmante(tmp_path / "firma.sk", tmp_path / "firma.pk")
     emitir = EmitirMandato(
         carritos=carritos, propuestas=propuestas, medios=medios,
-        mandatos=RepositorioMandatosEnMemoria(), firmante=firmante, ids=GeneradorIdsUuid(),
-        reloj=_RelojFijo(AHORA), bitacora=_BitacoraEnLista(), ambiente=Ambiente.SANDBOX,
+        mandatos=RepositorioMandatosEnMemoria(), selector_firmante=_SelectorFirmanteFijo(firmante),
+        ids=GeneradorIdsUuid(), reloj=_RelojFijo(AHORA), bitacora=_BitacoraEnLista(),
+        ambiente=Ambiente.SANDBOX,
     )
 
     mandato = emitir("prp_1", "tit_1")
@@ -164,8 +179,9 @@ def test_medio_vivo_pero_de_otro_comercio_levanta_sin_medio_vinculado(tmp_path):
     firmante = cargar_o_generar_firmante(tmp_path / "firma.sk", tmp_path / "firma.pk")
     emitir = EmitirMandato(
         carritos=carritos, propuestas=propuestas, medios=medios,
-        mandatos=RepositorioMandatosEnMemoria(), firmante=firmante, ids=GeneradorIdsUuid(),
-        reloj=_RelojFijo(AHORA), bitacora=_BitacoraEnLista(), ambiente=Ambiente.SANDBOX,
+        mandatos=RepositorioMandatosEnMemoria(), selector_firmante=_SelectorFirmanteFijo(firmante),
+        ids=GeneradorIdsUuid(), reloj=_RelojFijo(AHORA), bitacora=_BitacoraEnLista(),
+        ambiente=Ambiente.SANDBOX,
     )
 
     with pytest.raises(SinMedioVinculadoAlComercio):

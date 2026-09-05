@@ -31,3 +31,37 @@ class Firmante(Protocol):
     def firma(self, carga: bytes) -> bytes: ...
 
     def llave_publica(self) -> bytes: ...
+
+
+class SelectorDeFirmante(Protocol):
+    """Resuelve que `Firmante` usar para un titular dado. Multi-usuario (4
+    de septiembre de 2026): mismo argumento que `SelectorDePasarela`
+    (`puertos/pasarela.py`) un escalon mas adentro -- antes se armaba UN
+    solo `Firmante` por proceso (`cargar_o_generar_firmante`, `adaptadores/
+    sistema/firma_ed25519.py`) y `EmitirMandato` lo recibia fijo por
+    constructor, sin importar que titular firmara. Con cada usuario
+    registrado teniendo su propia llave (`RepositorioLlaves`), hace falta
+    resolver el `Firmante` correcto en el momento de cada firma, no una
+    sola vez al armar el contenedor.
+
+    A DIFERENCIA de `SelectorDePasarela`, esta interfaz NUNCA tiene un
+    "por defecto": no existe una llave compartida de respaldo para un
+    titular sin la suya propia -- eso reproduciria exactamente el problema
+    que este cambio existe para cerrar. Un `titular_id` sin llave levanta
+    `SinLlaveDeFirma` (`dominio/comun/errores.py`), nunca cae de vuelta en
+    la llave de otro."""
+
+    def para(self, titular_id: str) -> Firmante: ...
+
+
+class GeneradorDeLlaves(Protocol):
+    """Genera un par de llaves ed25519 nuevo, crudo. Lo usa `aplicacion/
+    autenticacion.py:RegistrarUsuario` para darle a cada usuario nuevo su
+    propia llave de firma en el momento de crearlo -- separado de
+    `Firmante` porque generar una llave y firmar con una llave ya existente
+    son operaciones distintas (la primera no necesita ninguna llave
+    todavia)."""
+
+    def generar(self) -> tuple[bytes, bytes]:
+        """`(llave_privada, llave_publica)`, los dos crudos."""
+        ...

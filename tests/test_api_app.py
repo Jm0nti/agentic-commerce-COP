@@ -104,12 +104,29 @@ class _ModeloProgramable:
 def _config(tmp_path) -> dict:
     return {
         "AGORA_BITACORA": str(tmp_path / "recibos.jsonl"),
-        "AGORA_LLAVE_FIRMA_SK": str(tmp_path / "firma.sk"),
-        "AGORA_LLAVE_FIRMA_PK": str(tmp_path / "firma.pk"),
         "AGORA_PERSISTENCIA": "sqlite",
         "AGORA_SQLITE_PATH": str(tmp_path / "agora.db"),
         "PAGADOR_EMAIL": "juan@correo-real.com",
     }
+
+
+def _loguear(
+    cliente: TestClient, contenedor, nombre_usuario: str = "tit_1", titular_id: str = "tit_1",
+) -> str:
+    """Multi-usuario (4 de septiembre de 2026): registra un usuario de
+    prueba (mismo camino que `scripts/crear_usuario.py`, directo contra el
+    `Contenedor`) e inicia sesion con el `TestClient` -- el `TestClient`
+    conserva la cookie que deja `POST /auth/iniciar-sesion` para el resto
+    de las peticiones que haga, exactamente como un navegador. Devuelve el
+    `titular_id`, para las pruebas que todavia necesitan compararlo contra
+    algo (por ejemplo, `mandato.titular_id`)."""
+    contenedor.registrar_usuario(nombre_usuario, "clave-de-prueba", titular_id=titular_id)
+    resp = cliente.post(
+        "/auth/iniciar-sesion",
+        json={"nombre_usuario": nombre_usuario, "contrasena": "clave-de-prueba"},
+    )
+    assert resp.status_code == 200, resp.text
+    return titular_id
 
 
 def _producto_barato(contenedor):
@@ -163,6 +180,7 @@ def test_crear_sesion_responde_503_sin_agente(tmp_path):
     contenedor = construir(leer_configuracion(_config(tmp_path)))
     app = crear_app(None, contenedor)
     cliente = TestClient(app)
+    _loguear(cliente, contenedor)
 
     respuesta = cliente.post("/sesiones")
 
@@ -175,6 +193,7 @@ def test_sesion_desconocida_responde_404(tmp_path):
     agente = construir_agente(contenedor)
     app = crear_app(agente, contenedor)
     cliente = TestClient(app)
+    _loguear(cliente, contenedor)
 
     respuesta = cliente.post("/sesiones/no-existe/mensajes", json={"texto": "hola"})
 
@@ -192,6 +211,7 @@ def test_eventos_de_sesion_desconocida_responde_404(tmp_path):
     agente = construir_agente(contenedor)
     app = crear_app(agente, contenedor)
     cliente = TestClient(app)
+    _loguear(cliente, contenedor)
 
     respuesta = cliente.get("/sesiones/no-existe/eventos")
 
@@ -211,6 +231,7 @@ def test_flujo_completo_por_http_arma_firma_paga_y_confirma(tmp_path):
     assert agente is not None
     app = crear_app(agente, contenedor)
     cliente = TestClient(app)
+    _loguear(cliente, contenedor)
 
     # 1. Arranca la sesion -- mismo `sesion_id` para toda la charla, como
     #    una pestana de navegador.
@@ -240,7 +261,7 @@ def test_flujo_completo_por_http_arma_firma_paga_y_confirma(tmp_path):
     #    y esa cae en la senal blanda `esperando_confirmacion_humana`.
     respuesta = cliente.post(
         f"/propuestas/{propuesta_id}/firmar",
-        json={"titular_id": "tit_1", "sesion_id": sesion_id},
+        json={"sesion_id": sesion_id},
     )
     assert respuesta.status_code == 200
     datos_firma = respuesta.json()
@@ -321,6 +342,7 @@ def test_enrolar_por_http_de_punta_a_punta_con_la_pasarela_simulada(tmp_path):
     contenedor = construir(leer_configuracion(_config(tmp_path)))
     app = crear_app(None, contenedor)
     cliente = TestClient(app)
+    _loguear(cliente, contenedor)
 
     # 1. Iniciar -- no bloquea, la simulada ya deja el token en APPROVED.
     respuesta = cliente.post(
@@ -341,20 +363,20 @@ def test_enrolar_por_http_de_punta_a_punta_con_la_pasarela_simulada(tmp_path):
 
     # 3. Confirmar -- la ruta vuelve a consultar el estado ella misma antes
     #    de guardar el medio (nunca confia en lo que mande el navegador).
+    #    `titular_id` ya no viaja en el cuerpo -- sale de la cookie de
+    #    sesion (`_loguear`, arriba).
     respuesta = cliente.post(
         "/medios/enrolar/confirmar",
-        json={
-            "token": token, "correo": "titular@correo.com", "titular_id": "tit_web",
-            "comercio_id": COMERCIO_ID,
-        },
+        json={"token": token, "correo": "titular@correo.com", "comercio_id": COMERCIO_ID},
     )
     assert respuesta.status_code == 200
     ref = respuesta.json()
     assert ref["proveedor"] == "simulada"
     assert ref["id_externo"]
 
-    # 4. El medio recien guardado tiene que aparecer al listarlo.
-    respuesta = cliente.get("/medios", params={"titular_id": "tit_web"})
+    # 4. El medio recien guardado tiene que aparecer al listarlo -- del
+    #    mismo titular autenticado, sin pasar ningun id por query.
+    respuesta = cliente.get("/medios")
     assert respuesta.status_code == 200
     medios = respuesta.json()["medios"]
     assert len(medios) == 1
@@ -365,8 +387,9 @@ def test_listar_medios_de_un_titular_sin_nada_enrolado_responde_vacio(tmp_path):
     contenedor = construir(leer_configuracion(_config(tmp_path)))
     app = crear_app(None, contenedor)
     cliente = TestClient(app)
+    _loguear(cliente, contenedor, nombre_usuario="nadie_por_aca", titular_id="tit_nadie_por_aca")
 
-    respuesta = cliente.get("/medios", params={"titular_id": "nadie_por_aca"})
+    respuesta = cliente.get("/medios")
 
     assert respuesta.status_code == 200
     assert respuesta.json() == {"medios": []}
@@ -384,17 +407,15 @@ def test_confirmar_enrolamiento_ignora_un_estado_falso_mandado_por_el_cliente(tm
     contenedor = construir(leer_configuracion(_config(tmp_path)))
     app = crear_app(None, contenedor)
     cliente = TestClient(app)
+    _loguear(cliente, contenedor)
 
     respuesta = cliente.post(
         "/medios/enrolar/confirmar",
-        json={
-            "token": "tok-que-no-existe", "correo": "titular@correo.com", "titular_id": "tit_x",
-            "comercio_id": COMERCIO_ID,
-        },
+        json={"token": "tok-que-no-existe", "correo": "titular@correo.com", "comercio_id": COMERCIO_ID},
     )
 
     assert respuesta.status_code == 400
-    respuesta_medios = cliente.get("/medios", params={"titular_id": "tit_x"})
+    respuesta_medios = cliente.get("/medios")
     assert respuesta_medios.json() == {"medios": []}
 
 
@@ -418,6 +439,7 @@ def test_sondeo_resuelve_por_http_un_pago_que_el_webhook_confirma_despues(tmp_pa
     agente = construir_agente(contenedor)
     app = crear_app(agente, contenedor)
     cliente = TestClient(app)
+    _loguear(cliente, contenedor)
 
     sesion_id = cliente.post("/sesiones").json()["sesion_id"]
     cliente.post(f"/sesiones/{sesion_id}/mensajes", json={"texto": "quiero comprar algo barato"})
@@ -426,7 +448,7 @@ def test_sondeo_resuelve_por_http_un_pago_que_el_webhook_confirma_despues(tmp_pa
 
     datos_firma = cliente.post(
         f"/propuestas/{propuesta_id}/firmar",
-        json={"titular_id": "tit_1", "sesion_id": sesion_id},
+        json={"sesion_id": sesion_id},
     ).json()
     evento_confirmacion = _leer_primer_evento(app, sesion_id)
     intencion_id = evento_confirmacion["intencion_id"]
