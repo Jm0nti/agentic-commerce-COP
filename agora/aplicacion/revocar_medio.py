@@ -14,13 +14,27 @@ carga que el titular no deberia tener que cargar: "que comercio era" no es
 algo que recuerde a la hora de revocar), se resuelve con
 `RepositorioMedios.comercio_de(ref)` -- el mismo repositorio que ya guardo
 esa relacion cuando `ConfirmarEnrolamiento` guardo el medio.
+
+DEVUELVE `EstadoMedio`, NO UN STRING (7 sept 2026)
+-----------------------------------------------------
+Antes devolvia `estado.estado` a secas. Cambio porque `AdaptadorWompi.
+revocar_medio` (ver su docstring) puede resolver esto en dos desenlaces
+bien distintos que quien llama SI necesita distinguir: la pasarela
+confirmo la anulacion de verdad (`estado="VOIDED"` u otro que Wompi
+devuelva), o Wompi no tiene forma de anular esta fuente por API (Nequi) y
+el medio se desactivo solo del lado de esta app -- en ese segundo caso
+`estado.detalle["aviso"]` trae el texto que hay que mostrarle al titular
+("todavia tenes que cancelarlo desde tu app Nequi"). Devolver solo el
+string tiraria ese aviso a la basura. `entradas/cli/__main__.py:cmd_revocar`
+y `entradas/api/app.py:revocar_medio` ya se actualizaron para leer
+`estado.estado`/`estado.detalle` en vez de tratar el resultado como texto.
 """
 
 from __future__ import annotations
 
 from ..dominio.comun.errores import MedioNoRegistrado
 from ..dominio.pago.modelo import MedioDePagoRef
-from ..puertos.pasarela import SelectorDePasarela
+from ..puertos.pasarela import EstadoMedio, SelectorDePasarela
 from ..puertos.repositorios import RepositorioMedios
 from ..puertos.sistema import Bitacora
 
@@ -36,7 +50,7 @@ class RevocarMedio:
         self._medios = medios
         self._bitacora = bitacora
 
-    def __call__(self, ref: MedioDePagoRef, titular_id: str) -> str:
+    def __call__(self, ref: MedioDePagoRef, titular_id: str) -> EstadoMedio:
         vivos = self._medios.vivos(titular_id, ref.ambiente)
         if ref not in vivos:
             raise MedioNoRegistrado(
@@ -61,9 +75,16 @@ class RevocarMedio:
             )
 
         estado = self._selector.para(comercio_id).revocar_medio(ref)
+        # Cualquier estado que no sea "AVAILABLE" saca al medio de
+        # `vivos()`/`vinculado_con()` -- "VOIDED_LOCAL" (la pasarela no pudo
+        # anularlo mas alla de esta app, ver `AdaptadorWompi.revocar_medio`)
+        # desactiva igual de bien que un "VOIDED" confirmado por Wompi.
         self._medios.marcar_estado(ref, estado.estado)
         self._bitacora.anotar(
             "medio_revocado",
-            {"titular_id": titular_id, "comercio_id": comercio_id, "medio": ref.to_json(), "estado": estado.estado},
+            {
+                "titular_id": titular_id, "comercio_id": comercio_id, "medio": ref.to_json(),
+                "estado": estado.estado, "detalle": estado.detalle,
+            },
         )
-        return estado.estado
+        return estado

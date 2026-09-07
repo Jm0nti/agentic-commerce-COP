@@ -8,29 +8,41 @@
   <style>
     :root {
       color-scheme: dark;
-      /* -- superficies, de mas oscura (fondo) a mas clara (elevada) -- */
-      --bg: #0a0e14;
-      --bg-header: #0f141d;
-      --bg-surface: #141a24;
-      --bg-surface-2: #1b2330;
-      --bg-surface-3: #232c3d;
-      --border: #262f40;
-      --border-strong: #34405a;
+      /* -- superficies, de mas oscura (fondo) a mas clara (elevada) --
+         retomadas del fondo calido de las guias de marca (referencias del
+         usuario, 5 de septiembre de 2026: diapositivas "El reto" y
+         "03 - Estructurar") en vez del azul-negro original -- */
+      --bg: #2b2926;
+      --bg-header: #322f2b;
+      --bg-surface: #3a3733;
+      --bg-surface-2: #45413c;
+      --bg-surface-3: #514c45;
+      --border: #4c473f;
+      --border-strong: #635d53;
       /* -- texto -- */
-      --text: #e6ebf2;
-      --text-dim: #9aa7bb;
-      --text-faint: #63708a;
-      /* -- acento (azul) -- */
-      --accent: #4d7cfe;
-      --accent-strong: #3d64e0;
-      --accent-soft: rgba(77, 124, 254, 0.14);
+      --text: #f3efe8;
+      --text-dim: #b7b0a5;
+      --text-faint: #857e73;
+      /* -- acento: rampa "Andino" (verde) de las guias -- el mismo verde
+         usado en los pills H1/H2/H3 de la muestra tipografica -- */
+      --accent: #00c488;
+      --accent-strong: #03ad7a;
+      --accent-soft: rgba(0, 196, 136, 0.16);
+      /* -- texto oscuro para botones/burbujas con relleno solido de acento:
+         las guias solo documentan texto oscuro (900/N1000) sobre fondos
+         claros/vivos para cumplir contraste AA -- con texto blanco el verde
+         Andino500 da ~2.3:1, muy por debajo de 4.5:1 -- */
+      --accent-ink: var(--bg);
+      /* -- gradiente de marca (Orquidea / Alba / Macondo), como en la ola
+         decorativa de las diapositivas -- solo para el isotipo -- */
+      --marca-grad: linear-gradient(135deg, #9063cd 0%, #ff7f42 55%, #fcdb20 100%);
       /* -- semanticos -- */
-      --success: #34d399;
-      --success-soft: rgba(52, 211, 153, 0.14);
+      --success: #20dfa8;
+      --success-soft: rgba(32, 223, 168, 0.16);
       --danger: #f87171;
       --danger-soft: rgba(248, 113, 113, 0.14);
-      --warning: #fbbf24;
-      --warning-soft: rgba(251, 191, 36, 0.14);
+      --warning: #fcdb20;
+      --warning-soft: rgba(252, 219, 32, 0.16);
       /* -- forma -- */
       --radius-sm: 8px;
       --radius-md: 14px;
@@ -104,15 +116,16 @@
       width: 30px;
       height: 30px;
       border-radius: 9px;
-      background: linear-gradient(155deg, var(--accent), var(--accent-strong));
+      background: var(--marca-grad);
       color: #fff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 700;
       font-size: 14px;
       flex-shrink: 0;
-      box-shadow: 0 2px 8px rgba(77, 124, 254, 0.4);
+      box-shadow: 0 2px 10px rgba(255, 127, 66, 0.35);
     }
 
     .marca .titulo {
@@ -122,9 +135,9 @@
     }
 
     .marca .titulo strong {
-      font-size: 14px;
-      font-weight: 650;
-      letter-spacing: .01em;
+      font-size: 14.5px;
+      font-weight: 700;
+      letter-spacing: -.01em;
     }
 
     .marca .titulo small {
@@ -276,7 +289,7 @@
     .persona {
       align-self: flex-end;
       background: var(--accent);
-      color: #fff;
+      color: var(--accent-ink);
       border-bottom-right-radius: 4px;
     }
 
@@ -398,7 +411,7 @@
     .agente a {
       color: var(--accent);
       text-decoration: underline;
-      text-decoration-color: rgba(77, 124, 254, .4);
+      text-decoration-color: rgba(0, 196, 136, .4);
     }
 
     .agente a:hover {
@@ -521,7 +534,7 @@
       border: none;
       border-radius: var(--radius-sm);
       background: var(--accent);
-      color: #fff;
+      color: var(--accent-ink);
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
@@ -572,7 +585,7 @@
     .modal-fondo {
       position: fixed;
       inset: 0;
-      background: rgba(4, 6, 10, 0.6);
+      background: rgba(18, 15, 13, 0.62);
       backdrop-filter: blur(6px);
       -webkit-backdrop-filter: blur(6px);
       display: flex;
@@ -590,6 +603,11 @@
       visibility: visible;
       pointer-events: auto;
       transition: opacity .18s ease;
+    }
+
+    /* por encima del modal de medios: son dos popups apilados a proposito */
+    #modal-eliminar-medio {
+      z-index: 11;
     }
 
     .modal {
@@ -610,8 +628,9 @@
 
     .modal h2 {
       margin: 0 0 4px;
-      font-size: 17px;
-      font-weight: 650;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -.01em;
     }
 
     .modal p.aviso {
@@ -696,6 +715,25 @@
       font-family: var(--font-mono);
       font-size: 11.5px;
       color: var(--text-dim);
+    }
+
+    .medio-eliminar {
+      background: transparent;
+      border: 1px solid var(--border-strong);
+      color: var(--text-dim);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+
+    .medio-eliminar:hover {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border-color: var(--danger);
     }
 
     .badge {
@@ -814,7 +852,7 @@
   <div class="modal-fondo" id="pantalla-login">
     <div class="modal">
       <h2>Iniciar sesion</h2>
-      <p class="aviso">Los usuarios se crean con scripts/crear_usuario.py -- no hay registro aca.</p>
+      <p class="aviso">Los usuarios se crean mediante consola, acá no hay registro.</p>
       <form class="enrolar" id="form-login">
         <input id="login-usuario" type="text" placeholder="Nombre de usuario" autocomplete="username" required>
         <input id="login-contrasena" type="password" placeholder="Contrasena" autocomplete="current-password" required>
@@ -826,35 +864,34 @@
 
   <div id="app" hidden>
 
-  <header>
-    <div class="contenedor-header">
-      <div class="marca">
-        <span class="logo" aria-hidden="true">A</span>
-        <div class="titulo">
-          <strong>agora</strong>
-          <small>chat con el agente</small>
+    <header>
+      <div class="contenedor-header">
+        <div class="marca">
+          <span class="logo" aria-hidden="true">A</span>
+          <div class="titulo">
+            <strong>agora</strong>
+          </div>
         </div>
+        <div class="campo-titular">
+          <span id="nombre-usuario-actual"></span>
+        </div>
+        <div class="indicador-estado">
+          <span class="punto-estado pendiente" id="estado-punto" aria-hidden="true"></span>
+          <span id="estado">conectando...</span>
+        </div>
+        <button type="button" id="btn-medios">Medios de pago</button>
+        <button type="button" id="btn-cerrar-sesion">Cerrar sesion</button>
       </div>
-      <div class="campo-titular">
-        <span id="nombre-usuario-actual"></span>
-      </div>
-      <div class="indicador-estado">
-        <span class="punto-estado pendiente" id="estado-punto" aria-hidden="true"></span>
-        <span id="estado">conectando...</span>
-      </div>
-      <button type="button" id="btn-medios">Medios de pago</button>
-      <button type="button" id="btn-cerrar-sesion">Cerrar sesion</button>
-    </div>
-  </header>
+    </header>
 
-  <div id="chat"></div>
+    <div id="chat"></div>
 
-  <form id="entrada">
-    <div class="contenedor-entrada">
-      <input id="texto" type="text" autocomplete="off" placeholder="Escribi tu mensaje..." disabled>
-      <button type="submit" disabled>Enviar</button>
-    </div>
-  </form>
+    <form id="entrada">
+      <div class="contenedor-entrada">
+        <input id="texto" type="text" autocomplete="off" placeholder="Escribi tu mensaje..." disabled>
+        <button type="submit" disabled>Enviar</button>
+      </div>
+    </form>
 
   </div> <!-- /#app -->
 
@@ -862,7 +899,7 @@
   <div class="modal-fondo" id="modal-propuesta">
     <div class="modal">
       <h2>Confirmar y firmar la propuesta</h2>
-      <p class="aviso">El agente NUNCA puede firmar esto -- solo vos, como titular del medio de pago.</p>
+      <p class="aviso">El agente NUNCA puede firmar esto, solo tú como titular del medio de pago.</p>
       <ul class="items" id="propuesta-items"></ul>
       <dl>
         <dt>Comercio</dt>
@@ -913,9 +950,30 @@
 
       <p class="progreso" id="enrolar-progreso" hidden></p>
       <p class="error-enrolar" id="enrolar-error" hidden></p>
+      <p class="aviso" id="medios-aviso" hidden></p>
 
       <div class="botones">
         <button type="button" class="cancelar" id="medios-cerrar">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Popup: confirmar la eliminacion de un medio de pago (revoca la fuente en la pasarela) -->
+  <div class="modal-fondo" id="modal-eliminar-medio">
+    <div class="modal">
+      <h2>Eliminar medio de pago</h2>
+      <p class="aviso">Esto revoca la fuente de pago en la pasarela, si la vuelves a necesitar, hay que enrolarla de
+        nuevo desde cero.</p>
+      <dl>
+        <dt>Proveedor</dt>
+        <dd id="eliminar-medio-proveedor"></dd>
+        <dt>Identificador</dt>
+        <dd id="eliminar-medio-id"></dd>
+      </dl>
+      <p class="error-enrolar" id="eliminar-medio-error" hidden></p>
+      <div class="botones">
+        <button type="button" class="cancelar" id="eliminar-medio-cancelar">Cancelar</button>
+        <button type="button" class="rechazar" id="eliminar-medio-confirmar">Eliminar</button>
       </div>
     </div>
   </div>
@@ -1343,6 +1401,7 @@
       const botonEnrolar = document.getElementById("enrolar-boton");
       const progresoEnrolar = document.getElementById("enrolar-progreso");
       const errorEnrolar = document.getElementById("enrolar-error");
+      const avisoMedios = document.getElementById("medios-aviso");
 
       let sondeoEnrolamiento = null;
 
@@ -1359,6 +1418,14 @@
       }
 
       function limpiarMensajesEnrolar() {
+        progresoEnrolar.hidden = true;
+        errorEnrolar.hidden = true;
+        avisoMedios.hidden = true;
+      }
+
+      function mostrarAvisoMedios(texto) {
+        avisoMedios.textContent = texto;
+        avisoMedios.hidden = false;
         progresoEnrolar.hidden = true;
         errorEnrolar.hidden = true;
       }
@@ -1393,9 +1460,17 @@
             const idExterno = document.createElement("span");
             idExterno.className = "medio-id";
             idExterno.textContent = m.id_externo;
+            const botonEliminar = document.createElement("button");
+            botonEliminar.type = "button";
+            botonEliminar.className = "medio-eliminar";
+            botonEliminar.textContent = "Eliminar";
+            botonEliminar.addEventListener("click", function () {
+              abrirConfirmarEliminarMedio(m);
+            });
             li.appendChild(nombre);
             li.appendChild(badge);
             li.appendChild(idExterno);
+            li.appendChild(botonEliminar);
             listaMedios.appendChild(li);
           });
         } catch (err) {
@@ -1403,6 +1478,67 @@
           medioVacio.textContent = "Error al consultar los medios: " + err.message;
         }
       }
+
+      // -- Eliminar un medio de pago: boton en la lista + popup de confirmacion. //
+      // "Eliminar" aca es revocar (aplicacion/revocar_medio.py) -- no hay un
+      // "pausar" en el puerto de pasarela, o la fuente esta viva o no.
+
+      const modalEliminarMedio = document.getElementById("modal-eliminar-medio");
+      const eliminarMedioProveedor = document.getElementById("eliminar-medio-proveedor");
+      const eliminarMedioId = document.getElementById("eliminar-medio-id");
+      const eliminarMedioError = document.getElementById("eliminar-medio-error");
+      const botonEliminarMedioCancelar = document.getElementById("eliminar-medio-cancelar");
+      const botonEliminarMedioConfirmar = document.getElementById("eliminar-medio-confirmar");
+      let medioAEliminar = null;
+
+      function abrirConfirmarEliminarMedio(medio) {
+        medioAEliminar = medio;
+        eliminarMedioProveedor.textContent = medio.proveedor;
+        eliminarMedioId.textContent = medio.id_externo;
+        eliminarMedioError.hidden = true;
+        botonEliminarMedioConfirmar.disabled = false;
+        modalEliminarMedio.classList.add("visible");
+      }
+
+      function cerrarConfirmarEliminarMedio() {
+        medioAEliminar = null;
+        modalEliminarMedio.classList.remove("visible");
+      }
+
+      botonEliminarMedioCancelar.addEventListener("click", cerrarConfirmarEliminarMedio);
+
+      botonEliminarMedioConfirmar.addEventListener("click", async function () {
+        if (!medioAEliminar) return;
+        botonEliminarMedioConfirmar.disabled = true;
+        try {
+          const resp = await fetch(
+            "/medios/" + encodeURIComponent(medioAEliminar.id_externo) + "/revocar",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ proveedor: medioAEliminar.proveedor }),
+            }
+          );
+          const datos = await resp.json();
+          if (!resp.ok) throw new Error(datos.detail || String(resp.status));
+          const eliminado = medioAEliminar;
+          cerrarConfirmarEliminarMedio();
+          if (datos.aviso) {
+            // Wompi no pudo anular esta fuente por API (pasa con Nequi) --
+            // se desactivo solo en esta app. El titular todavia tiene que
+            // cancelarla desde su app Nequi si quiere anular el permiso de
+            // verdad -- ver AdaptadorWompi.revocar_medio.
+            mostrarAvisoMedios(datos.aviso);
+          } else {
+            mostrarProgreso("Medio eliminado: " + eliminado.proveedor + " " + eliminado.id_externo);
+          }
+          cargarMedios();
+        } catch (err) {
+          eliminarMedioError.hidden = false;
+          eliminarMedioError.textContent = "No se pudo eliminar: " + err.message;
+          botonEliminarMedioConfirmar.disabled = false;
+        }
+      });
 
       function abrirModalMedios() {
         limpiarMensajesEnrolar();
@@ -1423,6 +1559,7 @@
 
       document.addEventListener("keydown", function (e) {
         if (e.key !== "Escape") return;
+        if (modalEliminarMedio.classList.contains("visible")) return;
         if (modalPropuesta.classList.contains("visible")) cerrarPropuesta();
         else if (modalMedios.classList.contains("visible")) cerrarModalMedios();
       });

@@ -383,6 +383,79 @@ def test_enrolar_por_http_de_punta_a_punta_con_la_pasarela_simulada(tmp_path):
     assert medios[0] == ref
 
 
+def test_revocar_medio_por_http_lo_saca_de_la_lista(tmp_path):
+    """`POST /medios/{id_externo}/revocar` -- el boton "Eliminar" del popup
+    de medios en `chat.html`. Mismo `RevocarMedio` que ya usaba
+    `entradas/cli/__main__.py:cmd_revocar`, ahora tambien alcanzable por
+    HTTP con el titular saliendo de la cookie de sesion."""
+    contenedor = construir(leer_configuracion(_config(tmp_path)))
+    app = crear_app(None, contenedor)
+    cliente = TestClient(app)
+    _loguear(cliente, contenedor)
+
+    respuesta = cliente.post(
+        "/medios/enrolar/iniciar",
+        json={"telefono": "3001234567", "correo": "titular@correo.com", "comercio_id": COMERCIO_ID},
+    )
+    token = respuesta.json()["token"]
+    respuesta = cliente.post(
+        "/medios/enrolar/confirmar",
+        json={"token": token, "correo": "titular@correo.com", "comercio_id": COMERCIO_ID},
+    )
+    ref = respuesta.json()
+
+    respuesta = cliente.post(
+        f"/medios/{ref['id_externo']}/revocar", json={"proveedor": ref["proveedor"]},
+    )
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["estado"]
+
+    respuesta = cliente.get("/medios")
+    assert respuesta.json() == {"medios": []}
+
+
+def test_revocar_medio_de_otro_titular_responde_400_y_no_lo_apaga(tmp_path):
+    """`RevocarMedio` verifica que la referencia sea `vivos()` del titular
+    autenticado antes de pedirle la revocacion a la pasarela -- revocar a
+    ciegas podria apagar la fuente equivocada (docstring de `aplicacion/
+    revocar_medio.py`). Esta prueba lo ejercita por HTTP: el medio sigue
+    vivo despues del intento fallido."""
+    contenedor = construir(leer_configuracion(_config(tmp_path)))
+    app = crear_app(None, contenedor)
+    cliente = TestClient(app)
+    _loguear(cliente, contenedor)
+
+    respuesta = cliente.post(
+        "/medios/enrolar/iniciar",
+        json={"telefono": "3001234567", "correo": "titular@correo.com", "comercio_id": COMERCIO_ID},
+    )
+    token = respuesta.json()["token"]
+    respuesta = cliente.post(
+        "/medios/enrolar/confirmar",
+        json={"token": token, "correo": "titular@correo.com", "comercio_id": COMERCIO_ID},
+    )
+    ref = respuesta.json()
+
+    # Otra persona, otra sesion -- pisa la cookie de la anterior en el
+    # mismo `TestClient`, igual que un logout+login en el navegador.
+    _loguear(cliente, contenedor, nombre_usuario="otra_persona", titular_id="tit_otra_persona")
+
+    respuesta = cliente.post(
+        f"/medios/{ref['id_externo']}/revocar", json={"proveedor": ref["proveedor"]},
+    )
+    assert respuesta.status_code == 400
+
+    # El medio del primer titular no se toco. Se verifica contra el
+    # repositorio directo (no por HTTP) para no tener que loguearse nuevo
+    # como "tit_1" -- `registrar_usuario` haria upsert sobre el mismo
+    # `titular_id` (PRIMARY KEY en `usuario`, `esquema.py`) y pisaria el
+    # usuario que ya se registro para el, que es justo lo que esta prueba
+    # no quiere ejercitar.
+    vivos = contenedor.medios.vivos("tit_1", contenedor.config.ambiente)
+    assert len(vivos) == 1
+    assert vivos[0].to_json() == ref
+
+
 def test_listar_medios_de_un_titular_sin_nada_enrolado_responde_vacio(tmp_path):
     contenedor = construir(leer_configuracion(_config(tmp_path)))
     app = crear_app(None, contenedor)

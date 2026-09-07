@@ -22,7 +22,7 @@
       "nombre": "Chocolatina Cremosa",
       "descripcion": "Chocolatina de leche cremosa, tableta individual de 30 g.",
       "precio": {
-        "centavos": 150000,
+        "centavos": 140000,
         "moneda": "COP"
       },
       "categoria": "confites",
@@ -274,7 +274,7 @@
       "nombre": "Pegante en Barra",
       "descripcion": "Barra de pegante escolar, 8 g, lavable.",
       "precio": {
-        "centavos": 170000,
+        "centavos": 140000,
         "moneda": "COP"
       },
       "categoria": "papeleria",

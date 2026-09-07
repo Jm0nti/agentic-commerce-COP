@@ -260,6 +260,51 @@ def test_revocar_medio():
     assert estado.estado == "VOIDED"
 
 
+def test_revocar_medio_nequi_no_levanta_se_desactiva_local_con_aviso():
+    """Hallazgo del 7 sept 2026 (produccion real, Juan): Wompi documenta
+    `/void` solo para DaviPlata y Bancolombia -- una fuente Nequi (la unica
+    que usa esta app) responde 422 con este motivo puntual. No es un error
+    transitorio: `revocar_medio` lo traduce a un desenlace "desactivado solo
+    en esta app", no a una excepcion."""
+    def responder(req: httpx.Request) -> httpx.Response:
+        if req.url.path.endswith("/void") and req.method == "PUT":
+            return httpx.Response(
+                422,
+                json={
+                    "error": {
+                        "type": "UNPROCESSABLE",
+                        "reason": (
+                            "Únicamente se pueden anular fuentes de pago con "
+                            "el tipo de operación financiera 'PREAUTHORIZATION'"
+                        ),
+                    }
+                },
+            )
+        return httpx.Response(404, json={})
+
+    ref = MedioDePagoRef(Proveedor.WOMPI, Ambiente.SANDBOX, "22906782")
+    estado = _adaptador(responder).revocar_medio(ref)
+
+    assert estado.estado == "VOIDED_LOCAL"
+    assert estado.ref == ref
+    assert "Nequi" in estado.detalle["aviso"] or "app Nequi" in estado.detalle["aviso"]
+    assert "PREAUTHORIZATION" in estado.detalle["motivo_wompi"]
+
+
+def test_revocar_medio_otro_error_de_wompi_si_levanta():
+    """El fallback de arriba es especifico del motivo "PREAUTHORIZATION" --
+    cualquier otro 4xx (credenciales, fuente inexistente, lo que sea) tiene
+    que seguir siendo un error real, no algo que se trague en silencio."""
+    def responder(req: httpx.Request) -> httpx.Response:
+        if req.url.path.endswith("/void") and req.method == "PUT":
+            return httpx.Response(404, json={"error": {"type": "NOT_FOUND", "reason": "no existe"}})
+        return httpx.Response(404, json={})
+
+    ref = MedioDePagoRef(Proveedor.WOMPI, Ambiente.SANDBOX, "22906782")
+    with pytest.raises(ErrorDePasarela):
+        _adaptador(responder).revocar_medio(ref)
+
+
 # --------------------------------------------------------------------------- #
 # Eventos
 # --------------------------------------------------------------------------- #

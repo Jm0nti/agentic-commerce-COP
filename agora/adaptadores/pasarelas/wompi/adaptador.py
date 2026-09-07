@@ -84,8 +84,60 @@ class AdaptadorWompi:
         return EstadoMedio(estado=data.get("status", "?"), ref=ref, detalle=data)
 
     def revocar_medio(self, ref: MedioDePagoRef) -> EstadoMedio:
-        data = self._cliente.revocar_fuente_de_pago(ref.id_externo)
+        """Wompi documenta `PUT /payment_sources/{id}/void` solo para
+        DaviPlata y Bancolombia (`docs.wompi.co/.../fuentes-de-pago/`) --
+        Nequi, el unico riel que usa esta app (`docs/rieles-pago-
+        colombia.md`), no aparece ahi. Contra produccion real (7 sept 2026,
+        Juan) Wompi lo confirma en runtime: 422, `"Unicamente se pueden
+        anular fuentes de pago con el tipo de operacion financiera
+        'PREAUTHORIZATION'"` -- una fuente Nequi no nace con ese tipo de
+        operacion, asi que el void nunca va a funcionar para ella, no es un
+        error transitorio.
+
+        No hay ningun endpoint documentado para cancelar una fuente Nequi
+        por API (se reviso `fuentes-de-pago`, `metodos-de-pago` y el centro
+        de soporte de Wompi) -- la unica cancelacion real posible es que el
+        titular la baje el mismo desde "Cobro Automatico" en su app Nequi.
+        Por eso, cuando Wompi rechaza especificamente por este motivo, esto
+        NO se trata como una falla: se desactiva el medio solo del lado de
+        esta app (`estado="VOIDED_LOCAL"`, que `RevocarMedio` va a guardar
+        igual que cualquier otro estado no-`AVAILABLE`) y se devuelve un
+        aviso explicito en `detalle["aviso"]` para que quien llame (CLI o
+        UI) le explique al titular que todavia tiene que cancelarlo del
+        lado de Nequi si quiere anular el permiso de verdad. Cualquier OTRO
+        error de Wompi (red, 500, credenciales, etc.) sigue levantando --
+        esto es una traduccion de un rechazo puntual y documentado, no un
+        "tragar cualquier error"."""
+        try:
+            data = self._cliente.revocar_fuente_de_pago(ref.id_externo)
+        except ErrorDePasarela as exc:
+            if not self._es_rechazo_por_tipo_no_anulable(exc):
+                raise
+            return EstadoMedio(
+                estado="VOIDED_LOCAL",
+                ref=ref,
+                detalle={
+                    "aviso": (
+                        "Wompi no permite cancelar esta fuente de pago por API "
+                        "-- el void solo esta documentado para DaviPlata y "
+                        "Bancolombia, no para Nequi. Se desactivo unicamente en "
+                        "esta app; para anular el permiso de verdad hay que "
+                        "cancelarlo tambien desde \"Cobro Automatico\" en la "
+                        "app Nequi del titular."
+                    ),
+                    "motivo_wompi": exc.mensaje,
+                },
+            )
         return EstadoMedio(estado=data.get("status", "VOIDED"), ref=ref, detalle=data)
+
+    @staticmethod
+    def _es_rechazo_por_tipo_no_anulable(exc: ErrorDePasarela) -> bool:
+        """`True` solo para el rechazo puntual de Wompi por tipo de
+        operacion financiera (ver el docstring de `revocar_medio` arriba) --
+        nunca para un rechazo generico, para no esconder un error real
+        detras de un "listo" falso."""
+        razon = ((exc.detalle_proveedor or {}).get("error") or {}).get("reason", "")
+        return "preauthorization" in razon.lower()
 
     # -- cobro ----------------------------------------------------------- #
 

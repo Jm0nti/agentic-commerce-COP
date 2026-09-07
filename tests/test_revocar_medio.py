@@ -51,9 +51,45 @@ def test_camino_feliz_revoca_y_marca_el_estado():
 
     estado = revocar(REF, "tit_1")
 
-    assert estado == "VOIDED"
+    # Devuelve el `EstadoMedio` completo (7 sept 2026), no un string a
+    # secas -- ver el docstring del modulo, seccion "DEVUELVE EstadoMedio".
+    assert estado.estado == "VOIDED"
     assert pasarela.revocados == [REF]
     assert medios.vivos("tit_1", Ambiente.SANDBOX) == []  # ya no esta vivo
+
+
+def test_un_desenlace_solo_local_tambien_desactiva_y_propaga_el_aviso():
+    """Cuando la pasarela no puede anular de verdad (Nequi por Wompi, ver
+    `AdaptadorWompi.revocar_medio`) devuelve `estado="VOIDED_LOCAL"` con un
+    aviso en `detalle` en vez de levantar. `RevocarMedio` tiene que: (a)
+    desactivar el medio igual (cualquier estado != AVAILABLE alcanza), y
+    (b) NO tirar ese aviso a la basura -- quien llama (CLI/API) lo necesita
+    para avisarle al titular que todavia tiene que cancelarlo el mismo."""
+    class _PasarelaQueNoPuedeAnular:
+        nombre = "falsa"
+
+        def revocar_medio(self, ref: MedioDePagoRef) -> EstadoMedio:
+            return EstadoMedio(
+                estado="VOIDED_LOCAL", ref=ref,
+                detalle={"aviso": "cancelalo tambien desde tu app Nequi"},
+            )
+
+    medios = RepositorioMediosEnMemoria()
+    medios.guardar(REF, "tit_1", COMERCIO_ID)
+    bitacora = _BitacoraEnLista()
+    revocar = RevocarMedio(
+        selector_pasarela=RegistroDePasarelas({}, por_defecto=_PasarelaQueNoPuedeAnular()),
+        medios=medios, bitacora=bitacora,
+    )
+
+    estado = revocar(REF, "tit_1")
+
+    assert estado.estado == "VOIDED_LOCAL"
+    assert estado.detalle == {"aviso": "cancelalo tambien desde tu app Nequi"}
+    assert medios.vivos("tit_1", Ambiente.SANDBOX) == []  # se desactivo igual
+    evento, cuerpo = bitacora.eventos[-1]
+    assert evento == "medio_revocado"
+    assert cuerpo["detalle"] == {"aviso": "cancelalo tambien desde tu app Nequi"}
 
 
 def test_medio_que_no_pertenece_al_titular_levanta_sin_llamar_a_la_pasarela():

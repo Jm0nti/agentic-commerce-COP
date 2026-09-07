@@ -162,7 +162,12 @@ def cmd_revocar(a, contenedor: Contenedor) -> int:
     except ErrorDeDominio as exc:
         print(f"[x] {exc.mensaje}")
         return 1
-    print(f"  medio {ref.id_externo} -> {estado}")
+    print(f"  medio {ref.id_externo} -> {estado.estado}")
+    # "VOIDED_LOCAL" (Wompi no anula Nequi por API, ver AdaptadorWompi.
+    # revocar_medio) trae un aviso que el titular necesita ver.
+    aviso = (estado.detalle or {}).get("aviso")
+    if aviso:
+        print(f"  [!] {aviso}")
     return 0
 
 

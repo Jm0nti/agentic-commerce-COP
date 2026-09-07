@@ -79,6 +79,7 @@ from ...dominio.comun.errores import (
     SesionInvalida,
 )
 from ...dominio.mandato.modelo import Intencion
+from ...dominio.pago.modelo import MedioDePagoRef, Proveedor
 from .autenticacion import COOKIE_SESION, DURACION_SESION, AlmacenDeSesionesWeb
 from .sesiones import AlmacenDeSesiones, SesionDesconocida
 
@@ -118,6 +119,14 @@ class _ConfirmarEnrolamientoEntrante(BaseModel):
     token: str
     correo: str
     comercio_id: str
+
+
+class _RevocarMedioEntrante(BaseModel):
+    # `proveedor` viaja en el cuerpo (no en la URL) porque `id_externo` solo
+    # es unico DENTRO de un proveedor. `ambiente` no viaja -- sale de
+    # `contenedor.config.ambiente`, igual que en `listar_medios`: nunca de un
+    # campo que mande el cliente.
+    proveedor: str
 
 
 def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
@@ -403,6 +412,39 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         para ver los medios de otro."""
         vivos = contenedor.medios.vivos(titular_id, contenedor.config.ambiente)
         return {"medios": [ref.to_json() for ref in vivos]}
+
+    @app.post("/medios/{id_externo}/revocar")
+    def revocar_medio(
+        id_externo: str,
+        cuerpo: _RevocarMedioEntrante,
+        titular_id: str = Depends(_requiere_titular),
+    ) -> dict[str, Any]:
+        """El boton de panico (`aplicacion/revocar_medio.py`) por HTTP --
+        hasta ahora solo lo alcanzaba `entradas/cli/__main__.py:cmd_revocar`.
+        Mismo criterio que el resto de esta seccion: `titular_id` sale de la
+        cookie de sesion, nunca del cuerpo. `RevocarMedio` ya verifica que la
+        referencia sea del titular autenticado (`RepositorioMedios.vivos`)
+        antes de pedirle la revocacion a la pasarela -- revocar a ciegas
+        podria apagar la fuente equivocada (docstring de `aplicacion/
+        revocar_medio.py`)."""
+        try:
+            ref = MedioDePagoRef(
+                proveedor=Proveedor(cuerpo.proveedor),
+                ambiente=contenedor.config.ambiente,
+                id_externo=id_externo,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400, detail=f"proveedor invalido: {cuerpo.proveedor!r}"
+            ) from exc
+        try:
+            estado = contenedor.revocar_medio(ref, titular_id)
+        except ErrorDeDominio as exc:
+            raise HTTPException(status_code=400, detail=exc.mensaje) from exc
+        # "aviso" viaja vacio salvo que Wompi no haya podido anular la
+        # fuente por API (Nequi) y el medio se haya desactivado solo del
+        # lado de esta app -- ver AdaptadorWompi.revocar_medio.
+        return {"estado": estado.estado, "aviso": (estado.detalle or {}).get("aviso", "")}
 
     return app
 
