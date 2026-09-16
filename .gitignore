@@ -30,3 +30,10 @@ agora_datos/
 *.db-wal
 *.db-shm
 *.db.bak-*
+
+
+docs/anteproyecto-contexto-y-justificacion.md
+docs/anteproyecto-contexto-y-justificacion.pdf
+docs/anteproyecto-contexto-y-justificacion.tex
+docs/arquitectura-agentes-langgraph.md
+docs/references.bib

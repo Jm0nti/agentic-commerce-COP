@@ -224,7 +224,7 @@ ngrok http 8001
 Cualquiera de las dos imprime una URL pública (`https://algo.trycloudflare.com`
 o `https://algo.ngrok-free.app`).
 
-**Panel de Wompi:** Desarrolladores → Eventos, y ahí pegá la URL completa
+**Panel de Wompi:** Desarrolladores → Dashboard general, pegar la URL completa
 **con la ruta incluida, terminada en el `comercio_id` de ESE comercio**
 (multi-comercio: un solo túnel y un solo puerto sirven para todos los
 comercios, pero cada uno tiene su propia entrada en el panel de Wompi, con
@@ -326,11 +326,9 @@ técnica documentada a propósito, no un descuido (ver
 - `docs/flujo-propuesta-mandato.md` — el recorrido completo del sistema de
   mandatos: dónde se guarda cada cosa, la criptografía detrás de la firma,
   cómo firma la persona, y por qué el agente nunca puede hacerlo él mismo.
-- `docs/viabilidad-multi-comercio-wompi.md` — por qué y cómo `agora/` soporta
-  varios comercios reales de Wompi en el mismo proceso.
+- `docs/flujo-operativo-de-punta-a-punta.md` — que hay que tener
+  corriendo y en que orden para una compra real: los tres procesos, el
+  tunel, el login multiusuario, el enrolamiento, y como responde Wompi
+  (sincrono y por webhook) para cada comercio.
 - `docs/variables-de-entorno.md` — la plantilla comentada del `.env`.
-- `docs/flujo.md` — runbook de comandos para el sistema v1 (`boveda/`).
-- `docs/informe-viabilidad-pagos-agenticos-co.md` — por qué Wompi + Nequi y no
-  otro riel colombiano.
-- `docs/decline-afe.md` — el primer cobro real y por qué lo rechazó el
-  antifraude de Wompi.
+
