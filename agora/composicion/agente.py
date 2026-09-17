@@ -1,7 +1,9 @@
 """El unico lugar que conoce tanto `aplicacion/` como `agente/`: arma las
 seis funciones que `agente/herramientas.py:construir_herramientas` convierte
 en `Herramienta`, y con eso arma el `Agente` (`agente/conversacion.py`)
-contra el `ModeloDeLenguaje` real que trae el `Contenedor`.
+contra el `ModeloDeLenguaje` real que trae el `Contenedor` -- y, desde la
+etapa 1 de la migracion a agentes, con el clasificador de intencion que pida
+`AGORA_CLASIFICADOR` (`construir_clasificador`, al final de este archivo).
 
 POR QUE ESTAS FUNCIONES DE UNION VIVEN ACA Y NO EN `agente/`
 ----------------------------------------------------------------
@@ -26,11 +28,18 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..agente.clasificacion import (
+    ClasificadorConModelo,
+    ClasificadorEnCadena,
+    ClasificadorPorReglas,
+)
 from ..agente.conversacion import Agente
 from ..agente.herramientas import construir_herramientas
+from ..agente.intencion import ClasificadorDeIntencion
 from ..aplicacion.navegar_catalogo import ItemPedido
 from ..dominio.catalogo.modelo import Comercio, Producto
 from ..dominio.mandato.modelo import Intencion
+from ..puertos.modelo_lenguaje import ModeloDeLenguaje
 from .contenedor import Contenedor
 
 
@@ -148,7 +157,31 @@ def construir_agente(contenedor: Contenedor) -> Agente | None:
         pagar=pagar,
         consultar_estado=consultar_estado,
     )
-    return Agente(modelo=contenedor.modelo_lenguaje, herramientas=herramientas)
+    return Agente(
+        modelo=contenedor.modelo_lenguaje,
+        herramientas=herramientas,
+        clasificador=construir_clasificador(
+            contenedor.config.clasificador_intencion, contenedor.modelo_lenguaje,
+        ),
+    )
+
+
+def construir_clasificador(
+    modo: str, modelo: ModeloDeLenguaje
+) -> ClasificadorDeIntencion | None:
+    """Migracion a agentes, etapa 1. `modo` sale de `AGORA_CLASIFICADOR`
+    (`composicion/configuracion.py`, que ya lo valido). El orden de la
+    cadena es la decision de costo del documento: reglas gratis primero, el
+    modelo solo cuando las reglas se abstienen."""
+    if modo == "apagado":
+        return None
+    if modo == "reglas":
+        return ClasificadorPorReglas()
+    if modo == "hibrido":
+        return ClasificadorEnCadena(ClasificadorPorReglas(), ClasificadorConModelo(modelo))
+    # `ConfiguracionAgora.__post_init__` ya lo impide; esto es por si alguien
+    # llama directo sin pasar por la configuracion.
+    raise ValueError(f"modo de clasificador desconocido: '{modo}'")
 
 
 def _comercio_a_dict(c: Comercio) -> dict[str, Any]:

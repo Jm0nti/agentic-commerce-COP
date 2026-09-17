@@ -29,7 +29,15 @@ REGLAS: dict[str, tuple[str, ...]] = {
     "adaptadores": ("aplicacion", "entradas", "composicion"),
     # LA FRONTERA. El agente no puede alcanzar una credencial de pago
     # ni aunque quiera.
-    "agente": ("adaptadores", "composicion"),
+    #
+    # `aplicacion` y `entradas` se agregaron en la etapa 1 de la migracion a
+    # agentes (16 sep 2026). Hallazgo: el principio documentado ("falla el
+    # build si agente/ importa aplicacion/", `herramientas.py:
+    # construir_herramientas`) NO estaba en esta tabla -- un modulo de
+    # `agente/` con `from ..aplicacion.ejecutar_intencion import
+    # EjecutarIntencion` pasaba la suite en verde. Ver
+    # `test_el_detector_atrapa_al_agente_importando_un_caso_de_uso`.
+    "agente": ("aplicacion", "adaptadores", "entradas", "composicion"),
     # Las entradas reciben los adaptadores ya armados desde composicion.
     "entradas": ("adaptadores",),
 }
@@ -38,18 +46,44 @@ REGLAS: dict[str, tuple[str, ...]] = {
 PROHIBIDOS_POR_CAPA: dict[str, tuple[str, ...]] = {
     "dominio": ("httpx", "requests", "fastapi", "sqlite3", "os"),
     "puertos": ("httpx", "requests", "fastapi", "sqlite3"),
-    "agente": ("httpx", "sqlite3"),
+    # `importlib`: con el se puede importar un adaptador por nombre, en un
+    # string, sin que aparezca ningun `import` que este archivo pueda leer.
+    "agente": ("httpx", "sqlite3", "importlib"),
 }
+
+# Migracion a agentes (docs/arquitectura-agentes-langgraph.md, decision 8):
+# LangChain, LangGraph y cualquier SDK de LLM entran SOLO detras de un
+# puerto, con su adaptador en `adaptadores/` -- mismo patron que `openai`
+# detras de `ModeloDeLenguaje`/`AdaptadorDeepSeek`. Se compara por familia
+# (`langchain_core`, `langchain_community`, `langgraph_checkpoint`...), no
+# por nombre exacto: el ecosistema reparte cada libreria en muchos paquetes.
+LIBRERIAS_DE_LLM = ("langchain", "langgraph", "openai", "anthropic", "llama_index")
+CAPAS_QUE_PUEDEN_IMPORTAR_LLM = ("adaptadores",)
+
+# Los archivos que agrego la etapa 1 de la migracion. `_modulos()` ya los
+# recorre solo (rglob); esta lista existe para que, si un refactor mueve o
+# excluye alguno sin querer, la prueba lo diga en vez de dejar de mirarlo.
+MODULOS_DE_LA_MIGRACION_A_AGENTES = (
+    "agente/intencion.py",
+    "agente/nodos.py",
+    "agente/clasificacion/__init__.py",
+    "agente/clasificacion/cadena.py",
+    "agente/clasificacion/modelo.py",
+    "agente/clasificacion/reglas.py",
+)
 
 
 def _modulos() -> list[Path]:
     return [p for p in RAIZ.rglob("*.py") if "__pycache__" not in str(p)]
 
 
-def _imports(archivo: Path) -> list[str]:
-    """Todo lo importado, normalizado. Resuelve los relativos a absolutos."""
+def _imports(archivo: Path, raiz: Path = RAIZ) -> list[str]:
+    """Todo lo importado, normalizado. Resuelve los relativos a absolutos.
+
+    `raiz` es parametro solo para que las pruebas del detector (al final
+    del archivo) puedan armar un `agora/` de mentira en `tmp_path`."""
     arbol = ast.parse(archivo.read_text(encoding="utf-8"), filename=str(archivo))
-    partes_actuales = archivo.relative_to(RAIZ).parts[:-1]
+    partes_actuales = archivo.relative_to(raiz).parts[:-1]
     fuera: list[str] = []
 
     for nodo in ast.walk(arbol):
@@ -74,23 +108,62 @@ def _imports(archivo: Path) -> list[str]:
     return fuera
 
 
-def _capa(archivo: Path) -> str:
-    return archivo.relative_to(RAIZ).parts[0]
+def _capa(archivo: Path, raiz: Path = RAIZ) -> str:
+    return archivo.relative_to(raiz).parts[0]
+
+
+def _violaciones_de_dependencia(archivo: Path, raiz: Path = RAIZ) -> list[str]:
+    capa = _capa(archivo, raiz)
+    prohibidas = REGLAS.get(capa, ())
+    ofensas = []
+    for imp in _imports(archivo, raiz):
+        primero = imp.split(".")[0]
+        # tanto `agora.adaptadores...` como el relativo ya normalizado
+        objetivo = imp.split(".")[1] if primero == "agora" else primero
+        if objetivo in prohibidas:
+            ofensas.append(
+                f"{archivo.relative_to(raiz.parent)} (capa '{capa}') importa "
+                f"'{imp}'.\nLa capa '{capa}' no puede depender de '{objetivo}'."
+            )
+    return ofensas
+
+
+def _violaciones_de_libreria_de_llm(archivo: Path, raiz: Path = RAIZ) -> list[str]:
+    capa = _capa(archivo, raiz)
+    if capa in CAPAS_QUE_PUEDEN_IMPORTAR_LLM:
+        return []
+    ofensas = []
+    for imp in _imports(archivo, raiz):
+        primero = imp.split(".")[0]
+        if any(primero == lib or primero.startswith(f"{lib}_") for lib in LIBRERIAS_DE_LLM):
+            ofensas.append(
+                f"{archivo.relative_to(raiz.parent)} (capa '{capa}') importa '{imp}'. "
+                "Una libreria de LLM/orquestacion entra detras de un puerto, con su "
+                "adaptador en adaptadores/ -- nunca directo en esta capa."
+            )
+    return ofensas
+
+
+def _importaciones_dinamicas(archivo: Path) -> list[str]:
+    """`__import__("agora.adaptadores...")` no deja ningun `import` en el
+    AST: es la unica forma de cruzar una frontera que las otras pruebas no
+    ven. `importlib` ya esta en `PROHIBIDOS_POR_CAPA`; esto cubre el
+    builtin."""
+    arbol = ast.parse(archivo.read_text(encoding="utf-8"), filename=str(archivo))
+    return [
+        f"{archivo.name}:{nodo.lineno}"
+        for nodo in ast.walk(arbol)
+        if isinstance(nodo, ast.Call)
+        and isinstance(nodo.func, ast.Name)
+        and nodo.func.id == "__import__"
+    ]
 
 
 @pytest.mark.parametrize("archivo", _modulos(), ids=lambda p: str(p.name))
 def test_regla_de_dependencia(archivo: Path) -> None:
-    capa = _capa(archivo)
-    prohibidas = REGLAS.get(capa, ())
-    for imp in _imports(archivo):
-        raiz = imp.split(".")[0]
-        # tanto `agora.adaptadores...` como el relativo ya normalizado
-        objetivo = imp.split(".")[1] if raiz == "agora" else raiz
-        if objetivo in prohibidas:
-            pytest.fail(
-                f"{archivo.relative_to(RAIZ.parent)} (capa '{capa}') importa "
-                f"'{imp}'.\nLa capa '{capa}' no puede depender de '{objetivo}'."
-            )
+    ofensas = _violaciones_de_dependencia(archivo)
+    if ofensas:
+        pytest.fail("\n".join(ofensas))
 
 
 @pytest.mark.parametrize("archivo", _modulos(), ids=lambda p: str(p.name))
@@ -123,3 +196,94 @@ def test_el_agente_no_alcanza_ninguna_pasarela() -> None:
     assert not ofensas, (
         "El agente alcanza una pasarela de pagos:\n  " + "\n  ".join(ofensas)
     )
+
+
+# --------------------------------------------------------------------------- #
+# Migracion a agentes, etapa 1
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize("archivo", _modulos(), ids=lambda p: str(p.name))
+def test_librerias_de_llm_solo_detras_de_un_adaptador(archivo: Path) -> None:
+    ofensas = _violaciones_de_libreria_de_llm(archivo)
+    if ofensas:
+        pytest.fail("\n".join(ofensas))
+
+
+def test_el_agente_no_importa_nada_por_nombre_en_un_string() -> None:
+    ofensas = [
+        ofensa
+        for archivo in _modulos()
+        if _capa(archivo) == "agente"
+        for ofensa in _importaciones_dinamicas(archivo)
+    ]
+    assert not ofensas, "El agente usa __import__ dinamico:\n  " + "\n  ".join(ofensas)
+
+
+@pytest.mark.parametrize("relativo", MODULOS_DE_LA_MIGRACION_A_AGENTES)
+def test_los_modulos_de_la_migracion_estan_bajo_la_regla_del_agente(relativo: str) -> None:
+    archivo = RAIZ / relativo
+    assert archivo in _modulos(), f"{relativo} no existe o quedo fuera de _modulos()"
+    assert _capa(archivo) == "agente"
+
+
+# -- el detector, probado ---------------------------------------------------- #
+# Una prueba de fronteras que nunca falla puede estar bien... o no estar
+# mirando nada. Estas arman un `agora/` de mentira con violaciones conocidas
+# y exigen que el detector las encuentre.
+
+
+def _agora_de_mentira(tmp_path: Path, relativo: str, contenido: str) -> tuple[Path, Path]:
+    raiz = tmp_path / "agora"
+    archivo = raiz / relativo
+    archivo.parent.mkdir(parents=True, exist_ok=True)
+    archivo.write_text(contenido, encoding="utf-8")
+    return raiz, archivo
+
+
+def test_el_detector_atrapa_al_agente_importando_un_caso_de_uso(tmp_path: Path) -> None:
+    raiz, archivo = _agora_de_mentira(
+        tmp_path,
+        "agente/clasificacion/intruso.py",
+        "from ...aplicacion.ejecutar_intencion import EjecutarIntencion\n",
+    )
+    ofensas = _violaciones_de_dependencia(archivo, raiz)
+    assert ofensas and "aplicacion" in ofensas[0]
+
+
+def test_el_detector_atrapa_al_agente_importando_entradas(tmp_path: Path) -> None:
+    raiz, archivo = _agora_de_mentira(
+        tmp_path, "agente/intruso.py", "from agora.entradas.api.app import crear_app\n",
+    )
+    assert _violaciones_de_dependencia(archivo, raiz)
+
+
+@pytest.mark.parametrize(
+    "linea",
+    [
+        "from langgraph.graph import StateGraph",
+        "from langchain_core.messages import HumanMessage",
+        "import langchain_community.vectorstores",
+        "from openai import OpenAI",
+    ],
+)
+@pytest.mark.parametrize("capa", ["dominio", "puertos", "aplicacion", "agente", "entradas"])
+def test_el_detector_atrapa_librerias_de_llm_fuera_de_adaptadores(
+    tmp_path: Path, capa: str, linea: str
+) -> None:
+    raiz, archivo = _agora_de_mentira(tmp_path, f"{capa}/intruso.py", linea + "\n")
+    assert _violaciones_de_libreria_de_llm(archivo, raiz)
+
+
+def test_el_detector_deja_pasar_librerias_de_llm_en_adaptadores(tmp_path: Path) -> None:
+    raiz, archivo = _agora_de_mentira(
+        tmp_path, "adaptadores/orquestacion/grafo.py", "from langgraph.graph import StateGraph\n",
+    )
+    assert _violaciones_de_libreria_de_llm(archivo, raiz) == []
+
+
+def test_el_detector_atrapa_importaciones_dinamicas(tmp_path: Path) -> None:
+    _, archivo = _agora_de_mentira(
+        tmp_path, "agente/intruso.py", 'p = __import__("agora.adaptadores.pasarelas.wompi")\n',
+    )
+    assert _importaciones_dinamicas(archivo)

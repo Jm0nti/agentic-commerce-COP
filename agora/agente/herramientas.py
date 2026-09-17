@@ -61,24 +61,134 @@ PROHIBIDAS = (
 )
 
 
-def validar_catalogo(herramientas: list[Herramienta]) -> None:
+# --------------------------------------------------------------------------- #
+# Lista blanca POR NODO (migracion a agentes, etapa 1 -- docs/arquitectura-
+# agentes-langgraph.md, decision 3). La tabla de los siete agentes, dicha en
+# codigo: cada nodo es dueño de un subconjunto del catalogo autorizado, y
+# ninguna herramienta tiene dos dueños. Asi un nodo nuevo nunca "hereda" una
+# herramienta de otro dominio por accidente: tiene que aparecer aca, en el
+# mismo archivo que `PROHIBIDAS`, y pasar `validar_asignacion_por_nodo`.
+#
+# `orquestador`, `medios_de_pago`, `soporte` y `riesgo` NO tienen
+# herramientas, a proposito:
+#   - orquestador     decide a donde va el turno; no ejecuta nada.
+#   - medios_de_pago  explica enrolar/revocar -- actos del titular, nunca del
+#                     agente (por eso tampoco podria tener una herramienta con
+#                     esos nombres: `PROHIBIDAS` ya los niega).
+#   - soporte         prosa sobre como funciona el sistema. Sin acceso FISICO a
+#                     nada que mueva dinero, aunque el modelo alucine una
+#                     llamada (`agente/conversacion.py` la rechaza al ejecutar).
+#   - riesgo          explicador del dictamen (opcional en el documento); lee
+#                     el `Dictamen`, no llama herramientas. Ninguna ruta de la
+#                     etapa 1 lo usa todavia -- esta en la tabla para que la
+#                     tabla sea la decision 3 completa, no la mitad.
+# --------------------------------------------------------------------------- #
+
+HERRAMIENTAS_POR_NODO: dict[str, tuple[str, ...]] = {
+    "orquestador": (),
+    "catalogo": ("buscar_comercios", "buscar_productos", "ver_producto"),
+    # Juntas a proposito (decision 5 del documento): separarlas reabre el
+    # riesgo de `carrito_id` desincronizado que ya se vivio en la etapa 6
+    # (`docs/etapa-6-conectar-chat-y-firma.md`).
+    "carrito_pago": ("armar_carrito", "pagar"),
+    "medios_de_pago": (),
+    "estado": ("consultar_estado",),
+    "soporte": (),
+    "riesgo": (),
+}
+
+# Las herramientas que estan en el camino del dinero: `armar_carrito` produce
+# la propuesta que despues se firma, `pagar` cobra. Solo el nodo de carrito y
+# pago puede tenerlas -- `validar_asignacion_por_nodo` lo verifica, y
+# `tests/test_agente_nodos.py` falla si algun dia soporte (o cualquier otro
+# nodo) las recibe.
+HERRAMIENTAS_DEL_FLUJO_DE_DINERO = ("armar_carrito", "pagar")
+NODO_DUENO_DEL_FLUJO_DE_DINERO = "carrito_pago"
+
+
+def _validar_nodo(nodo: str) -> None:
+    if nodo not in HERRAMIENTAS_POR_NODO:
+        raise RuntimeError(
+            f"nodo desconocido: '{nodo}'. Un nodo nuevo se declara en "
+            "HERRAMIENTAS_POR_NODO, con su lista blanca explicita."
+        )
+
+
+def _validar_nombre(nombre: str) -> None:
+    for prohibida in PROHIBIDAS:
+        if prohibida in nombre.lower():
+            raise RuntimeError(
+                f"la herramienta '{nombre}' contiene '{prohibida}'. "
+                "El agente no puede tener acceso a credenciales ni a la firma."
+            )
+    if nombre not in CATALOGO_DE_HERRAMIENTAS:
+        raise RuntimeError(
+            f"'{nombre}' no esta en el catalogo autorizado. "
+            "Agregarla es una decision de diseno, no un detalle."
+        )
+
+
+def validar_catalogo(herramientas: list[Herramienta], nodo: str | None = None) -> None:
     """Se corre al armar el agente, no en un test lejano.
 
     Un `assert` en el arranque vale mas que una convencion documentada: si
     alguien agrega una herramienta que revela credenciales, la app no levanta.
+
+    Sin `nodo` valida el catalogo global (`PROHIBIDAS` + catalogo
+    autorizado), exactamente como antes de la migracion a agentes. Con
+    `nodo`, ademas exige que cada herramienta pertenezca a la lista blanca de
+    ESE nodo (`HERRAMIENTAS_POR_NODO`) -- una herramienta valida en general
+    pero de otro dominio se rechaza igual de fuerte que una prohibida.
     """
+    if nodo is not None:
+        _validar_nodo(nodo)
     for h in herramientas:
-        for prohibida in PROHIBIDAS:
-            if prohibida in h.nombre.lower():
-                raise RuntimeError(
-                    f"la herramienta '{h.nombre}' contiene '{prohibida}'. "
-                    "El agente no puede tener acceso a credenciales ni a la firma."
-                )
-        if h.nombre not in CATALOGO_DE_HERRAMIENTAS:
+        _validar_nombre(h.nombre)
+        if nodo is not None and h.nombre not in HERRAMIENTAS_POR_NODO[nodo]:
             raise RuntimeError(
-                f"'{h.nombre}' no esta en el catalogo autorizado. "
-                "Agregarla es una decision de diseno, no un detalle."
+                f"la herramienta '{h.nombre}' no pertenece al dominio del nodo "
+                f"'{nodo}' (su lista blanca: {HERRAMIENTAS_POR_NODO[nodo] or 'ninguna'})."
             )
+
+
+def validar_asignacion_por_nodo(
+    tabla: dict[str, tuple[str, ...]] | None = None,
+) -> None:
+    """Valida la TABLA, no una lista de herramientas concreta: que cada
+    herramienta asignada exista en el catalogo y no este prohibida, que
+    ninguna tenga dos nodos dueños, y que el flujo de dinero viva solo en su
+    nodo. `tabla` se puede pasar para probar tablas malas sin tocar la real.
+    """
+    tabla = HERRAMIENTAS_POR_NODO if tabla is None else tabla
+    dueno: dict[str, str] = {}
+    for nodo, nombres in tabla.items():
+        for nombre in nombres:
+            _validar_nombre(nombre)
+            if nombre in dueno:
+                raise RuntimeError(
+                    f"'{nombre}' esta asignada a dos nodos ('{dueno[nombre]}' y "
+                    f"'{nodo}'). Cada herramienta tiene un solo dominio dueño."
+                )
+            dueno[nombre] = nodo
+            if (
+                nombre in HERRAMIENTAS_DEL_FLUJO_DE_DINERO
+                and nodo != NODO_DUENO_DEL_FLUJO_DE_DINERO
+            ):
+                raise RuntimeError(
+                    f"'{nombre}' esta en el camino del dinero y solo puede ser del "
+                    f"nodo '{NODO_DUENO_DEL_FLUJO_DE_DINERO}', no de '{nodo}'."
+                )
+
+
+def herramientas_para_nodo(herramientas: list[Herramienta], nodo: str) -> list[Herramienta]:
+    """Las herramientas de `herramientas` que le tocan a `nodo`, ya validadas
+    contra su lista blanca. Filtra primero y valida despues a proposito: la
+    validacion no es redundante con el filtro, es la red por si alguien
+    cambia el filtro."""
+    _validar_nodo(nodo)
+    propias = [h for h in herramientas if h.nombre in HERRAMIENTAS_POR_NODO[nodo]]
+    validar_catalogo(propias, nodo=nodo)
+    return propias
 
 
 # --------------------------------------------------------------------------- #

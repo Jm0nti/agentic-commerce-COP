@@ -74,6 +74,14 @@ PAGADOR_TIPO_DOC=CC
 DEEPSEEK_API_KEY=sk-...
 # DEEPSEEK_MODELO=deepseek-chat   # opcional, default deepseek-chat
 
+# --- Clasificador de intencion (migracion a agentes, etapa 1) --------------- #
+# Como decide el agente a que dominio pertenece cada mensaje antes de ejecutar
+# el turno. Ver docs/etapa-1-agentes-clasificador-de-intencion.md.
+#   hibrido  reglas primero; si se abstienen, una llamada extra a DeepSeek
+#   reglas   solo reglas; lo dudoso va con las seis herramientas, como antes
+#   apagado  sin clasificador: el agente de la etapa 7 tal cual
+# AGORA_CLASIFICADOR=hibrido      # opcional, default hibrido
+
 # --- Firma del titular (etapa 5) -------------------------------------------- #
 # El par ed25519 que firma los mandatos, "igual que v1": si los archivos no
 # existen, `composicion/contenedor.py` los genera la primera vez que arma un

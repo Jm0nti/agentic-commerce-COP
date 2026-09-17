@@ -401,6 +401,16 @@ def cmd_chat(a, contenedor: Contenedor) -> int:
         except ErrorDeDominio as exc:
             print(f"[x] {exc.mensaje}")
             continue
+        if getattr(a, "mostrar_intencion", False) and conversacion.clasificaciones:
+            # Migracion a agentes, etapa 1: la decision del orquestador,
+            # visible para verificar a mano que "decidir" y "ejecutar" van
+            # separados. Sin clasificador (AGORA_CLASIFICADOR=apagado) no hay
+            # clasificaciones y no se imprime nada.
+            c = conversacion.clasificaciones[-1]
+            print(
+                f"  [intencion: {c.intencion.value if c.intencion else 'respaldo'} | "
+                f"{c.origen.value} | confianza {c.confianza:.2f} | {c.motivo}]"
+            )
         print(f"agente> {respuesta}\n")
     return 0
 
@@ -465,7 +475,13 @@ def _armar_parser() -> argparse.ArgumentParser:
     px.add_argument("intencion_id")
 
     sub.add_parser("mandatos", help="mandatos emitidos y su consumo")
-    sub.add_parser("chat", help="chatear con el agente (necesita DEEPSEEK_API_KEY)")
+    pc = sub.add_parser("chat", help="chatear con el agente (necesita DEEPSEEK_API_KEY)")
+    pc.add_argument(
+        "--mostrar-intencion",
+        action="store_true",
+        help="imprime la intencion que clasifico el orquestador en cada turno "
+        "(migracion a agentes, etapa 1)",
+    )
 
     return p
 

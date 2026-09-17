@@ -53,6 +53,19 @@ las de Wompi):
         arma sola a partir del `comercio_id`: ver el docstring de
         `entradas/webhooks/wompi.py`.
 
+    AGORA_CLASIFICADOR  hibrido | reglas | apagado   (default: hibrido)
+        Migracion a agentes, etapa 1 (`docs/etapa-1-agentes-clasificador-de-
+        intencion.md`): como decide el agente la intencion de cada mensaje
+        antes de ejecutar el turno.
+          hibrido  reglas deterministicas primero; si se abstienen, una
+                   llamada extra a DeepSeek para clasificar (con historial).
+          reglas   solo reglas; lo que no resuelven va por la ruta de
+                   respaldo (las seis herramientas, como antes). Sin costo
+                   extra de API.
+          apagado  sin clasificador: el agente de la etapa 7 tal cual. Es el
+                   interruptor para una demo si el enrutamiento molesta.
+        Solo tiene efecto si hay DEEPSEEK_API_KEY (sin ella no hay agente).
+
     PAGADOR_EMAIL / PAGADOR_NOMBRE / PAGADOR_TELEFONO / PAGADOR_DOCUMENTO / PAGADOR_TIPO_DOC
         Igual que `boveda/nucleo.py:perfil_pagador`. Importan de verdad: un
         cobro sin `customer_data` es el perfil que el antifraude de Wompi lee
@@ -89,6 +102,9 @@ DEEPSEEK_MODELO_POR_DEFECTO = "deepseek-chat"
 # (ver `adaptadores/pasarelas/simulada/guion.py`).
 CORREO_POR_DEFECTO = "demo@agora.local"
 
+MODOS_CLASIFICADOR = ("hibrido", "reglas", "apagado")
+CLASIFICADOR_POR_DEFECTO = "hibrido"
+
 
 class ConfiguracionInvalida(ValueError):
     pass
@@ -114,8 +130,15 @@ class ConfiguracionAgora:
     # catalogo) no depende de que haya una llave de DeepSeek.
     deepseek_llave_api: str = ""
     deepseek_modelo: str = DEEPSEEK_MODELO_POR_DEFECTO
+    # Migracion a agentes, etapa 1 -- ver AGORA_CLASIFICADOR en el docstring.
+    clasificador_intencion: str = CLASIFICADOR_POR_DEFECTO
 
     def __post_init__(self) -> None:
+        if self.clasificador_intencion not in MODOS_CLASIFICADOR:
+            raise ConfiguracionInvalida(
+                f"AGORA_CLASIFICADOR='{self.clasificador_intencion}' invalido: use "
+                + " | ".join(f"'{m}'" for m in MODOS_CLASIFICADOR)
+            )
         if self.pasarela not in ("simulada", "wompi"):
             raise ConfiguracionInvalida(
                 f"AGORA_PASARELA='{self.pasarela}' invalido: use 'simulada' o 'wompi'"
@@ -225,6 +248,7 @@ def leer_configuracion(entorno: Mapping[str, str]) -> ConfiguracionAgora:
     )
     deepseek_llave_api = entorno.get("DEEPSEEK_API_KEY", "")
     deepseek_modelo = entorno.get("DEEPSEEK_MODELO", DEEPSEEK_MODELO_POR_DEFECTO)
+    clasificador_intencion = entorno.get("AGORA_CLASIFICADOR", CLASIFICADOR_POR_DEFECTO)
 
     wompi: dict[str, ConfiguracionWompi] = {}
     if pasarela == "wompi":
@@ -246,4 +270,5 @@ def leer_configuracion(entorno: Mapping[str, str]) -> ConfiguracionAgora:
         sqlite_path=sqlite_path,
         deepseek_llave_api=deepseek_llave_api,
         deepseek_modelo=deepseek_modelo,
+        clasificador_intencion=clasificador_intencion,
     )
