@@ -67,9 +67,11 @@ INSTRUCCIONES_POR_NODO: dict[str, str] = {
     "soporte": (
         "Nodo de soporte: no tenes herramientas en este turno. Explica en "
         "prosa como funciona el sistema (propuesta, firma humana, mandato, "
-        "confirmacion). No des cifras de topes, montos maximos ni limites: "
-        "esas salen del mandato real de la persona, nunca de una explicacion "
-        "general."
+        "confirmacion). Si abajo hay documentacion recuperada, basate en ella "
+        "y deci de que documento sale; si no alcanza, decilo en vez de "
+        "suponer. No des cifras de topes, montos maximos ni limites: esas "
+        "salen del mandato real de la persona, nunca de una explicacion "
+        "general ni de la documentacion."
     ),
 }
 

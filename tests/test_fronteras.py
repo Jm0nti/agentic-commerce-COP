@@ -64,12 +64,25 @@ CAPAS_QUE_PUEDEN_IMPORTAR_LLM = ("adaptadores",)
 # recorre solo (rglob); esta lista existe para que, si un refactor mueve o
 # excluye alguno sin querer, la prueba lo diga en vez de dejar de mirarlo.
 MODULOS_DE_LA_MIGRACION_A_AGENTES = (
+    # etapa 1
     "agente/intencion.py",
     "agente/nodos.py",
     "agente/clasificacion/__init__.py",
     "agente/clasificacion/cadena.py",
     "agente/clasificacion/modelo.py",
     "agente/clasificacion/reglas.py",
+    # etapa 2
+    "agente/contexto.py",
+    "agente/contexto_documental.py",
+    "puertos/recuperacion.py",
+    "adaptadores/embeddings/__init__.py",
+    "adaptadores/embeddings/proveedor_openai/__init__.py",
+    "adaptadores/embeddings/proveedor_openai/adaptador.py",
+    "adaptadores/embeddings/proveedor_openai/config.py",
+    "adaptadores/recuperacion/__init__.py",
+    "adaptadores/recuperacion/langchain_en_memoria/__init__.py",
+    "adaptadores/recuperacion/langchain_en_memoria/buscador.py",
+    "adaptadores/recuperacion/langchain_en_memoria/documentos.py",
 )
 
 
@@ -221,10 +234,58 @@ def test_el_agente_no_importa_nada_por_nombre_en_un_string() -> None:
 
 
 @pytest.mark.parametrize("relativo", MODULOS_DE_LA_MIGRACION_A_AGENTES)
-def test_los_modulos_de_la_migracion_estan_bajo_la_regla_del_agente(relativo: str) -> None:
+def test_los_modulos_de_la_migracion_estan_bajo_las_reglas_de_su_capa(relativo: str) -> None:
     archivo = RAIZ / relativo
     assert archivo in _modulos(), f"{relativo} no existe o quedo fuera de _modulos()"
-    assert _capa(archivo) == "agente"
+    assert _capa(archivo) == relativo.split("/")[0]
+
+
+# -- etapa 2: recuperacion documental ----------------------------------------- #
+
+
+def _es_modulo(importado: str, prefijo: str) -> bool:
+    """`adaptadores.x...` o `agora.adaptadores.x...` -- no `langchain_core.x`."""
+    sin_raiz = importado[len("agora."):] if importado.startswith("agora.") else importado
+    return sin_raiz == prefijo or sin_raiz.startswith(prefijo + ".")
+
+
+def _modulos_bajo(prefijo: str) -> list[Path]:
+    return [p for p in _modulos() if p.relative_to(RAIZ).as_posix().startswith(prefijo)]
+
+
+def test_el_indice_documental_nunca_se_mezcla_con_el_catalogo() -> None:
+    """Decision 1 del documento: el indice de soporte es "un indice separado
+    (nunca mezclado con el catalogo)". Dicho en imports: la recuperacion
+    documental no alcanza nada del catalogo, y el catalogo no alcanza nada
+    de la recuperacion documental."""
+    ofensas = []
+    for archivo in _modulos_bajo("adaptadores/recuperacion/") + _modulos_bajo("adaptadores/embeddings/"):
+        ofensas += [f"{archivo.name}: {i}" for i in _imports(archivo) if "catalogo" in i.split(".")]
+    for archivo in _modulos_bajo("adaptadores/catalogo/") + [RAIZ / "puertos" / "catalogo.py"]:
+        ofensas += [
+            f"{archivo.name}: {i}"
+            for i in _imports(archivo)
+            if {"recuperacion", "embeddings"} & set(i.split("."))
+        ]
+    assert not ofensas, "Catalogo y documentacion se cruzan:\n  " + "\n  ".join(ofensas)
+
+
+def test_embeddings_y_vector_store_solo_se_conocen_por_el_puerto() -> None:
+    """El adaptador de OpenAI no sabe que existe LangChain, y el buscador de
+    LangChain no sabe que existe OpenAI: cambiar uno no toca al otro
+    (decision 2 del documento, "embeddings detras de su propio puerto")."""
+    ofensas = []
+    for archivo in _modulos_bajo("adaptadores/embeddings/"):
+        ofensas += [
+            f"{archivo.name}: {i}" for i in _imports(archivo)
+            if i.split(".")[0].startswith("langchain") or _es_modulo(i, "adaptadores.recuperacion")
+        ]
+    for archivo in _modulos_bajo("adaptadores/recuperacion/"):
+        ofensas += [
+            f"{archivo.name}: {i}" for i in _imports(archivo)
+            if i.split(".")[0] == "openai" or _es_modulo(i, "adaptadores.embeddings")
+        ]
+    assert not ofensas, "Adaptadores de la etapa 2 acoplados:\n  " + "\n  ".join(ofensas)
 
 
 # -- el detector, probado ---------------------------------------------------- #

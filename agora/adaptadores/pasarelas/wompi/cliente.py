@@ -1,7 +1,7 @@
 """HTTP puro contra la API de Wompi. Sin topes, sin mandato, sin persistencia.
 
 Es la mitad de `boveda/nucleo.py:ClienteWompi` que sobrevive intacta a la
-particion de `Boveda` (`docs/analisis-codigo.md`, hallazgo 1): hablar con
+particion de `Boveda` (`docs/historico/analisis-codigo.md`, hallazgo 1): hablar con
 Wompi. La otra mitad -- resolver mandatos, aplicar topes duros, decidir que
 hacer con el resultado -- ya no esta aqui; vive en `aplicacion/
 ejecutar_intencion.py` y en `AdaptadorWompi` (`adaptador.py`, en este mismo

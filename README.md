@@ -27,23 +27,22 @@ dinero real independientemente de que el mandato falle o se manipule.
 
 ## Qué hay hoy en este repositorio
 
-Conviven dos árboles de código con roles distintos:
+`agora/` es la única implementación activa: arquitectura por capas
+(`docs/arquitectura-v2.md`), dominio, adaptadores, agente conversacional
+(DeepSeek, seis herramientas, frontera dura verificada por pruebas), CLI
+**y** una página web de chat con firma integrada, catálogo de comercios
+simulado y generado con IA (2 comercios: Dulcería La Golosina, Papelería El
+Lápiz Feliz), persistencia SQLite. Se puede correr contra la pasarela
+simulada sin gastar un peso, o contra Wompi real cambiando una sola variable
+de entorno.
 
-| | `boveda/` (v1) | `agora/` (v2) |
-|---|---|---|
-| Qué es | El experimento original, mínimo | La aplicación demostrativa completa |
-| Estado | Ya movió dinero real en producción (Fase A + Fase B) | Arquitectura completa y probada (dominio, adaptadores, agente, CLI, API web, webhook) |
-| Interfaz | Solo línea de comandos | CLI **y** una página web de chat con firma integrada |
-| Agente de IA | No tiene | Sí — DeepSeek, con seis herramientas y una frontera dura verificada por pruebas |
-| Catálogo de comercios | No tiene | Sí, simulado y generado con IA (2 comercios: Dulcería La Golosina, Papelería El Lápiz Feliz) |
-| Se recomienda para | Referencia histórica del primer hallazgo (ver más abajo) | Usar y extender de acá en adelante |
-
-`agora/` es la reescritura ordenada de la misma idea de `boveda/`, siguiendo
-una arquitectura por capas (`docs/arquitectura-v2.md`). Está construida en
-seis etapas, todas completas a la fecha de este documento, con 478
-pruebas automatizadas en verde. La diferencia importante frente a `boveda/`:
-**se puede correr contra la pasarela simulada sin gastar un peso**, o contra
-Wompi real cambiando una sola variable de entorno.
+Hubo una versión anterior, `boveda/` (v1) — el experimento mínimo que primero
+movió dinero real en producción (Fase A + Fase B), reescrito por completo en
+`agora/` a lo largo de seis etapas. `boveda/` se retiró de este repositorio:
+queda preservado, con su evidencia experimental original
+(`recibos.jsonl`, mandatos v1 firmados), fuera de este checkout. Ver
+`docs/limpieza-v1-boveda.md` y `docs/historico/` para el contexto de esa
+migración y el hallazgo original que la motivó.
 
 `wompi_lab/` es un banco de pruebas antiguo, congelado — se conserva solo
 porque tiene el único código del repo que sabe hacer dispersiones (payouts)
@@ -116,7 +115,7 @@ variables (Wompi, el perfil del pagador, DeepSeek).
 python -m pytest tests/ -q
 ```
 
-Deberían quedar las 478 en verde.
+Deberían quedar todas en verde.
 
 ### 4. Explorar el catálogo simulado
 
@@ -246,27 +245,16 @@ volver a pegarla en el panel de Wompi cada vez. Si esto va a quedar
 corriendo por más tiempo, conviene un dominio fijo (ngrok con plan pago, o
 un túnel nombrado de Cloudflare) para no repetir ese paso.
 
-### 9. La CLI del sistema original (`boveda/`)
-
-Se conserva porque ya hizo transferencias reales y es donde está documentado
-el primer hallazgo del proyecto (ver más abajo). No hace falta para usar
-`agora/`:
-
-```bash
-python -m boveda.cli --modo produccion preflight
-python -m boveda.cli --modo produccion enrolar --telefono 3001234567
-python -m boveda.cli --modo produccion emitir --monto 8000
-python -m boveda.cli --modo produccion ejecutar <mandato_id> -m 8000
-```
-
 ## El experimento
 
 La pregunta que dio origen al proyecto no es "¿el agente puede pagar?" sino
 "¿cuánto detiene el mandato cuando algo sale mal?". Por eso existe un brazo de
-comparación: se puede pedir que la bóveda **no** exija el mandato
-(`--sin-mandato` en `boveda.cli`, o `exigir_mandato=False` en el motor de
-`agora/`) y ver si la pasarela deja pasar igual un cobro que el mandato habría
-bloqueado. La diferencia entre las dos corridas es el efecto real del control.
+comparación: se puede pedir que el motor de `agora/` **no** exija el mandato
+(`exigir_mandato=False`) y ver si la pasarela deja pasar igual un cobro que el
+mandato habría bloqueado. La diferencia entre las dos corridas es el efecto
+real del control. (La v1, `boveda/`, tenía el mismo brazo de comparación vía
+`--sin-mandato` en `boveda.cli` — ver `docs/historico/` para esas corridas
+originales.)
 
 Los **topes duros** (ver la tabla de configuración abajo) nunca se pueden
 apagar por parámetro. Si se pudieran, apagar el control que se está midiendo
@@ -280,8 +268,7 @@ apagaría también la protección del dinero real.
 | `agora_datos/secretos/comercios_wompi.json` (no versionado, ruta en `AGORA_WOMPI_COMERCIOS`) | Multi-comercio: credenciales de Wompi por comercio (`public_key`, `private_key`, `integrity_secret`, `events_secret`), indexadas por el mismo `comercio_id` del catálogo — reemplaza las variables `WOMPI_*` sueltas de un solo comercio. Plantilla en `docs/variables-de-entorno.md`. |
 | `agora/composicion/configuracion.py` | Lee y valida esas variables para `agora/`: valores por defecto, y reglas que impiden arrancar con una combinación insegura (por ejemplo, Wompi real con persistencia en memoria). |
 | `agora/dominio/pago/topes.py` | Los topes duros de `agora/`: **20.000 COP por transacción, 100.000 COP por día**. Son constantes en el código a propósito — si se volvieran configurables, dejarían de ser la protección que permite estudiar el mandato apagándolo. |
-| `boveda/nucleo.py` (líneas 46-47) | Los topes duros del sistema original (v1). **Advertencia:** hoy dicen `2.000.000` COP por transacción y `100.000` COP por día — no coincide con los `20.000` que describen este documento y `docs/flujo.md`. Ver el detalle en `Documentacion.md`, sección "Hallazgos", antes de operar `boveda.cli` contra producción. |
-| `.gitignore` | Qué queda fuera del control de versiones: el `.env`, toda la carpeta `boveda/secretos/`, la carpeta `agora_datos/` (bitácora + base SQLite + llave de firma), y los archivos sueltos de fuentes de pago o recibos. |
+| `.gitignore` | Qué queda fuera del control de versiones: el `.env`, la carpeta `agora_datos/` (bitácora + base SQLite + llave de firma), y los archivos sueltos de fuentes de pago o recibos. |
 | `requirements.txt` | Dependencias de Python (`fastapi`, `httpx`, `uvicorn`, `cryptography`, `pytest`, `python-dotenv`, `openai`). |
 
 ## Antes de tocar producción

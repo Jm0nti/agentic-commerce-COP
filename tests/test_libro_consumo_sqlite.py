@@ -202,7 +202,7 @@ def test_reserva_atomica_entre_conexiones_sqlite_independientes(tmp_path):
     """El caso que le importa a la etapa 3: dos cobros compiten por el ultimo
     tramo del tope diario, cada uno desde su PROPIA conexion SQLite (no un
     lock de Python compartido). Con leer->sumar->escribir sobre un JSON
-    completo (`docs/analisis-codigo.md` hallazgo 2), los dos podrian pasar.
+    completo (`docs/historico/analisis-codigo.md` hallazgo 2), los dos podrian pasar.
     Aqui, `BEGIN IMMEDIATE` toma el lock de escritura del archivo antes de
     leer: solo puede pasar uno."""
     ruta = tmp_path / "agora.db"

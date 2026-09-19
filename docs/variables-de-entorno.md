@@ -11,6 +11,15 @@ esto va como documento. Copie el bloque a un `.env` en la raiz del proyecto
 AGORA_PASARELA=wompi        # simulada (default) | wompi
 AGORA_AMBIENTE=produccion   # sandbox (default) | produccion
 
+# --- Persistencia ------------------------------------------------------------ #
+# De aca en adelante, sqlite para cualquier uso real -- ver
+# `docs/limpieza-v1-boveda.md`. `memoria` sigue siendo un valor valido (lo usan
+# muchas pruebas y sirve para una demo de un solo proceso), pero se pierde al
+# reiniciar y `composicion/configuracion.py` ya prohibe combinarlo con
+# AGORA_PASARELA=wompi + AGORA_AMBIENTE=produccion.
+AGORA_PERSISTENCIA=sqlite           # memoria (default) | sqlite
+# AGORA_SQLITE_PATH=agora_datos/agora.db   # opcional, ese es el default
+
 # --- Wompi, MULTI-COMERCIO (1 de septiembre de 2026) ------------------------ #
 # Desde que `agora/` soporta varios comercios reales de Wompi en el mismo
 # proceso, las credenciales YA NO viven en variables `WOMPI_*` sueltas --
@@ -81,6 +90,16 @@ DEEPSEEK_API_KEY=sk-...
 #   reglas   solo reglas; lo dudoso va con las seis herramientas, como antes
 #   apagado  sin clasificador: el agente de la etapa 7 tal cual
 # AGORA_CLASIFICADOR=hibrido      # opcional, default hibrido
+
+# --- Documentacion de soporte (migracion a agentes, etapa 2) ---------------- #
+# Embeddings de OpenAI para que el nodo de soporte responda con fragmentos de
+# docs/soporte/. Opcional: sin la llave, soporte contesta sin documentacion y
+# el resto de la app no cambia. El chat sigue siendo DeepSeek; esta llave
+# solo embebe la documentacion y las preguntas de soporte. Ver
+# docs/etapa-2-agentes-soporte-rag-documental.md.
+OPENAI_API_KEY=sk-...
+# AGORA_EMBEDDINGS_MODELO=text-embedding-3-small   # opcional
+# AGORA_SOPORTE_DOCUMENTOS=docs/soporte             # opcional; tiene que existir si hay llave
 
 # --- Firma del titular (etapa 5) -------------------------------------------- #
 # El par ed25519 que firma los mandatos, "igual que v1": si los archivos no

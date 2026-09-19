@@ -33,6 +33,8 @@ from ..agente.clasificacion import (
     ClasificadorEnCadena,
     ClasificadorPorReglas,
 )
+from ..agente.contexto import ProveedorDeContexto
+from ..agente.contexto_documental import ContextoDocumental
 from ..agente.conversacion import Agente
 from ..agente.herramientas import construir_herramientas
 from ..agente.intencion import ClasificadorDeIntencion
@@ -163,7 +165,18 @@ def construir_agente(contenedor: Contenedor) -> Agente | None:
         clasificador=construir_clasificador(
             contenedor.config.clasificador_intencion, contenedor.modelo_lenguaje,
         ),
+        contextos=construir_contextos(contenedor),
     )
+
+
+def construir_contextos(contenedor: Contenedor) -> dict[str, ProveedorDeContexto]:
+    """Migracion a agentes, etapa 2: el contexto que inyecta cada nodo. Hoy
+    solo soporte, y solo si hay buscador documental (OPENAI_API_KEY). Sin
+    buscador, soporte contesta como en la etapa 1: con su instruccion y sin
+    documentacion."""
+    if contenedor.buscador_documental is None:
+        return {}
+    return {"soporte": ContextoDocumental(contenedor.buscador_documental)}
 
 
 def construir_clasificador(

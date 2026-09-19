@@ -1,6 +1,6 @@
 """`LibroDeConsumo` en memoria: pruebas, y el unico respaldo hasta la etapa 3.
 
-Resuelve el problema 2 de `docs/analisis-codigo.md` (`nucleo.py:288-292` hace
+Resuelve el problema 2 de `docs/historico/analisis-codigo.md` (`nucleo.py:288-292` hace
 leer -> sumar -> escribir sobre TODO el JSON) con un lock y una reserva
 condicional: el tope diario se comprueba y se aparta en la misma seccion
 critica, asi que dos cobros que compiten por el ultimo tramo del cupo no

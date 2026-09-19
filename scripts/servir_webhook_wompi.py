@@ -4,9 +4,9 @@
 Composition root de este punto de entrada especifico: lee `os.environ`, arma
 el `Contenedor` con `agora.composicion.contenedor.construir` y le pasa su
 `conciliar_evento` a `agora.entradas.webhooks.wompi.crear_app`. Vive fuera de
-`agora/`, igual que `scripts/migrar_fuentes_a_sqlite.py` -- `entradas/
-webhooks/wompi.py` se queda como una factoria pura precisamente para que
-este sea el unico lugar que lee variables de entorno y llama a `uvicorn.run`.
+`agora/` -- `entradas/webhooks/wompi.py` se queda como una factoria pura
+precisamente para que este sea el unico lugar que lee variables de entorno y
+llama a `uvicorn.run`.
 
     python scripts/servir_webhook_wompi.py
 
@@ -51,7 +51,7 @@ RAIZ_REPO = Path(__file__).resolve().parent.parent
 if str(RAIZ_REPO) not in sys.path:
     # Para poder correr `python scripts/servir_webhook_wompi.py` directo,
     # sin depender de que el paquete este instalado o de que se invoque con
-    # `python -m` (mismo patron que `scripts/migrar_fuentes_a_sqlite.py`).
+    # `python -m`.
     sys.path.insert(0, str(RAIZ_REPO))
 
 import uvicorn  # noqa: E402

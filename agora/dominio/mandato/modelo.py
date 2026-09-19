@@ -6,10 +6,12 @@ Cambia dos cosas frente a `boveda/mandato.py`:
                                                        conocer a Wompi)
     monto_max_cop: int    ->  monto_max: Dinero       (unidad explicita)
 
-Las dos tocan la carga firmada, asi que el mandato se versiona. **El verificador
-de la v1 se conserva**: `recibos.jsonl` es evidencia experimental y tiene que
-poder reverificarse anos despues. Compatibilidad hacia atras aqui no es
-cortesia, es integridad del resultado.
+Las dos tocan la carga firmada, asi que el mandato se versiona -- para que una
+carga firmada nunca se pueda reinterpretar bajo otras reglas, aunque cambie el
+modelo. El verificador de mandatos v1 (`compat.py`) se retiro del repositorio
+junto con `boveda/`: la evidencia experimental v1 (`recibos.jsonl`,
+`estado.json`) no se migro y quedo archivada fuera de este repositorio, no en
+produccion (ver `docs/limpieza-v1-boveda.md`).
 
 LO QUE EL MANDATO PROTEGE Y LO QUE NO -- se mantiene igual que en la v1
 ----------------------------------------------------------------------
@@ -129,10 +131,12 @@ class Mandato:
         """Todas las divergencias verificables. Categorico, no probabilistico.
 
         `llave_publica` se ignora: un mandato v2 lleva la suya adentro y dentro
-        de la firma, que es lo correcto. El parametro existe solo para que esta
-        firma sea identica a la de `compat.MandatoV1.violaciones_contra`, donde
-        la llave si viene de afuera. Asi `politica.evaluar` sirve para las dos
-        versiones sin preguntar cual esta mirando.
+        de la firma, que es lo correcto. El parametro queda en la firma por
+        compatibilidad de la interfaz: existia para que esta firma fuera
+        identica a la del verificador de mandatos v1 (retirado junto con
+        `boveda/`, ver `docs/limpieza-v1-boveda.md`), que si recibia la llave
+        desde afuera. Vestigial hoy -- se puede quitar si en algun momento deja
+        de importar mantener esa forma.
         """
         v: list[Violacion] = []
         ahora = ahora or datetime.now(self.expira_en.tzinfo)

@@ -4,8 +4,9 @@ alimentar `adaptadores/catalogo/semilla/` (etapa 5).
 POR QUE UN CASO DE USO Y NO SOLO UN SCRIPT
 --------------------------------------------
 `scripts/generar_catalogo_semilla.py` lee `os.environ`, arma el adaptador de
-DeepSeek y escribe el archivo -- es el composition root de este comando, como
-`scripts/migrar_fuentes_a_sqlite.py`. Pero la parte que decide que pedirle al
+DeepSeek y escribe el archivo -- es el composition root de este comando, igual
+que los demas scripts de una sola corrida en `scripts/`. Pero la parte que
+decide que pedirle al
 modelo y como validar lo que contesta no es ceremonia de arranque: es una
 regla de negocio ("un comercio simulado necesita nombre, categoria y al menos
 un producto disponible") que tiene sentido probar sola, sin tocar red, y sin

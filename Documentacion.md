@@ -31,21 +31,9 @@ una pasarela de pagos o con la llave de firma.
 
 ---
 
-## 2. Dos árboles de código
+## 2. Una implementación activa, un antecesor retirado
 
-El repositorio tiene dos implementaciones completas de la misma idea, en
-distintos momentos de madurez:
-
-### `boveda/` — la versión original (v1)
-
-Es el código mínimo que primero demostró que se podía cobrar dinero real bajo
-un mandato. Ya hizo transferencias reales en producción (Fase A: enrolamiento
-de una cuenta Nequi por push; Fase B: cobro contra esa cuenta). Es un único
-módulo plano, sin capas, con persistencia en archivos JSON.
-
-### `agora/` — la reescritura completa (v2)
-
-Es la aplicación demostrativa: mismo principio, pero con arquitectura por
+`agora/` es la única implementación activa del proyecto: arquitectura por
 capas, persistencia en SQLite con reserva/confirmación atómica, un catálogo de
 comercios simulados generado con IA (dos comercios reales de Wompi conviven en
 el mismo proceso desde el 1 de septiembre de 2026), un agente conversacional
@@ -53,18 +41,28 @@ el mismo proceso desde el 1 de septiembre de 2026), un agente conversacional
 interfaces de usuario (línea de comandos y una página web de chat con firma
 integrada).
 
-`agora/` se construyó en seis etapas, documentadas cada una en `docs/` y en la
-memoria del proyecto, migrando funcionalidad de `boveda/` sin tocarla mientras
-tanto — es deliberado: `boveda/` es el código que ya movió dinero real y no
-había motivo para arriesgarlo mientras se construía su reemplazo.
+### `boveda/` — la versión original (v1), retirada
 
-**Los mandatos v1 (`boveda/secretos/estado.json`) no se migraron a `agora/`.**
-Es una decisión explícita: reescribir su carga firmada para el formato v2
-invalidaría la firma ed25519 original, y esos mandatos son la evidencia del
-primer hallazgo del experimento (un cobro de 15.000 COP aprobado contra un
-mandato que autorizaba 8.000). `agora/dominio/mandato/compat.py` conserva un
-lector y verificador de mandatos v1 exclusivamente para poder re-verificar esa
-evidencia; nunca se usa para emitir mandatos nuevos.
+Fue el código mínimo que primero demostró que se podía cobrar dinero real bajo
+un mandato: hizo transferencias reales en producción (Fase A: enrolamiento de
+una cuenta Nequi por push; Fase B: cobro contra esa cuenta), en un único
+módulo plano, sin capas, con persistencia en archivos JSON. `agora/` se
+construyó en seis etapas, documentadas cada una en `docs/` y en la memoria del
+proyecto, migrando esa funcionalidad sin tocar `boveda/` mientras tanto — era
+deliberado: `boveda/` era el código que ya movía dinero real y no había motivo
+para arriesgarlo mientras se construía su reemplazo.
+
+Con `agora/` ya cubriendo todo lo que hacía `boveda/`, se retiró del
+repositorio. La evidencia experimental original (`recibos.jsonl`, los
+mandatos v1 firmados — incluido el que documenta el primer hallazgo del
+proyecto, un cobro de 15.000 COP aprobado contra un mandato que autorizaba
+8.000) queda preservada intacta fuera de este checkout, no perdida. El
+verificador de mandatos v1 que permitía re-verificar esa evidencia
+(`agora/dominio/mandato/compat.py`) se retiró junto con `boveda/`, por la
+misma razón: sin `boveda/` en el repositorio no queda nada con qué
+compatibilizar. Ver `docs/limpieza-v1-boveda.md` para el detalle de esa
+limpieza y `docs/historico/` para la documentación de la época en que
+`boveda/` todavía era parte activa del proyecto.
 
 ### `wompi_lab/`
 
@@ -132,8 +130,6 @@ No importa `httpx`, `fastapi`, `sqlite3` ni `os` (verificado también por
 - **`mandato/politica.py`** — `evaluar()`, que convierte una lista de
   violaciones en un `Dictamen` de tres posibles decisiones (`PERMITIR`,
   `CONFIRMAR`, `BLOQUEAR`). Ver la sección 12.
-- **`mandato/compat.py`** — lector/verificador de mandatos v1, solo para
-  poder re-verificar la evidencia del experimento original.
 - **`catalogo/modelo.py`** — `Comercio`, `Producto`, `Carrito`, `ItemCarrito`,
   `Disponibilidad`. Incluye `Carrito.hash_canonico`: el hash SHA-256 de los
   ítems (no solo el total), que es lo que hace valer el "Cart Mandate" de AP2
@@ -425,8 +421,7 @@ vuelve a avisarle a esa sesión puntual).
 Cada punto de entrada tiene su propio *composition root* específico fuera de
 `agora/`: `scripts/servir_api.py` (API web, puerto 8002 por defecto),
 `scripts/servir_webhook_wompi.py` (webhook, puerto 8001), y
-`scripts/generar_catalogo_semilla.py` / `scripts/migrar_fuentes_a_sqlite.py`
-(utilidades de una sola corrida).
+`scripts/generar_catalogo_semilla.py` (utilidad de una sola corrida).
 
 ---
 
@@ -530,10 +525,12 @@ bandera — es un guardarraíl, no una preferencia.
 
 ---
 
-## 14. `boveda/` (v1) — el sistema original
+## 14. `boveda/` (v1) — el sistema original, retirado
 
-Sigue siendo el único camino que ha movido dinero real hasta ahora. Su
-estructura:
+**Sección histórica.** Describe `boveda/` tal como existía antes de retirarse
+del repositorio (ver sección 2 y `docs/limpieza-v1-boveda.md`) — sigue siendo,
+hasta la fecha, el único código que efectivamente movió dinero real en
+producción. Su estructura, tal como se preservó fuera de este checkout:
 
 ```
 boveda/
@@ -544,12 +541,12 @@ boveda/
 └── eventos.py       receptor de webhooks (versión anterior a agora/entradas/webhooks/)
 ```
 
-Y lo que no se versiona, bajo `boveda/secretos/` (en `.gitignore`):
-`firma.sk`/`firma.pk` (llave del titular), `estado.json` (mandatos firmados y
-consumo), `fuentes.json` (medios de pago vivos). `boveda/recibos.jsonl` **no
-es un log de aplicación** — es la evidencia experimental (incluida la corrida
-de los 15.000 COP aprobados contra un mandato de 8.000) y nunca se
-sobreescribe.
+Y lo que no se versionaba, bajo `boveda/secretos/`: `firma.sk`/`firma.pk`
+(llave del titular), `estado.json` (mandatos firmados y consumo),
+`fuentes.json` (medios de pago vivos). `boveda/recibos.jsonl` **no era un log
+de aplicación** — es la evidencia experimental (incluida la corrida de los
+15.000 COP aprobados contra un mandato de 8.000), preservada intacta junto
+con el resto de `boveda/` fuera de este repositorio.
 
 ---
 
@@ -570,13 +567,16 @@ adelante.
   capa importa algo que la tabla de la sección 3 prohíbe, o si una capa
   "pura" (`dominio/`, `puertos/`, `agente/`) importa una librería de
   infraestructura (`httpx`, `sqlite3`, `fastapi`, `os`).
-- El resto de la suite cubre cada adaptador, cada caso de uso, la
-  compatibilidad con mandatos v1 (`test_compat_v1.py`), el flujo completo por
-  CLI (`test_cli.py`) y por HTTP (`test_api_app.py`), la concurrencia real del
-  `LibroDeConsumo` en SQLite, y — desde el soporte multi-comercio — la
-  vinculación medio↔comercio (`RepositorioMedios.vinculado_con`) y el
-  enrutamiento por `SelectorDePasarela`. Última corrida confirmada (3 de
-  septiembre de 2026): **478 pruebas en verde, 0 fallando**.
+- El resto de la suite cubre cada adaptador, cada caso de uso, el flujo
+  completo por CLI (`test_cli.py`) y por HTTP (`test_api_app.py`), la
+  concurrencia real del `LibroDeConsumo` en SQLite, y — desde el soporte
+  multi-comercio — la vinculación medio↔comercio
+  (`RepositorioMedios.vinculado_con`) y el enrutamiento por
+  `SelectorDePasarela`. El número exacto de pruebas cambia seguido conforme
+  crece la suite; confirmar en verde localmente con `python -m pytest tests/
+  -q` en vez de fiarse de una cifra fija en este documento. Ver
+  `docs/limpieza-v1-boveda.md` para el conteo de la última limpieza de código
+  muerto de v1.
 - Las dos pruebas que antes fallaban de forma preexistente
   (`test_cli.py::test_flujo_completo_enrolar_emitir_pagar_retomar` y
   `test_composicion.py::test_construir_encadena_navegar_emitir_pagar_y_consultar_de_punta_a_punta`,
@@ -601,7 +601,7 @@ comentada completa en `docs/variables-de-entorno.md`.
 | `AGORA_BITACORA` | ídem | `agora_datos/recibos.jsonl` | Ruta del registro de auditoría de `agora/` |
 | `AGORA_LLAVE_FIRMA_SK` / `AGORA_LLAVE_FIRMA_PK` | ídem | `agora_datos/secretos/firma.{sk,pk}` | Par ed25519 del titular; se genera solo si no existe |
 | `AGORA_WOMPI_COMERCIOS` | `agora/composicion/configuracion.py`, `adaptadores/pasarelas/registro.py` | `agora_datos/secretos/comercios_wompi.json` | Multi-comercio: ruta al registro JSON con credenciales de Wompi por `comercio_id` (`public_key`, `private_key`, `integrity_secret`, `events_secret`) — reemplaza, para `agora/`, a las variables `WOMPI_*` sueltas de un solo comercio. Solo se usa si `AGORA_PASARELA=wompi`. |
-| `WOMPI_PUBLIC_KEY` / `WOMPI_PRIVATE_KEY` / `WOMPI_INTEGRITY_SECRET` / `WOMPI_EVENTS_SECRET` | Únicamente `boveda/nucleo.py` y `boveda/eventos.py` (v1, un solo comercio) | — | Credenciales de Wompi del sistema original. `agora/` ya no las lee: desde el soporte multi-comercio usa `AGORA_WOMPI_COMERCIOS` en su lugar. El prefijo de la llave (`pub_test_`/`pub_prod_`) debe coincidir con el ambiente. |
+| `WOMPI_PUBLIC_KEY` / `WOMPI_PRIVATE_KEY` / `WOMPI_INTEGRITY_SECRET` / `WOMPI_EVENTS_SECRET` | Nadie ya — histórico | — | Credenciales de Wompi de un solo comercio, como las leían `boveda/nucleo.py` y `boveda/eventos.py` (v1, retirado — ver `docs/limpieza-v1-boveda.md`). `agora/` nunca las leyó: desde el soporte multi-comercio usa `AGORA_WOMPI_COMERCIOS` en su lugar. Se documentan aquí solo por si aparecen en un `.env` heredado de v1. |
 | `PAGADOR_EMAIL` / `PAGADOR_NOMBRE` / `PAGADOR_TELEFONO` / `PAGADOR_DOCUMENTO` / `PAGADOR_TIPO_DOC` | ambos sistemas | `demo@agora.local` en `agora/` (nunca un dominio reservado — ver hallazgo AFE) | Perfil que ve el motor antifraude de Wompi en cada cobro |
 | `DEEPSEEK_API_KEY` | `agora/composicion/configuracion.py`, `scripts/generar_catalogo_semilla.py` | — (opcional) | Sin ella, el resto de `agora/` funciona igual; solo `chat` y `POST /sesiones` avisan que no hay agente disponible |
 | `DEEPSEEK_MODELO` | ídem | `deepseek-chat` | Modelo de DeepSeek a usar |
@@ -623,30 +623,28 @@ está del lado del comercio. La causa probable: el perfil del pagador era
 indistinguible de fraude automatizado (correo en `example.com`, sin datos de
 cliente, comercio = pagador). Detalle completo en `docs/decline-afe.md`.
 
-### 18.2 Discrepancia en el tope duro por transacción de `boveda/` (v1)
+### 18.2 Discrepancia en el tope duro por transacción de `boveda/` (v1) — hallazgo histórico, ya cerrado
 
-`boveda/nucleo.py` (líneas 46-47) define hoy:
+`boveda/nucleo.py` (líneas 46-47) definía, al momento de este hallazgo:
 
 ```python
 LIMITE_DURO_TX_COP = 2_000_000
 LIMITE_DURO_DIA_COP = 100_000
 ```
 
-Esto **no coincide** con lo que documentan el `README.md` original y
-`docs/flujo.md`, que describen un tope de **20.000 COP por transacción**. La
-versión nueva (`agora/dominio/pago/topes.py`) sí implementa 20.000 COP/tx y
-100.000 COP/día, consistente con la documentación.
+Esto **no coincidía** con lo que documentaban el `README.md` original y
+`docs/flujo.md` (histórico), que describían un tope de **20.000 COP por
+transacción** — cien veces más permisivo de lo que la documentación
+describía como protección, sin evidencia en el repositorio de por qué había
+cambiado (podría haber sido una modificación puntual para una prueba con
+montos mayores que quedó sin revertir).
 
-En la práctica, mientras el tope diario (100.000 COP) sea menor que el tope
-por transacción (2.000.000 COP), el tope diario sigue acotando cualquier cobro
-individual mayor a ese valor — pero una transacción de, por ejemplo, 500.000
-COP pasaría el "tope duro por transacción" sin problema y solo la detendría el
-tope diario si el acumulado del día ya lo superara. Esto es cien veces más
-permisivo de lo que la documentación describe como protección. No hay
-evidencia en el repositorio de por qué cambió (podría haber sido una
-modificación puntual para una prueba con montos mayores que quedó sin
-revertir). **Se recomienda confirmar si es intencional y, si no, revertirlo a
-20.000 antes de volver a operar `boveda.cli` contra producción.**
+La discrepancia nunca llegó a confirmarse ni corregirse mientras `boveda/`
+estuvo activo, y quedó cerrada de hecho cuando `boveda/` se retiró del
+repositorio (ver `docs/limpieza-v1-boveda.md`): no queda ningún `boveda.cli`
+que operar contra producción. `agora/dominio/pago/topes.py`, la única fuente
+de topes duros vigente, implementa 20.000 COP/tx y 100.000 COP/día,
+consistente con la documentación actual.
 
 ### 18.3 `RegistroDeEstados` sin persistencia SQLite propia hasta la etapa 6
 
@@ -659,12 +657,17 @@ siempre aunque ya se hubiera resuelto. Ya tiene adaptador SQLite
 `AGORA_PERSISTENCIA=sqlite`** — con el valor por defecto (`memoria`), el
 problema original vuelve a aparecer.
 
-### 18.4 Migración de fuentes de pago v1 → v2, construida pero no ejecutada
+### 18.4 Migración de fuentes de pago v1 → v2 — decisión cerrada, no se hizo
 
-`scripts/migrar_fuentes_a_sqlite.py` migra `boveda/secretos/fuentes.json` a la
-tabla `medio_de_pago` de `agora/`. Corre en modo dry-run por defecto y está
-probado contra datos de ejemplo, pero **nunca se corrió contra los datos
-reales** — es una decisión pendiente, no un olvido.
+Existió un script (`scripts/migrar_fuentes_a_sqlite.py`) para migrar
+`boveda/secretos/fuentes.json` a la tabla `medio_de_pago` de `agora/`: corría
+en modo dry-run por defecto y estaba probado contra datos de ejemplo, pero
+nunca se corrió contra los datos reales. Con la limpieza de `boveda/`
+(`docs/limpieza-v1-boveda.md`) la decisión se cerró en sentido contrario: el
+histórico de datos de v1 no es relevante para esta versión del proyecto, así
+que no se migra, y el script se retiró del repositorio junto con su prueba
+(`tests/test_migracion_fuentes.py`). Los medios de pago de `agora/` se
+enrolan de nuevo, vía `EnrolarMedio`.
 
 ### 18.5 Multi-comercio: la correspondencia medio↔comercio no viaja dentro de la firma
 
@@ -739,9 +742,6 @@ Pendiente o fuera de alcance a propósito:
 
 - Un motor de riesgo real más allá de las heurísticas fijas de
   `_senales_blandas` en `dominio/mandato/politica.py`.
-- Migrar de verdad `boveda/secretos/fuentes.json` (el script ya existe, ver
-  18.4).
-- Resolver la discrepancia de topes duros en `boveda/nucleo.py` (ver 18.2).
 - Probar el segundo brazo del experimento (`--sin-mandato` /
   `exigir_mandato=False`) contra Wompi real con un `APPROVED` de verdad —
   mientras el antifraude de Wompi siga rechazando ambos brazos, el

@@ -32,8 +32,15 @@ agora_datos/
 *.db.bak-*
 
 
-docs/anteproyecto-contexto-y-justificacion.md
-docs/anteproyecto-contexto-y-justificacion.pdf
-docs/anteproyecto-contexto-y-justificacion.tex
-docs/arquitectura-agentes-langgraph.md
-docs/references.bib
+docs/poc-documentation/
+docs/historico/
+docs/diagramas/
+docs/poc-documentation/
+docs/utils/
+docs/soporte/
+docs/arquitectura-agentes/
+
+
+
+
+Claude outputs

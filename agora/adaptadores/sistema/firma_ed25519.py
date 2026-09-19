@@ -1,10 +1,12 @@
 """Firma y verificacion ed25519 de un mandato.
 
 `VerificadorEd25519` implementa el `Verificador` que `dominio/mandato/
-modelo.py` define como `Protocol` (y que `dominio/mandato/compat.py` reusa
-para la v1): recibe la firma, la carga canonica y la llave publica, todas en
-bytes, y devuelve un booleano. El dominio no importa `cryptography` -- eso
-vive aqui, en el unico lugar donde la capa de adaptadores toca criptografia.
+modelo.py` define como `Protocol`: recibe la firma, la carga canonica y la
+llave publica, todas en bytes, y devuelve un booleano. El dominio no importa
+`cryptography` -- eso vive aqui, en el unico lugar donde la capa de
+adaptadores toca criptografia. (Hasta que se retiro junto con `boveda/`,
+`dominio/mandato/compat.py` reusaba este mismo protocolo para verificar
+mandatos v1 -- ver `docs/limpieza-v1-boveda.md`.)
 
 Antes de este archivo, la misma clase vivia duplicada como test double dentro
 de `tests/test_dominio.py`. Promoverla a adaptador real evita que la unica

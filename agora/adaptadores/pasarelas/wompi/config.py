@@ -1,12 +1,12 @@
 """Configuracion de Wompi, leida UNA vez en `composicion/` y pasada por
 constructor.
 
-Hoy `ClienteWompi.__init__` (`boveda/nucleo.py:119-140`) lee `os.environ`
-directo en el constructor. Es imposible tener dos configuraciones en el mismo
-proceso, y las pruebas necesitan `monkeypatch.setenv` para simular credenciales
-(`tests/test_modos.py` lo hace). `docs/analisis-codigo.md` (hallazgo 5) llama
-a esto: el entorno se lee en un solo lugar del programa, y este objeto,
-inmutable, es lo que circula despues.
+En la v1, `ClienteWompi.__init__` leia `os.environ` directo en el
+constructor. Era imposible tener dos configuraciones en el mismo proceso, y
+las pruebas necesitaban `monkeypatch.setenv` para simular credenciales.
+`docs/historico/analisis-codigo.md` (hallazgo 5) llama a esto: el entorno se
+lee en un solo lugar del programa, y este objeto, inmutable, es lo que
+circula despues.
 """
 
 from __future__ import annotations

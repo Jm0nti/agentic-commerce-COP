@@ -44,12 +44,23 @@ que SI queda registrado es la decision: `Conversacion.clasificaciones`.
 Sin clasificador (`AGORA_CLASIFICADOR=apagado`, o quien construya un
 `Agente` sin pasarle uno) el turno es exactamente el de antes: las
 herramientas completas, sin instruccion extra, sin clasificaciones.
+
+CONTEXTO POR NODO (migracion a agentes, etapa 2)
+--------------------------------------------------
+Ademas de herramientas, un nodo puede inyectar contexto en su turno
+(`agente/contexto.py`): hoy, soporte agrega documentacion recuperada. Se
+pide una sola vez por turno -- despues de decidir la ruta y antes del loop --
+solo para los nodos de esa ruta, y se pega a la instruccion del orquestador
+(misma vista, mismo "no se guarda en `mensajes`"). Lo que se inyecto queda
+registrado en `Conversacion.contextos`. En la ruta de respaldo no hay
+contexto: respaldo sigue siendo el agente de antes, sin nada extra.
 """
 
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from typing import Mapping
 
 from ..dominio.comun.errores import ErrorDeDominio
 from ..puertos.modelo_lenguaje import (
@@ -58,12 +69,15 @@ from ..puertos.modelo_lenguaje import (
     Mensaje,
     ModeloDeLenguaje,
 )
+from .contexto import ContextoInyectado, ProveedorDeContexto
 from .herramientas import (
     HERRAMIENTAS_POR_NODO,
+    NODO_DUENO_DEL_FLUJO_DE_DINERO,
     Herramienta,
     herramientas_para_nodo,
     validar_asignacion_por_nodo,
     validar_catalogo,
+    validar_nodos_con_contexto,
 )
 from .intencion import ClasificacionDeIntencion, ClasificadorDeIntencion
 from .nodos import Ruta, ruta_para
@@ -86,6 +100,10 @@ class Conversacion:
     # registro auditable de "que decidio el orquestador" -- separado de
     # `mensajes`, que es lo que ve el modelo.
     clasificaciones: list[ClasificacionDeIntencion] = field(default_factory=list)
+    # (nodo, contexto) en el orden en que se inyectaron, un turno tras otro.
+    # Registro auditable de "que documentacion vio el modelo" -- el texto
+    # inyectado nunca entra a `mensajes`.
+    contextos: list[tuple[str, ContextoInyectado]] = field(default_factory=list)
 
 
 class Agente:
@@ -94,6 +112,7 @@ class Agente:
         modelo: ModeloDeLenguaje,
         herramientas: list[Herramienta],
         clasificador: ClasificadorDeIntencion | None = None,
+        contextos: Mapping[str, ProveedorDeContexto] | None = None,
     ) -> None:
         # Se corre al armar el agente, no en un test lejano (mismo
         # argumento que el docstring de `validar_catalogo`): si alguien le
@@ -105,9 +124,12 @@ class Agente:
         validar_asignacion_por_nodo()
         for nodo in HERRAMIENTAS_POR_NODO:
             herramientas_para_nodo(herramientas, nodo)
+        contextos = dict(contextos or {})
+        validar_nodos_con_contexto(contextos)
 
         self._modelo = modelo
         self._clasificador = clasificador
+        self._contextos = contextos
         self._herramientas = {h.nombre: h for h in herramientas}
         self._definiciones = [
             DefinicionHerramienta(nombre=h.nombre, descripcion=h.descripcion, esquema=h.esquema)
@@ -126,7 +148,10 @@ class Agente:
         conversacion.mensajes.append(Mensaje(rol="user", contenido=mensaje_usuario))
 
         ruta = self._decidir(conversacion, mensaje_usuario, historial_previo)
-        return self._ejecutar_turno(conversacion, ruta)
+        instrucciones = self._instrucciones_del_turno(
+            conversacion, ruta, mensaje_usuario, historial_previo,
+        )
+        return self._ejecutar_turno(conversacion, ruta, instrucciones)
 
     # -- paso 1: decidir ------------------------------------------------- #
 
@@ -139,12 +164,45 @@ class Agente:
         conversacion.clasificaciones.append(clasificacion)
         return ruta_para(clasificacion)
 
+    def _instrucciones_del_turno(
+        self,
+        conversacion: Conversacion,
+        ruta: Ruta,
+        mensaje_usuario: str,
+        historial: tuple[Mensaje, ...],
+    ) -> str | None:
+        """La instruccion del orquestador, mas el contexto de cada nodo de
+        la ruta que tenga uno. Respaldo no tiene ninguna de las dos.
+
+        Una ruta que incluye al dueño del flujo de dinero no recibe contexto
+        de NINGUN nodo, aunque otro nodo de la misma ruta tenga uno (hoy la
+        ruta de compra junta catalogo + carrito_pago): `validar_nodos_con_
+        contexto` impide colgarlo del nodo de dinero, y esto impide que
+        llegue por la puerta de al lado."""
+        instrucciones = ruta.instrucciones()
+        if instrucciones is None:
+            return None
+        if NODO_DUENO_DEL_FLUJO_DE_DINERO in ruta.nodos:
+            return instrucciones
+        partes = [instrucciones]
+        for nodo in ruta.nodos:
+            proveedor = self._contextos.get(nodo)
+            if proveedor is None:
+                continue
+            contexto = proveedor.contexto_para(mensaje_usuario, historial)
+            if contexto is None:
+                continue
+            conversacion.contextos.append((nodo, contexto))
+            partes.append(contexto.texto)
+        return "\n\n".join(partes)
+
     # -- paso 2: ejecutar ------------------------------------------------ #
 
-    def _ejecutar_turno(self, conversacion: Conversacion, ruta: Ruta) -> str:
+    def _ejecutar_turno(
+        self, conversacion: Conversacion, ruta: Ruta, instrucciones: str | None
+    ) -> str:
         habilitadas = ruta.herramientas & frozenset(self._herramientas)
         definiciones = [d for d in self._definiciones if d.nombre in habilitadas]
-        instrucciones = ruta.instrucciones()
 
         for _ in range(MAX_TURNOS_POR_CONVERSACION):
             vista = _vista_para_el_modelo(conversacion.mensajes, instrucciones)

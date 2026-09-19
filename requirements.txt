@@ -5,3 +5,10 @@ cryptography>=42.0
 pytest>=8.0
 python-dotenv>=1.0
 openai
+numpy
+# Migracion a agentes, etapa 2 (docs/etapa-2-agentes-soporte-rag-documental.md):
+# fragmentar Markdown + vector store en memoria para la documentacion de
+# soporte. Solo `langchain-core` y los splitters, no el paquete `langchain`
+# completo. Los embeddings usan el SDK `openai` de arriba, sin langchain-openai.
+langchain-core>=1.0
+langchain-text-splitters>=1.0

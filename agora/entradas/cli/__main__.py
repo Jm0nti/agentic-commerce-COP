@@ -396,6 +396,7 @@ def cmd_chat(a, contenedor: Contenedor) -> int:
             continue
         if entrada.lower() in ("salir", "exit", "quit"):
             break
+        contextos_antes = len(conversacion.contextos)
         try:
             respuesta = agente.turno(conversacion, entrada)
         except ErrorDeDominio as exc:
@@ -411,6 +412,10 @@ def cmd_chat(a, contenedor: Contenedor) -> int:
                 f"  [intencion: {c.intencion.value if c.intencion else 'respaldo'} | "
                 f"{c.origen.value} | confianza {c.confianza:.2f} | {c.motivo}]"
             )
+            # Etapa 2: de que documentos salio el contexto de este turno.
+            for nodo, contexto in conversacion.contextos[contextos_antes:]:
+                fuentes = ", ".join(contexto.fuentes) or "sin fragmentos relevantes"
+                print(f"  [contexto de {nodo}: {fuentes}]")
         print(f"agente> {respuesta}\n")
     return 0
 

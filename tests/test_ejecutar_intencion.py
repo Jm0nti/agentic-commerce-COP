@@ -148,7 +148,7 @@ def test_tope_duro_por_transaccion_bloquea_antes_de_mirar_el_mandato():
 
 def test_tope_diario_agotado_bloquea_y_no_reserva_de_mas():
     """El tope diario es del ambiente, no del mandato (igual que en la v1,
-    donde `gastado_dia_cop` era compartido -- `docs/analisis-codigo.md`,
+    donde `gastado_dia_cop` era compartido -- `docs/historico/analisis-codigo.md`,
     hallazgo 13). El mandato se emite con mucho margen propio (monto_max y
     tope_total altos) para que lo unico que se este probando sea el tope
     duro de 100.000/dia, no ninguna senal blanda de la politica."""
@@ -305,7 +305,7 @@ def test_retomar_revalida_la_politica_y_bloquea_si_el_mandato_vencio_mientras_es
 
 
 def test_sin_exigir_mandato_deja_pasar_un_cobro_que_el_mandato_no_autorizaba():
-    """Reproduce el hallazgo central de la PoC (`docs/analisis-codigo.md`):
+    """Reproduce el hallazgo central de la PoC (`docs/historico/analisis-codigo.md`):
     un mandato que autoriza 8.000 termina en un cobro `APPROVED` de 15.000,
     con la violacion registrada al lado. Esta vez, con la pasarela simulada,
     el resultado es reproducible en vez de depender de una corrida real."""

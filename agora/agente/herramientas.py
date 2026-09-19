@@ -19,7 +19,7 @@ dentro de un limite que otro firmo.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 
 @dataclass(frozen=True)
@@ -178,6 +178,22 @@ def validar_asignacion_por_nodo(
                     f"'{nombre}' esta en el camino del dinero y solo puede ser del "
                     f"nodo '{NODO_DUENO_DEL_FLUJO_DE_DINERO}', no de '{nodo}'."
                 )
+
+
+def validar_nodos_con_contexto(nodos: Iterable[str]) -> None:
+    """Migracion a agentes, etapa 2: que nodos pueden recibir contexto
+    inyectado (`agente/contexto.py`), por ejemplo documentacion recuperada.
+    Cualquier nodo declarado -- menos el dueño del flujo de dinero: prosa
+    recuperada al lado de `armar_carrito`/`pagar` es la mezcla que la regla
+    "ninguna cifra sale de una recuperacion" quiere evitar."""
+    for nodo in nodos:
+        _validar_nodo(nodo)
+        if nodo == NODO_DUENO_DEL_FLUJO_DE_DINERO:
+            raise RuntimeError(
+                f"el nodo '{nodo}' es dueño del flujo de dinero: no puede recibir "
+                "contexto recuperado. Los montos y topes salen del dominio, nunca "
+                "de una busqueda."
+            )
 
 
 def herramientas_para_nodo(herramientas: list[Herramienta], nodo: str) -> list[Herramienta]:

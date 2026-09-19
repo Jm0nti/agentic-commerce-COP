@@ -301,3 +301,25 @@ class RespuestaModeloInvalida(ErrorDeModeloDeLenguaje):
     ni se rellenan campos faltantes con un valor por defecto: una respuesta
     que no calza con el contrato se descarta entera, no se repara en
     silencio (`GenerarCatalogoSemilla`, etapa 5)."""
+
+
+# -- recuperacion documental (migracion a agentes, etapa 2) ----------------- #
+
+
+class ErrorDeRecuperacion(ErrorDeDominio):
+    pass
+
+
+class RecuperacionNoDisponible(ErrorDeRecuperacion):
+    """El proveedor de embeddings no respondio (red, timeout, 5xx, llave
+    invalida). Igual que `ModeloNoDisponible`: reintentar es razonable, y
+    quien la recibe en un turno de chat (`agente/contexto_documental.py`)
+    sigue sin documentacion en vez de tumbar el turno."""
+
+    reintentable = True
+
+
+class RespuestaDeEmbeddingsInvalida(ErrorDeRecuperacion):
+    """El proveedor respondio, pero no con lo pedido -- menos vectores que
+    textos, o vectores vacios. Mismo criterio que `RespuestaModeloInvalida`:
+    se descarta entera, nunca se rellena."""

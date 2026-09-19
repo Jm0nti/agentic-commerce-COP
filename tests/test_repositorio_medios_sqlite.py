@@ -1,8 +1,8 @@
 """`RepositorioMediosSQLite`: sin equivalente en memoria probado en la etapa
 2 (`RepositorioMediosEnMemoria` existia pero nada lo ejercitaba todavia --
 nada de `agora/` lo necesita hasta `aplicacion/enrolar_medio.py`, etapa 5).
-Aqui si se prueba, porque es el destino directo de `scripts/
-migrar_fuentes_a_sqlite.py`.
+Aqui si se prueba, porque es la tabla que usa `aplicacion/enrolar_medio.py`
+en produccion.
 
 Multi-comercio (1 de septiembre de 2026): `guardar` ahora exige
 `comercio_id`, y el repositorio expone `vinculado_con`/`comercio_de` -- ver

@@ -95,6 +95,7 @@ from ..puertos.catalogo import RepositorioCatalogo
 from ..puertos.firma import SelectorDeFirmante
 from ..puertos.modelo_lenguaje import ModeloDeLenguaje
 from ..puertos.pasarela import SelectorDePasarela
+from ..puertos.recuperacion import BuscadorDocumental
 from ..puertos.repositorios import (
     LibroDeConsumo,
     RegistroDeEstados,
@@ -106,7 +107,7 @@ from ..puertos.repositorios import (
     RepositorioUsuarios,
 )
 from ..puertos.sistema import Bitacora, GeneradorIds, Reloj
-from .configuracion import ConfiguracionAgora
+from .configuracion import RAIZ_REPO, ConfiguracionAgora
 
 
 @dataclass(frozen=True)
@@ -171,6 +172,12 @@ class Contenedor:
     # deepseek_llave_api`. El resto del contenedor (mandatos, cobros,
     # catalogo, enrolamiento) no depende de que esto exista.
     modelo_lenguaje: ModeloDeLenguaje | None
+    # Migracion a agentes, etapa 2. `None` sin OPENAI_API_KEY -- el nodo de
+    # soporte contesta sin documentacion. Con llave, se arma sin tocar la red:
+    # el corpus se lee y se fragmenta ya, pero se embebe recien en la primera
+    # busqueda (ver `BuscadorDocumentalLangChain`). Con default para que las
+    # pruebas que arman un `Contenedor` a mano no tengan que conocerlo.
+    buscador_documental: BuscadorDocumental | None = None
 
 
 def construir(
@@ -320,6 +327,8 @@ def construir(
             )
         )
 
+    buscador_documental = _construir_buscador_documental(config)
+
     return Contenedor(
         config=config,
         ejecutar_intencion=ejecutar_intencion,
@@ -350,4 +359,36 @@ def construir(
         revocar_medio=revocar_medio,
         consultar_estado=consultar_estado,
         modelo_lenguaje=modelo_lenguaje,
+        buscador_documental=buscador_documental,
+    )
+
+
+def _construir_buscador_documental(config: ConfiguracionAgora) -> BuscadorDocumental | None:
+    """Migracion a agentes, etapa 2. Sin OPENAI_API_KEY, `None`.
+
+    Los imports van ADENTRO de la funcion, a proposito: son la unica parte
+    del composition root que depende de LangChain, y la documentacion de
+    soporte es opcional. Asi, un venv que todavia no corrio
+    `pip install -r requirements.txt` despues de esta etapa sigue levantando
+    la app (y la suite de las etapas anteriores) mientras no configure la
+    llave -- en vez de caerse entero con un `ImportError` por una funcion
+    que no esta usando."""
+    if not config.openai_llave_api:
+        return None
+    from ..adaptadores.embeddings.proveedor_openai import (
+        AdaptadorEmbeddingsOpenAI,
+        ConfiguracionEmbeddingsOpenAI,
+    )
+    from ..adaptadores.recuperacion.langchain_en_memoria import (
+        BuscadorDocumentalLangChain,
+        cargar_markdown,
+    )
+
+    return BuscadorDocumentalLangChain(
+        documentos=cargar_markdown(config.soporte_documentos_path, raiz=RAIZ_REPO),
+        embeddings=AdaptadorEmbeddingsOpenAI(
+            ConfiguracionEmbeddingsOpenAI(
+                llave_api=config.openai_llave_api, modelo=config.embeddings_modelo,
+            )
+        ),
     )

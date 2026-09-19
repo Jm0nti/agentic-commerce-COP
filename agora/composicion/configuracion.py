@@ -1,6 +1,6 @@
 """Lectura del entorno. El unico lugar de `agora/` autorizado a hacerlo.
 
-`docs/analisis-codigo.md` (hallazgo 5): hoy `os.environ` se lee dentro de
+`docs/historico/analisis-codigo.md` (hallazgo 5): hoy `os.environ` se lee dentro de
 `ClienteWompi.__init__` (`boveda/nucleo.py:124-126`), lo que hace imposible
 tener dos configuraciones en el mismo proceso y obliga a las pruebas a usar
 `monkeypatch.setenv`. Aqui se lee una vez, en el composition root, y circula
@@ -66,6 +66,18 @@ las de Wompi):
                    interruptor para una demo si el enrutamiento molesta.
         Solo tiene efecto si hay DEEPSEEK_API_KEY (sin ella no hay agente).
 
+    OPENAI_API_KEY      llave de OpenAI para embeddings (migracion a agentes,
+        etapa 2). Opcional, igual que DEEPSEEK_API_KEY: sin ella el nodo de
+        soporte contesta sin documentacion recuperada (como en la etapa 1) y
+        el resto de la app no cambia. Solo se usa para EMBEDDINGS de la
+        documentacion de soporte -- el chat sigue siendo DeepSeek.
+    AGORA_EMBEDDINGS_MODELO   default text-embedding-3-small.
+    AGORA_SOPORTE_DOCUMENTOS  carpeta del corpus de soporte (default:
+        docs/soporte). Solo se lee si hay OPENAI_API_KEY, y entonces tiene
+        que existir: una llave configurada con un corpus inexistente es un
+        error de configuracion, no algo para descubrir en la primera
+        pregunta de una persona.
+
     PAGADOR_EMAIL / PAGADOR_NOMBRE / PAGADOR_TELEFONO / PAGADOR_DOCUMENTO / PAGADOR_TIPO_DOC
         Igual que `boveda/nucleo.py:perfil_pagador`. Importan de verdad: un
         cobro sin `customer_data` es el perfil que el antifraude de Wompi lee
@@ -87,6 +99,10 @@ RAIZ_REPO = Path(__file__).resolve().parent.parent.parent
 BITACORA_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "recibos.jsonl"
 SQLITE_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "agora.db"
 COMERCIOS_WOMPI_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "secretos" / "comercios_wompi.json"
+SOPORTE_DOCUMENTOS_POR_DEFECTO = RAIZ_REPO / "docs" / "soporte"
+# Mismo criterio que DEEPSEEK_MODELO_POR_DEFECTO: se repite aca en vez de
+# importarlo de `adaptadores/embeddings/proveedor_openai/config.py`.
+EMBEDDINGS_MODELO_POR_DEFECTO = "text-embedding-3-small"
 
 # `deepseek-chat` de nuevo aca, no importado de `adaptadores/llm/deepseek/
 # config.py`: `composicion/` no deberia depender de la forma interna de un
@@ -132,6 +148,10 @@ class ConfiguracionAgora:
     deepseek_modelo: str = DEEPSEEK_MODELO_POR_DEFECTO
     # Migracion a agentes, etapa 1 -- ver AGORA_CLASIFICADOR en el docstring.
     clasificador_intencion: str = CLASIFICADOR_POR_DEFECTO
+    # Migracion a agentes, etapa 2 -- ver OPENAI_API_KEY en el docstring.
+    openai_llave_api: str = ""
+    embeddings_modelo: str = EMBEDDINGS_MODELO_POR_DEFECTO
+    soporte_documentos_path: Path = SOPORTE_DOCUMENTOS_POR_DEFECTO
 
     def __post_init__(self) -> None:
         if self.clasificador_intencion not in MODOS_CLASIFICADOR:
@@ -249,6 +269,21 @@ def leer_configuracion(entorno: Mapping[str, str]) -> ConfiguracionAgora:
     deepseek_llave_api = entorno.get("DEEPSEEK_API_KEY", "")
     deepseek_modelo = entorno.get("DEEPSEEK_MODELO", DEEPSEEK_MODELO_POR_DEFECTO)
     clasificador_intencion = entorno.get("AGORA_CLASIFICADOR", CLASIFICADOR_POR_DEFECTO)
+    openai_llave_api = entorno.get("OPENAI_API_KEY", "")
+    embeddings_modelo = entorno.get("AGORA_EMBEDDINGS_MODELO", EMBEDDINGS_MODELO_POR_DEFECTO)
+    soporte_documentos_path = (
+        Path(entorno["AGORA_SOPORTE_DOCUMENTOS"])
+        if "AGORA_SOPORTE_DOCUMENTOS" in entorno
+        else SOPORTE_DOCUMENTOS_POR_DEFECTO
+    )
+    if not soporte_documentos_path.is_absolute():
+        soporte_documentos_path = RAIZ_REPO / soporte_documentos_path
+    if openai_llave_api and not soporte_documentos_path.is_dir():
+        raise ConfiguracionInvalida(
+            f"OPENAI_API_KEY esta configurada pero no existe la carpeta de "
+            f"documentos de soporte '{soporte_documentos_path}' "
+            "(AGORA_SOPORTE_DOCUMENTOS, default docs/soporte)"
+        )
 
     wompi: dict[str, ConfiguracionWompi] = {}
     if pasarela == "wompi":
@@ -271,4 +306,7 @@ def leer_configuracion(entorno: Mapping[str, str]) -> ConfiguracionAgora:
         deepseek_llave_api=deepseek_llave_api,
         deepseek_modelo=deepseek_modelo,
         clasificador_intencion=clasificador_intencion,
+        openai_llave_api=openai_llave_api,
+        embeddings_modelo=embeddings_modelo,
+        soporte_documentos_path=soporte_documentos_path,
     )
