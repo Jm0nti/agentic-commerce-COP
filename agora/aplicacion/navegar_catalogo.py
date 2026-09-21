@@ -16,6 +16,30 @@ devuelve (via `RepositorioPropuestas`), no solo el `Carrito`. Es lo que
 permite que `entradas/cli/firmar` la encuentre por `propuesta_id` desde
 OTRO proceso -- por ejemplo, cuando quien arma el carrito es el agente en
 una charla de `chat` y quien firma es el titular en una terminal aparte.
+
+EL ENRUTADOR DE RECUPERACION (migracion a agentes, etapa 4)
+-------------------------------------------------------------
+`buscar_productos` deja de ser un pasamanos y pasa a ser los tres peldanos
+de la decision 1 de `docs/arquitectura-agentes/arquitectura-agentes-
+langgraph.md`, en este orden y no en otro:
+
+    1. estructurado   `RepositorioCatalogo.buscar_productos(comercio, consulta)`
+                      -- el match por substring de siempre. Auditable, no
+                      puede inventar un producto.
+    2. reglas duras   `FiltrosDeProducto.aplicar` -- disponibilidad, rango
+                      de precio. Se aplican al resultado de CUALQUIER
+                      peldano, no solo del semantico.
+    3. semantico      solo si 1 no encontro nada Y hay buscador configurado,
+                      y solo sobre los candidatos que ya pasaron 2.
+
+Preferir lo estructurado no es una optimizacion: es la decision 1 ("preferida
+siempre que alcance: es auditable y no puede devolver un producto
+inexistente"). El peldano semantico existe para el caso que el documento
+nombra -- alguien que describe una necesidad ("algo para piel reseca") en vez
+de nombrar el producto -- y nunca para reordenar lo que ya se encontro bien.
+
+Sin buscador semantico y sin filtros, esta funcion devuelve exactamente lo
+mismo que antes de la etapa 4: el peldano 1 y nada mas.
 """
 
 from __future__ import annotations
@@ -23,8 +47,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..dominio.catalogo.modelo import Carrito, Comercio, Disponibilidad, ItemCarrito, Producto
-from ..dominio.comun.errores import ProductoDeOtroComercio, ProductoNoDisponible
+from ..dominio.comun.errores import ErrorDeDominio, ProductoDeOtroComercio, ProductoNoDisponible
 from ..dominio.mandato.modelo import PropuestaDeMandato
+from ..puertos.busqueda_productos import BuscadorSemanticoDeProductos, FiltrosDeProducto
 from ..puertos.catalogo import RepositorioCatalogo
 from ..puertos.repositorios import RepositorioCarritos, RepositorioPropuestas
 from ..puertos.sistema import GeneradorIds
@@ -47,6 +72,7 @@ class NavegarCatalogo:
         carritos: RepositorioCarritos,
         ids: GeneradorIds,
         propuestas: RepositorioPropuestas | None = None,
+        semantico: BuscadorSemanticoDeProductos | None = None,
     ) -> None:
         self._catalogo = catalogo
         self._carritos = carritos
@@ -56,14 +82,48 @@ class NavegarCatalogo:
         # (`buscar_comercios`/`buscar_productos`/`ver_producto` no lo tocan).
         # `composicion/contenedor.py` siempre lo provee.
         self._propuestas = propuestas
+        # Etapa 4. `None` = sin peldano semantico (no hay OPENAI_API_KEY):
+        # el catalogo se navega con el match estructurado de siempre.
+        self._semantico = semantico
 
-    # -- busqueda, sin reglas propias: delega tal cual --------------------- #
+    # -- busqueda ----------------------------------------------------------- #
 
     def buscar_comercios(self, consulta: str = "") -> list[Comercio]:
+        """Sigue delegando tal cual: el enrutador de la etapa 4 es para
+        productos. Un comercio se elige por nombre o categoria, que es
+        justo lo que el match estructurado resuelve bien."""
         return self._catalogo.buscar_comercios(consulta)
 
-    def buscar_productos(self, comercio_id: str, consulta: str = "") -> list[Producto]:
-        return self._catalogo.buscar_productos(comercio_id, consulta)
+    def buscar_productos(
+        self,
+        comercio_id: str,
+        consulta: str = "",
+        filtros: FiltrosDeProducto | None = None,
+        limite_semantico: int = 5,
+    ) -> list[Producto]:
+        """Los tres peldanos (ver el docstring del modulo). Propaga
+        `ComercioDesconocido` igual que antes."""
+        filtros = filtros or FiltrosDeProducto()
+        estructurados = filtros.aplicar(self._catalogo.buscar_productos(comercio_id, consulta))
+        if estructurados or not consulta.strip() or self._semantico is None:
+            return estructurados
+
+        # Peldano 3. Los candidatos son TODO el comercio pasado por las
+        # mismas reglas duras: lo semantico solo puede reordenar y recortar
+        # ese conjunto, nunca ampliarlo.
+        candidatos = filtros.aplicar(self._catalogo.buscar_productos(comercio_id, ""))
+        if not candidatos:
+            return []
+        try:
+            return self._semantico.buscar(consulta, candidatos, limite=limite_semantico)
+        except ErrorDeDominio:
+            # `RecuperacionNoDisponible`: el proveedor de embeddings no
+            # contesto. Una busqueda sin resultados es una respuesta valida
+            # del catalogo (el puerto lo dice), asi que el turno sigue con
+            # lo estructurado -- vacio -- en vez de caerse. Cualquier otra
+            # excepcion es un bug y sube, mismo criterio que
+            # `agente/contexto_documental.py`.
+            return []
 
     def ver_producto(self, producto_id: str) -> Producto:
         return self._catalogo.ver_producto(producto_id)

@@ -54,11 +54,29 @@ solo para los nodos de esa ruta, y se pega a la instruccion del orquestador
 (misma vista, mismo "no se guarda en `mensajes`"). Lo que se inyecto queda
 registrado en `Conversacion.contextos`. En la ruta de respaldo no hay
 contexto: respaldo sigue siendo el agente de antes, sin nada extra.
+
+EL TURNO, EN CUATRO PASOS PUBLICOS (migracion a agentes, etapa 3)
+------------------------------------------------------------------
+`turno()` es la suma de cuatro metodos publicos:
+
+    abrir_turno              agrega el mensaje de la persona, devuelve el
+                             historial previo
+    decidir                  -> Ruta
+    instrucciones_del_turno  -> instruccion del orquestador + contexto
+    ejecutar_turno           -> el loop de herramientas, texto final
+
+Eran privados hasta la etapa 3. Se volvieron publicos porque
+`agente/grafo.py` los reparte entre los nodos de un grafo (`AgenteEnGrafo`),
+y la alternativa -- duplicar la logica alla, o llamar metodos privados desde
+afuera -- deja dos caminos que pueden divergir en silencio. Asi hay un solo
+comportamiento y dos formas de recorrerlo: en fila (este `turno()`) o por el
+grafo. `tests/test_agente_grafo_equivalencia.py` verifica que dan lo mismo.
 """
 
 from __future__ import annotations
 
 import json
+import uuid
 from dataclasses import dataclass, field
 from typing import Mapping
 
@@ -69,6 +87,7 @@ from ..puertos.modelo_lenguaje import (
     Mensaje,
     ModeloDeLenguaje,
 )
+from ..puertos.sistema import Bitacora
 from .contexto import ContextoInyectado, ProveedorDeContexto
 from .herramientas import (
     HERRAMIENTAS_POR_NODO,
@@ -81,7 +100,11 @@ from .herramientas import (
 )
 from .intencion import ClasificacionDeIntencion, ClasificadorDeIntencion
 from .nodos import Ruta, ruta_para
+from .pausa import DecisionHumana, PausaDelTurno, detectar_pausa
 from .politica import MAX_TURNOS_POR_CONVERSACION, SYSTEM_PROMPT
+from .traza import EVENTO as EVENTO_DE_TRAZA
+from .traza import InicioDelTurno, armar_traza
+from .traza import comenzar as comenzar_traza
 
 
 class LimiteDeTurnosExcedido(Exception):
@@ -95,6 +118,12 @@ class Conversacion:
     -- no hay persistencia entre reinicios en esta etapa, igual que el
     `Carrito` en `RepositorioCarritosEnMemoria`."""
 
+    # Para correlacionar los turnos de UNA charla en la bitacora de trazas:
+    # sin esto, dos personas chateando a la vez dejan lineas intercaladas que
+    # no se pueden separar despues. No identifica a nadie -- es un id de
+    # proceso, no del titular (el `titular_id` vive en `entradas/api/
+    # sesiones.py`, que es quien sabe de identidades).
+    conversacion_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     mensajes: list[Mensaje] = field(default_factory=list)
     # Una por turno, en orden, cuando el `Agente` tiene clasificador. Es el
     # registro auditable de "que decidio el orquestador" -- separado de
@@ -104,6 +133,11 @@ class Conversacion:
     # Registro auditable de "que documentacion vio el modelo" -- el texto
     # inyectado nunca entra a `mensajes`.
     contextos: list[tuple[str, ContextoInyectado]] = field(default_factory=list)
+    # Etapa 5: que quedo esperando a una persona al terminar el ultimo
+    # turno, o `None`. Lo pone el grafo al detenerse en `espera_humana` y lo
+    # lee `entradas/api/sesiones.py` para armar el popup -- antes eso se
+    # deducia volviendo a parsear el JSON de los resultados de herramientas.
+    pausa: PausaDelTurno | None = None
 
 
 class Agente:
@@ -113,6 +147,7 @@ class Agente:
         herramientas: list[Herramienta],
         clasificador: ClasificadorDeIntencion | None = None,
         contextos: Mapping[str, ProveedorDeContexto] | None = None,
+        bitacora: Bitacora | None = None,
     ) -> None:
         # Se corre al armar el agente, no en un test lejano (mismo
         # argumento que el docstring de `validar_catalogo`): si alguien le
@@ -130,11 +165,23 @@ class Agente:
         self._modelo = modelo
         self._clasificador = clasificador
         self._contextos = contextos
+        # `None` = sin trazabilidad (pruebas que arman un `Agente` a mano).
+        # `composicion/agente.py` siempre la provee.
+        self._bitacora = bitacora
         self._herramientas = {h.nombre: h for h in herramientas}
         self._definiciones = [
             DefinicionHerramienta(nombre=h.nombre, descripcion=h.descripcion, esquema=h.esquema)
             for h in herramientas
         ]
+
+    @property
+    def herramientas(self) -> list[Herramienta]:
+        """Las herramientas con las que se armo, para quien necesite
+        validarlas por nodo (`agente/agentes.py`, etapa 4). Una copia de la
+        lista: nadie de afuera le agrega una al agente ya construido, que es
+        lo que `validar_catalogo` verifica al arrancar y no podria volver a
+        verificar despues."""
+        return list(self._herramientas.values())
 
     def iniciar(self) -> Conversacion:
         return Conversacion(mensajes=[Mensaje(rol="system", contenido=SYSTEM_PROMPT)])
@@ -143,19 +190,97 @@ class Agente:
         """Un turno completo: agrega lo que escribio la persona, decide la
         ruta, deja correr el loop de herramientas dentro de esa ruta, y
         devuelve el texto final. Muta `conversacion` in place -- llamar de
-        nuevo sigue la misma charla."""
-        historial_previo = tuple(conversacion.mensajes)
-        conversacion.mensajes.append(Mensaje(rol="user", contenido=mensaje_usuario))
+        nuevo sigue la misma charla.
 
-        ruta = self._decidir(conversacion, mensaje_usuario, historial_previo)
-        instrucciones = self._instrucciones_del_turno(
+        Los cuatro pasos son publicos desde la etapa 3 de la migracion a
+        agentes: `agente/grafo.py` los reparte entre los nodos del grafo, y
+        este metodo los corre en fila. La logica esta una sola vez -- la
+        version con grafo no reimplementa nada, y nadie de afuera tiene que
+        tocar un metodo privado para armar un turno."""
+        inicio = comenzar_traza(conversacion)
+        historial_previo = self.abrir_turno(conversacion, mensaje_usuario)
+        conversacion.pausa = None
+        ruta = self.decidir(conversacion, mensaje_usuario, historial_previo)
+        instrucciones = self.instrucciones_del_turno(
             conversacion, ruta, mensaje_usuario, historial_previo,
         )
-        return self._ejecutar_turno(conversacion, ruta, instrucciones)
+        desde = len(conversacion.mensajes)
+        respuesta = self.ejecutar_turno(conversacion, ruta, instrucciones)
+        # Etapa 5: sin grafo no hay nodo `espera_humana`, pero la pausa se
+        # detecta igual -- si no, `AGORA_ORQUESTACION=directo` se quedaria
+        # sin los popups de firma y confirmacion, y los dos modos dejarian
+        # de ser equivalentes (que es justo lo que la etapa 3 prometio).
+        conversacion.pausa = detectar_pausa(conversacion.mensajes[desde:])
+        self.anotar_traza(
+            conversacion, inicio, mensaje_usuario, respuesta, ruta,
+            pausa=conversacion.pausa,
+        )
+        return respuesta
+
+    def reanudar(self, conversacion: Conversacion, decision: DecisionHumana) -> str:
+        """La persona resolvio lo que el turno estaba esperando (etapa 5).
+
+        Un turno mas -- el aviso entra como un mensaje y el modelo decide
+        que hacer -- pero el texto lo arma UNA sola funcion
+        (`DecisionHumana.como_aviso`) a partir de datos tipados, en vez de
+        cuatro sitios de `entradas/` armandolo a mano. Esa era la queja
+        concreta de la decision 6.
+
+        No verifica nada de dinero, y no podria: cuando esto corre, el
+        mandato ya se emitio (o no) en `aplicacion/`, por pedido de la
+        persona. Aca solo se entera el modelo."""
+        conversacion.pausa = None
+        return self.turno(conversacion, decision.como_aviso())
+
+    # -- paso 5: dejar la evidencia --------------------------------------- #
+
+    def anotar_traza(
+        self,
+        conversacion: Conversacion,
+        inicio: InicioDelTurno,
+        mensaje_usuario: str,
+        respuesta: str,
+        ruta: Ruta | None,
+        agente: str | None = None,
+        pausa: PausaDelTurno | None = None,
+    ) -> None:
+        """La cadena de decisiones de ESTE turno, a la bitacora de trazas.
+
+        Publico como los otros cuatro pasos, y por la misma razon:
+        `agente/grafo.py` corre el turno por el grafo y tiene que poder
+        dejar la misma evidencia sin duplicar como se arma.
+
+        Nunca tumba un turno. Una charla que ya se contesto no se puede
+        perder porque el disco este lleno o el archivo no se pueda abrir:
+        la evidencia importa, pero menos que la respuesta que la persona ya
+        tiene en pantalla."""
+        if self._bitacora is None:
+            return
+        try:
+            self._bitacora.anotar(
+                EVENTO_DE_TRAZA,
+                armar_traza(
+                    conversacion, inicio, mensaje_usuario, respuesta, ruta, agente, pausa,
+                ),
+            )
+        except Exception:  # noqa: BLE001 -- ver el docstring
+            pass
+
+    # -- paso 0: abrir el turno ------------------------------------------ #
+
+    def abrir_turno(self, conversacion: Conversacion, mensaje_usuario: str) -> tuple[Mensaje, ...]:
+        """Agrega el mensaje de la persona y devuelve el historial de ANTES
+        de agregarlo -- que es lo que recibe el clasificador (y el proveedor
+        de contexto): lo que ya se habia dicho, sin el mensaje que se esta
+        clasificando. Se toma la copia antes de mutar; `conversacion.mensajes`
+        es una lista que el loop sigue creciendo."""
+        historial_previo = tuple(conversacion.mensajes)
+        conversacion.mensajes.append(Mensaje(rol="user", contenido=mensaje_usuario))
+        return historial_previo
 
     # -- paso 1: decidir ------------------------------------------------- #
 
-    def _decidir(
+    def decidir(
         self, conversacion: Conversacion, mensaje_usuario: str, historial: tuple[Mensaje, ...]
     ) -> Ruta:
         if self._clasificador is None:
@@ -164,7 +289,7 @@ class Agente:
         conversacion.clasificaciones.append(clasificacion)
         return ruta_para(clasificacion)
 
-    def _instrucciones_del_turno(
+    def instrucciones_del_turno(
         self,
         conversacion: Conversacion,
         ruta: Ruta,
@@ -198,7 +323,7 @@ class Agente:
 
     # -- paso 2: ejecutar ------------------------------------------------ #
 
-    def _ejecutar_turno(
+    def ejecutar_turno(
         self, conversacion: Conversacion, ruta: Ruta, instrucciones: str | None
     ) -> str:
         habilitadas = ruta.herramientas & frozenset(self._herramientas)

@@ -74,6 +74,13 @@ class _ModeloProgramable:
                     ),
                 ),
             )
+        if ultimo.rol == "user" and "rechazo la propuesta" in contenido:
+            # Frase unica del aviso de `/propuestas/{id}/rechazar` -- se
+            # chequea ANTES que "aprobo"/"rechazo" (mas abajo, para el
+            # aviso de `/retomar`) porque esta tambien contiene "rechazo".
+            return RespuestaModelo(
+                contenido="Entendido, no se firmo nada. Decime si queres otra propuesta."
+            )
         if ultimo.rol == "user" and ("aprobo" in contenido or "rechazo" in contenido):
             return RespuestaModelo(contenido="Listo, gracias por confirmar.")
         if ultimo.rol == "user" and "webhook" in contenido:
@@ -302,6 +309,51 @@ def test_flujo_completo_por_http_arma_firma_paga_y_confirma(tmp_path):
     #    debe reintroducir.
     estado = contenedor.consultar_estado(intencion_id)
     assert estado.estado == "aprobado"
+
+
+def test_rechazar_propuesta_por_http_le_avisa_al_agente(tmp_path):
+    """El bug reportado: rechazar la propuesta desde el popup ("Cancelar")
+    no le llegaba al agente de ninguna forma -- el ultimo mensaje del chat
+    se quedaba siendo la propuesta armada, sin ningun aviso de que se
+    rechazo. `POST /propuestas/{id}/rechazar` tiene que avisarle a la
+    conversacion, igual que `/retomar` ya hace con `aprueba=False`."""
+    contenedor = construir(leer_configuracion(_config(tmp_path)))
+    comercio_id, producto_id = _producto_barato(contenedor)
+    contenedor = replace(contenedor, modelo_lenguaje=_ModeloProgramable(comercio_id, producto_id))
+    agente = construir_agente(contenedor)
+    app = crear_app(agente, contenedor)
+    cliente = TestClient(app)
+    _loguear(cliente, contenedor)
+
+    sesion_id = cliente.post("/sesiones").json()["sesion_id"]
+    cliente.post(f"/sesiones/{sesion_id}/mensajes", json={"texto": "quiero comprar algo barato"})
+    evento_propuesta = _leer_primer_evento(app, sesion_id)
+    propuesta_id = evento_propuesta["propuesta_id"]
+
+    respuesta = cliente.post(
+        f"/propuestas/{propuesta_id}/rechazar", json={"sesion_id": sesion_id},
+    )
+
+    assert respuesta.status_code == 200
+    datos = respuesta.json()
+    assert datos["propuesta_id"] == propuesta_id
+    # El agente se entero solo (via `sesiones.continuar`, el mismo
+    # mecanismo que ya usan `firmar`/`retomar`), sin que la persona tuviera
+    # que volver a escribirle nada.
+    assert datos["respuesta_agente"] == "Entendido, no se firmo nada. Decime si queres otra propuesta."
+
+
+def test_rechazar_propuesta_desconocida_por_http_responde_400(tmp_path):
+    contenedor = construir(leer_configuracion(_config(tmp_path)))
+    app = crear_app(None, contenedor)
+    cliente = TestClient(app)
+    _loguear(cliente, contenedor)
+
+    respuesta = cliente.post(
+        "/propuestas/prp_no_existe/rechazar", json={"sesion_id": "sin-sesion"},
+    )
+
+    assert respuesta.status_code == 400
 
 
 def test_flujo_sse_codifica_un_evento_de_la_cola_como_server_sent_event():

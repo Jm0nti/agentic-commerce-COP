@@ -1330,7 +1330,30 @@
         propuestaActual = null;
       }
 
-      document.getElementById("propuesta-cancelar").addEventListener("click", cerrarPropuesta);
+      // "Cancelar" es una decision explicita -- a diferencia de cerrar el
+      // popup (click afuera / Escape, mas abajo), esto le avisa al backend
+      // para que el agente se entere de que la propuesta se rechazo y
+      // pueda seguir la charla en vez de quedarse esperando una firma que
+      // nunca va a llegar.
+      document.getElementById("propuesta-cancelar").addEventListener("click", async function () {
+        if (!propuestaActual) { cerrarPropuesta(); return; }
+        const propuestaId = propuestaActual.propuesta_id;
+        modalPropuesta.classList.remove("visible");
+        burbuja("Rechazando la propuesta " + propuestaId + "...", "sistema");
+        try {
+          const resp = await fetch("/propuestas/" + propuestaId + "/rechazar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sesion_id: sesionId }),
+          });
+          const datos = await resp.json();
+          if (!resp.ok) { burbuja("No se pudo registrar el rechazo: " + (datos.detail || resp.status), "sistema"); return; }
+          if (datos.respuesta_agente) burbuja(datos.respuesta_agente, "agente");
+        } catch (err) {
+          burbuja("Error al rechazar: " + err.message, "sistema");
+        }
+        propuestaActual = null;
+      });
       modalPropuesta.addEventListener("click", function (e) {
         if (e.target === modalPropuesta) cerrarPropuesta();
       });

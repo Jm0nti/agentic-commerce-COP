@@ -12,3 +12,9 @@ numpy
 # completo. Los embeddings usan el SDK `openai` de arriba, sin langchain-openai.
 langchain-core>=1.0
 langchain-text-splitters>=1.0
+# Migracion a agentes, etapa 3 (docs/etapa-3-agentes-grafo-langgraph.md): el
+# turno corre como grafo (orquestador -> trabajador -> fin). Solo lo importa
+# `agora/adaptadores/orquestacion/con_langgraph/`, detras del puerto
+# `puertos/orquestacion.py`. Con AGORA_ORQUESTACION=directo la app corre sin
+# esta dependencia.
+langgraph>=1.0

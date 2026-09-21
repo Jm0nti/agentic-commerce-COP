@@ -83,6 +83,22 @@ MODULOS_DE_LA_MIGRACION_A_AGENTES = (
     "adaptadores/recuperacion/langchain_en_memoria/__init__.py",
     "adaptadores/recuperacion/langchain_en_memoria/buscador.py",
     "adaptadores/recuperacion/langchain_en_memoria/documentos.py",
+    # etapa 3
+    "agente/grafo.py",
+    "puertos/orquestacion.py",
+    "adaptadores/orquestacion/__init__.py",
+    "adaptadores/orquestacion/con_langgraph/__init__.py",
+    "adaptadores/orquestacion/con_langgraph/compilador.py",
+    # etapa 4
+    "agente/agentes.py",
+    "puertos/busqueda_productos.py",
+    "adaptadores/busqueda_productos/__init__.py",
+    "adaptadores/busqueda_productos/semantico_en_memoria/__init__.py",
+    "adaptadores/busqueda_productos/semantico_en_memoria/buscador.py",
+    # trazabilidad del agente
+    "agente/traza.py",
+    # etapa 5
+    "agente/pausa.py",
 )
 
 
@@ -288,6 +304,170 @@ def test_embeddings_y_vector_store_solo_se_conocen_por_el_puerto() -> None:
     assert not ofensas, "Adaptadores de la etapa 2 acoplados:\n  " + "\n  ".join(ofensas)
 
 
+# -- etapa 3: el grafo de orquestacion ---------------------------------------- #
+
+
+def test_langgraph_vive_en_un_solo_modulo_de_agora() -> None:
+    """La promesa de la etapa 3, medida sobre el codigo real: cambiar de
+    motor de grafos toca UN archivo. `test_librerias_de_llm_solo_detras_de_un
+    _adaptador` ya prohibe langgraph fuera de `adaptadores/`; esto ademas
+    exige que dentro de `adaptadores/` tampoco se desparrame."""
+    con_langgraph = sorted(
+        archivo.relative_to(RAIZ).as_posix()
+        for archivo in _modulos()
+        if any(i.split(".")[0] == "langgraph" for i in _imports(archivo))
+    )
+
+    assert con_langgraph == ["adaptadores/orquestacion/con_langgraph/compilador.py"]
+
+
+def test_el_puerto_de_orquestacion_no_conoce_ninguna_libreria_de_grafos() -> None:
+    """Si el puerto importara langgraph, no seria un puerto: seria un alias.
+    Lo unico que puede importar es la biblioteca estandar."""
+    ofensas = [
+        i
+        for i in _imports(RAIZ / "puertos" / "orquestacion.py")
+        if i.split(".")[0] not in ("dataclasses", "typing", "__future__")
+    ]
+
+    assert not ofensas, "puertos/orquestacion.py importa de mas:\n  " + "\n  ".join(ofensas)
+
+
+def test_el_grafo_del_agente_solo_conoce_el_puerto() -> None:
+    """`agente/grafo.py` arma la topologia del turno sin saber quien la
+    compila: recibe el `CompiladorDeGrafos` por constructor."""
+    importados = _imports(RAIZ / "agente" / "grafo.py")
+
+    assert any(_es_modulo(i, "puertos.orquestacion") for i in importados)
+    assert not [i for i in importados if i.split(".")[0] == "langgraph"]
+    assert not [i for i in importados if _es_modulo(i, "adaptadores")]
+
+
+# -- etapa 4: agentes especializados y retrieval hibrido ---------------------- #
+
+
+def test_el_indice_de_productos_no_alcanza_el_repositorio_del_catalogo() -> None:
+    """Decision 1: el buscador semantico ordena candidatos, no los busca. Si
+    importara `RepositorioCatalogo` o su adaptador podria ir a buscar
+    productos por su cuenta -- y entonces una regla dura (disponibilidad,
+    precio) dejaria de ser el unico camino hacia un producto."""
+    ofensas = []
+    for archivo in _modulos_bajo("adaptadores/busqueda_productos/"):
+        ofensas += [
+            f"{archivo.name}: {i}"
+            for i in _imports(archivo)
+            if _es_modulo(i, "adaptadores.catalogo") or _es_modulo(i, "puertos.catalogo")
+        ]
+    assert not ofensas, (
+        "el buscador semantico de productos alcanza el catalogo:\n  " + "\n  ".join(ofensas)
+    )
+
+
+def test_el_indice_de_productos_y_el_documental_no_se_conocen() -> None:
+    """Dos indices que nunca se mezclan (decision 1). Lo unico que comparten
+    es `puertos/recuperacion.py:ProveedorDeEmbeddings`, que es el puerto de
+    "texto -> vector" de la decision 2 y no sabe que se esta indexando."""
+    ofensas = []
+    for archivo in _modulos_bajo("adaptadores/busqueda_productos/"):
+        ofensas += [
+            f"{archivo.name}: {i}"
+            for i in _imports(archivo)
+            if _es_modulo(i, "adaptadores.recuperacion") or _es_modulo(i, "adaptadores.embeddings")
+        ]
+    for archivo in _modulos_bajo("adaptadores/recuperacion/"):
+        ofensas += [
+            f"{archivo.name}: {i}"
+            for i in _imports(archivo)
+            if _es_modulo(i, "adaptadores.busqueda_productos")
+            or _es_modulo(i, "puertos.busqueda_productos")
+        ]
+    assert not ofensas, "los dos indices se cruzan:\n  " + "\n  ".join(ofensas)
+
+
+def test_el_puerto_de_busqueda_de_productos_no_conoce_ninguna_libreria() -> None:
+    """Las reglas duras (`FiltrosDeProducto`) viven de este lado de la
+    frontera, sobre objetos de dominio: nada de numpy ni de vector stores."""
+    ofensas = [
+        i
+        for i in _imports(RAIZ / "puertos" / "busqueda_productos.py")
+        if i.split(".")[0] not in ("dataclasses", "typing", "__future__")
+        and not _es_modulo(i, "dominio.catalogo.modelo")
+    ]
+
+    assert not ofensas, (
+        "puertos/busqueda_productos.py importa de mas:\n  " + "\n  ".join(ofensas)
+    )
+
+
+def test_los_agentes_especializados_no_alcanzan_ninguna_pasarela() -> None:
+    """`agente/agentes.py` decide que herramientas ve cada agente: es
+    exactamente el modulo donde un import de mas seria peor."""
+    ofensas = [
+        i for i in _imports(RAIZ / "agente" / "agentes.py")
+        if "pasarela" in i or _es_modulo(i, "aplicacion") or _es_modulo(i, "adaptadores")
+    ]
+
+    assert not ofensas, "agente/agentes.py cruza una frontera:\n  " + "\n  ".join(ofensas)
+
+
+# -- trazabilidad ------------------------------------------------------------- #
+
+
+def test_la_traza_no_conoce_ningun_adaptador_de_bitacora() -> None:
+    """`agente/traza.py` arma el cuerpo; quien lo escribe es un `Bitacora`
+    que llega por constructor. Si conociera el adaptador de .jsonl, cambiar
+    el destino de las trazas (a stdout, a otro formato) obligaria a tocar el
+    agente."""
+    ofensas = [
+        i for i in _imports(RAIZ / "agente" / "traza.py")
+        if _es_modulo(i, "adaptadores") or _es_modulo(i, "composicion")
+    ]
+
+    assert not ofensas, "agente/traza.py conoce un adaptador:\n  " + "\n  ".join(ofensas)
+
+
+# -- etapa 5: la pausa humana -------------------------------------------------- #
+
+
+def test_la_pausa_no_alcanza_ningun_caso_de_uso_ni_pasarela() -> None:
+    """`agente/pausa.py` describe QUE hay que decidir y arma el texto que lee
+    el modelo. Quien firma y quien cobra siguen siendo `aplicacion/`, por
+    pedido de una persona desde `entradas/`. Si este modulo pudiera importar
+    `EmitirMandato`, el agente estaria a un import de firmar solo."""
+    ofensas = [
+        i for i in _imports(RAIZ / "agente" / "pausa.py")
+        if _es_modulo(i, "aplicacion") or _es_modulo(i, "adaptadores") or "pasarela" in i
+    ]
+
+    assert not ofensas, "agente/pausa.py cruza una frontera:\n  " + "\n  ".join(ofensas)
+
+
+def test_el_puerto_de_orquestacion_define_la_pausa_sin_conocer_el_motor() -> None:
+    """Detener el grafo no necesita nada del motor: `PausaRequerida` es una
+    excepcion del puerto, no el `interrupt()` de ninguna libreria."""
+    fuente = (RAIZ / "puertos" / "orquestacion.py").read_text(encoding="utf-8")
+
+    assert "class PausaRequerida" in fuente
+    assert "interrupt" not in fuente.replace("`interrupt()`", "")
+
+
+def test_solo_agente_pausa_arma_el_aviso_que_lee_el_modelo() -> None:
+    """La queja concreta de la decision 6: antes habia cuatro sitios
+    escribiendo ese texto a mano. Las frases que el modelo distingue viven
+    ahora en un solo archivo."""
+    marcas = ("Continua el flujo de compra llamando a", "no hay mandato ni pago")
+    culpables = [
+        p.relative_to(RAIZ).as_posix()
+        for p in _modulos()
+        for marca in marcas
+        if marca in p.read_text(encoding="utf-8")
+    ]
+
+    assert set(culpables) == {"agente/pausa.py"}, (
+        "el aviso se arma en mas de un lugar:\n  " + "\n  ".join(sorted(set(culpables)))
+    )
+
+
 # -- el detector, probado ---------------------------------------------------- #
 # Una prueba de fronteras que nunca falla puede estar bien... o no estar
 # mirando nada. Estas arman un `agora/` de mentira con violaciones conocidas
@@ -341,6 +521,79 @@ def test_el_detector_deja_pasar_librerias_de_llm_en_adaptadores(tmp_path: Path) 
         tmp_path, "adaptadores/orquestacion/grafo.py", "from langgraph.graph import StateGraph\n",
     )
     assert _violaciones_de_libreria_de_llm(archivo, raiz) == []
+
+
+def test_el_detector_atrapa_al_puerto_de_orquestacion_importando_langgraph(
+    tmp_path: Path,
+) -> None:
+    """El acople de la etapa 3, puesto a proposito: el puerto que existe
+    para aislar LangGraph, importando LangGraph."""
+    raiz, archivo = _agora_de_mentira(
+        tmp_path, "puertos/orquestacion.py", "from langgraph.graph import StateGraph\n",
+    )
+    assert _violaciones_de_libreria_de_llm(archivo, raiz)
+
+
+def test_el_detector_atrapa_al_grafo_del_agente_importando_su_adaptador(
+    tmp_path: Path,
+) -> None:
+    """El otro acople de la etapa 3: `agente/grafo.py` importando el
+    compilador concreto en vez de recibirlo por constructor. No lo atrapa la
+    regla de librerias (el import no nombra a langgraph), lo atrapa la regla
+    de dependencia."""
+    raiz, archivo = _agora_de_mentira(
+        tmp_path,
+        "agente/grafo.py",
+        "from ..adaptadores.orquestacion.con_langgraph import CompiladorLangGraph\n",
+    )
+    ofensas = _violaciones_de_dependencia(archivo, raiz)
+    assert ofensas and "adaptadores" in ofensas[0]
+
+
+def test_el_detector_atrapa_al_buscador_de_productos_yendo_al_catalogo(
+    tmp_path: Path,
+) -> None:
+    """El acople de la etapa 4: el buscador semantico importando el
+    repositorio del catalogo para ir a buscar productos por su cuenta, en vez
+    de recibir los candidatos ya filtrados."""
+    raiz, _ = _agora_de_mentira(
+        tmp_path,
+        "adaptadores/busqueda_productos/semantico_en_memoria/intruso.py",
+        "from ....puertos.catalogo import RepositorioCatalogo\n",
+    )
+    archivo = raiz / "adaptadores/busqueda_productos/semantico_en_memoria/intruso.py"
+    ofensas = [
+        i for i in _imports(archivo, raiz)
+        if _es_modulo(i, "adaptadores.catalogo") or _es_modulo(i, "puertos.catalogo")
+    ]
+    assert ofensas
+
+
+def test_el_detector_atrapa_al_puerto_de_productos_importando_numpy(
+    tmp_path: Path,
+) -> None:
+    raiz, _ = _agora_de_mentira(
+        tmp_path, "puertos/busqueda_productos.py", "import numpy as np\n",
+    )
+    archivo = raiz / "puertos/busqueda_productos.py"
+    ofensas = [
+        i for i in _imports(archivo, raiz)
+        if i.split(".")[0] not in ("dataclasses", "typing", "__future__")
+        and not _es_modulo(i, "dominio.catalogo.modelo")
+    ]
+    assert ofensas
+
+
+def test_el_detector_atrapa_a_los_agentes_importando_un_caso_de_uso(
+    tmp_path: Path,
+) -> None:
+    raiz, archivo = _agora_de_mentira(
+        tmp_path,
+        "agente/agentes.py",
+        "from ..aplicacion.navegar_catalogo import NavegarCatalogo\n",
+    )
+    ofensas = _violaciones_de_dependencia(archivo, raiz)
+    assert ofensas and "aplicacion" in ofensas[0]
 
 
 def test_el_detector_atrapa_importaciones_dinamicas(tmp_path: Path) -> None:

@@ -69,8 +69,10 @@ proceso.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
+import time
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -376,6 +378,94 @@ def cmd_mandatos(a, contenedor: Contenedor) -> int:
 # --------------------------------------------------------------------------- #
 
 
+def _imprimir_traza(cuerpo: dict, ts: str) -> None:
+    """Un turno, legible. El .jsonl es la fuente de verdad -- esto es solo
+    la forma de mirarlo mientras corre."""
+    clasificacion = cuerpo.get("clasificacion") or {}
+    intencion = clasificacion.get("intencion") or "respaldo"
+    print(f"\n{'=' * 72}")
+    print(
+        f"{ts}  conversacion {cuerpo.get('conversacion_id')}  "
+        f"turno {cuerpo.get('turno')}  {cuerpo.get('duracion_ms')} ms"
+    )
+    print(f"  persona> {cuerpo.get('mensaje')}")
+    print(
+        f"  1. DECIDIR   intencion={intencion} origen={clasificacion.get('origen')} "
+        f"confianza={clasificacion.get('confianza')}"
+        + (f" motivo={clasificacion.get('motivo')}" if clasificacion.get("motivo") else "")
+    )
+    habilitadas = ", ".join(cuerpo.get("herramientas_habilitadas") or []) or "ninguna"
+    print(
+        f"  2. ENRUTAR   agente={cuerpo.get('agente') or '-'} "
+        f"nodos={','.join(cuerpo.get('nodos') or []) or '-'}"
+    )
+    print(f"               herramientas ofrecidas: {habilitadas}")
+    for contexto in cuerpo.get("contexto") or []:
+        fuentes = ", ".join(contexto.get("fuentes") or []) or "sin fragmentos relevantes"
+        print(
+            f"  3. CONTEXTO  {contexto.get('nodo')}: {fuentes} "
+            f"({contexto.get('caracteres')} caracteres)"
+        )
+    print(f"  4. EJECUTAR  {cuerpo.get('rondas')} ronda(s) del loop")
+    for llamada in cuerpo.get("llamadas") or []:
+        if llamada.get("fuera_de_ruta"):
+            marca = "RECHAZADA (fuera de ruta)"
+        elif llamada.get("error"):
+            marca = "error"
+        else:
+            marca = "ok"
+        print(
+            f"     [{llamada.get('ronda')}] {llamada.get('herramienta')}"
+            f"({llamada.get('argumentos')}) -> {marca}"
+        )
+        detalle = llamada.get("error") or llamada.get("resultado") or ""
+        if detalle:
+            print(f"         {detalle}")
+    print(f"  agente>  {cuerpo.get('respuesta')}")
+
+
+def cmd_trazas(a, contenedor: Contenedor) -> int:
+    """Lee la bitacora de trazas. No la produce: el agente la escribe desde
+    el proceso que atiende el chat (`servir_api` o `chat`), y esto es una
+    ventana sobre ese archivo -- por eso se puede correr en otra terminal,
+    en otra maquina con el archivo montado, o despues de que todo termino."""
+    ruta = contenedor.config.trazas_path
+    if not ruta.exists():
+        print(f"[i] todavia no hay trazas en {ruta}")
+        print("    se escriben solas cuando alguien chatea (servir_api, o el comando chat).")
+        return 0
+
+    def mostrar(linea: str) -> None:
+        linea = linea.strip()
+        if not linea:
+            return
+        try:
+            registro = json.loads(linea)
+        except json.JSONDecodeError:
+            return
+        if a.crudo:
+            print(linea)
+        else:
+            _imprimir_traza(registro.get("cuerpo") or {}, registro.get("ts", ""))
+
+    with ruta.open(encoding="utf-8") as f:
+        lineas = f.readlines()
+        for linea in lineas[-a.ultimas :] if a.ultimas > 0 else lineas:
+            mostrar(linea)
+        if not a.seguir:
+            return 0
+        print(f"\n[i] siguiendo {ruta} -- Ctrl+C para salir", flush=True)
+        try:
+            while True:
+                linea = f.readline()
+                if linea:
+                    mostrar(linea)
+                else:
+                    time.sleep(0.4)
+        except KeyboardInterrupt:
+            return 0
+
+
 def cmd_chat(a, contenedor: Contenedor) -> int:
     agente = construir_agente(contenedor)
     if agente is None:
@@ -480,6 +570,24 @@ def _armar_parser() -> argparse.ArgumentParser:
     px.add_argument("intencion_id")
 
     sub.add_parser("mandatos", help="mandatos emitidos y su consumo")
+    ptz = sub.add_parser(
+        "trazas",
+        help="lee la trazabilidad del agente: como llego a cada respuesta",
+    )
+    ptz.add_argument(
+        "--seguir", "-f", action="store_true",
+        help="se queda esperando turnos nuevos, como tail -f. Pensado para "
+        "una terminal aparte, al lado de la que corre servir_api",
+    )
+    ptz.add_argument(
+        "--ultimas", "-n", type=int, default=5,
+        help="cuantos turnos mostrar antes de seguir (0 = todos; default 5)",
+    )
+    ptz.add_argument(
+        "--crudo", action="store_true",
+        help="imprime el .jsonl tal cual, para pasarselo a jq",
+    )
+
     pc = sub.add_parser("chat", help="chatear con el agente (necesita DEEPSEEK_API_KEY)")
     pc.add_argument(
         "--mostrar-intencion",
@@ -509,6 +617,7 @@ def main() -> int:
         "estado": cmd_estado,
         "mandatos": cmd_mandatos,
         "chat": cmd_chat,
+        "trazas": cmd_trazas,
     }
     return comandos[a.cmd](a, contenedor)
 

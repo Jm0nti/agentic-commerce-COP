@@ -34,9 +34,21 @@ No firma propuestas ni resuelve confirmaciones -- eso lo sigue haciendo
 `app.py`, llamando directo a `contenedor.emitir_mandato`/`contenedor.
 ejecutar_intencion.retomar`, exactamente como `entradas/cli/__main__.py:
 cmd_firmar`/`cmd_retomar`. Este modulo solo le avisa despues a la
-conversacion correspondiente (`continuar`) para que el agente se entere y
+conversacion correspondiente (`reanudar`) para que el agente se entere y
 conteste -- la persona sigue siendo quien decide firmar o confirmar, nunca
 el agente ni este modulo.
+
+LA PAUSA, TIPADA (migracion a agentes, etapa 5)
+-------------------------------------------------
+Hasta la etapa 4, este modulo deducia "hay algo pendiente" volviendo a
+parsear el JSON que `armar_carrito`/`pagar` habian dejado en un mensaje de
+rol "tool" -- sabia de memoria la forma de esos resultados. Ahora el turno
+se detiene en un nodo explicito del grafo (`agente/grafo.py:espera_humana`)
+y deja una `PausaDelTurno` tipada en la conversacion; aca solo se la
+enriquece con los items del carrito para el popup, que si es presentacion.
+Y la vuelta -- avisarle al modelo que la persona ya decidio -- va por
+`reanudar(sesion_id, DecisionHumana)`, con el texto armado en un solo lugar
+(`agente/pausa.py`) en vez de en cuatro.
 
 DUEÑO DE LA SESION (multi-usuario, 4 de septiembre de 2026)
 ------------------------------------------------------------------
@@ -63,6 +75,7 @@ from queue import Queue
 from typing import Any
 
 from ...agente.conversacion import Agente, Conversacion
+from ...agente.pausa import DecisionHumana, PausaDelTurno, TipoDePausa
 from ...composicion.contenedor import Contenedor
 
 
@@ -134,14 +147,23 @@ class AlmacenDeSesiones:
             self._escanear_eventos(sesion)
             return respuesta
 
-    def continuar(self, sesion_id: str, texto: str) -> str:
-        """Lo mismo que `enviar_mensaje`, pero para el aviso que `app.py`
-        le manda a la conversacion despues de que la PERSONA firma una
-        propuesta o resuelve una confirmacion desde el popup -- nunca algo
-        que ella escribio en el cuadro de texto. Es el mismo mecanismo (un
-        mensaje mas, otra vuelta de `agente.turno`); el nombre distinto es
-        solo para que `app.py` deje clara la intencion en cada llamada."""
-        return self.enviar_mensaje(sesion_id, texto)
+    def pausa_de(self, sesion_id: str, titular_id: str | None = None) -> PausaDelTurno | None:
+        """Que quedo esperando a una persona en esta sesion, o `None`
+        (etapa 5). Es lo mismo que disparo el popup por SSE, disponible
+        tambien para quien pregunte directo."""
+        return self._obtener(sesion_id, titular_id).conversacion.pausa
+
+    def reanudar(self, sesion_id: str, decision: DecisionHumana) -> str:
+        """La persona resolvio la pausa: el turno sigue (etapa 5).
+
+        Reemplaza a los cuatro `continuar(sesion_id, <string armado a
+        mano>)` que habia en `app.py` y aca. El texto que lee el modelo lo
+        arma ahora `DecisionHumana.como_aviso()`, en un solo lugar."""
+        sesion = self._obtener(sesion_id)
+        with sesion.lock:
+            respuesta = self._agente.reanudar(sesion.conversacion, decision)
+            self._escanear_eventos(sesion)
+            return respuesta
 
     def eventos(self, sesion_id: str, titular_id: str | None = None) -> Queue:
         return self._obtener(sesion_id, titular_id).eventos
@@ -178,14 +200,17 @@ class AlmacenDeSesiones:
             sesion_id = self._pendientes.pop(intencion_id, None)
         if sesion_id is None:
             return None
-        aviso = (
-            f"(el webhook de la pasarela ya resolvio la intencion "
-            f"{intencion_id} de forma asincronica -- estado='{estado}'. "
-            "Confirma con consultar_estado antes de contarle a la persona "
-            "el resultado.)"
+        # Etapa 5: la cuarta decision externa, tipada como las otras tres --
+        # con la diferencia de que aca nadie hizo click (`automatica`).
+        decision = DecisionHumana(
+            tipo=TipoDePausa.CONFIRMACION_DE_COBRO,
+            aprobada=estado == "aprobado",
+            intencion_id=intencion_id,
+            estado=estado,
+            automatica=True,
         )
         try:
-            respuesta = self.continuar(sesion_id, aviso)
+            respuesta = self.reanudar(sesion_id, decision)
         except SesionDesconocida:
             return None
         self._obtener(sesion_id).eventos.put({"tipo": "mensaje_agente", "texto": respuesta})
@@ -203,38 +228,44 @@ class AlmacenDeSesiones:
         return sesion
 
     def _escanear_eventos(self, sesion: _Sesion) -> None:
+        """Etapa 5: el evento de "atencion requerida" sale de la pausa
+        TIPADA que dejo el turno (`agente/pausa.py`), no de volver a
+        parsear el JSON que devolvieron las herramientas. Este modulo ya no
+        sabe que forma tiene el resultado de `armar_carrito`: solo lo
+        enriquece con los items del carrito, que es presentacion y si es su
+        trabajo.
+
+        Lo que sigue recorriendo mensajes es otra cosa: un `pagar` que fue
+        directo a cobro y volvio 'PENDING' NO es una pausa (nadie tiene que
+        decidir nada), es un pago que la pasarela va a liquidar sola --
+        tiene su propio mecanismo, el sondeo."""
         mensajes = sesion.conversacion.mensajes
         for i in range(sesion.escaneado_hasta, len(mensajes)):
             m = mensajes[i]
-            if m.rol != "tool" or not m.contenido:
-                continue
-            evento: dict[str, Any] | None = None
-            if m.nombre_herramienta == "armar_carrito":
-                evento = self._evento_propuesta_pendiente(m.contenido)
-            elif m.nombre_herramienta == "pagar":
-                evento = self._evento_confirmacion_pendiente(m.contenido)
+            if m.rol == "tool" and m.contenido and m.nombre_herramienta == "pagar":
                 self._registrar_si_pendiente_de_pasarela(sesion, m.contenido)
-            if evento is not None:
-                sesion.eventos.put(evento)
         sesion.escaneado_hasta = len(mensajes)
 
-    def _evento_propuesta_pendiente(self, contenido_json: str) -> dict[str, Any] | None:
-        datos = json.loads(contenido_json)
-        propuesta = datos.get("propuesta")
-        if propuesta is None:
-            # `armar_carrito` puede devolver un error de dominio en vez del
-            # shape esperado (`Agente._ejecutar` traduce cualquier
-            # `ErrorDeDominio` a `{"tipo": ..., "mensaje": ...}`) -- no hay
-            # propuesta pendiente de la que avisar.
-            return None
-        carrito = self._contenedor.carritos.obtener(datos["carrito_id"])
+        pausa = sesion.conversacion.pausa
+        if pausa is None:
+            return
+        evento = (
+            self._evento_propuesta_pendiente(pausa)
+            if pausa.tipo is TipoDePausa.FIRMA_DE_PROPUESTA
+            else self._evento_confirmacion_pendiente(pausa)
+        )
+        if evento is not None:
+            sesion.eventos.put(evento)
+
+    def _evento_propuesta_pendiente(self, pausa: PausaDelTurno) -> dict[str, Any] | None:
+        carrito = self._contenedor.carritos.obtener(pausa.carrito_id)
         return {
             "tipo": "propuesta_pendiente",
-            "propuesta_id": propuesta["propuesta_id"],
-            "carrito_id": datos["carrito_id"],
-            "comercio_id": propuesta["comercio_id"],
-            "monto_max_cop": propuesta["monto_max_cop"],
-            "justificacion": propuesta["justificacion"],
+            "propuesta_id": pausa.propuesta_id,
+            "carrito_id": pausa.carrito_id,
+            "comercio_id": pausa.comercio_id,
+            "monto_max_cop": pausa.monto_cop,
+            "justificacion": pausa.justificacion,
             "items": [
                 {
                     "nombre": i.nombre,
@@ -256,14 +287,11 @@ class AlmacenDeSesiones:
         if datos.get("motivo") == "PENDING":
             self.registrar_pendiente(sesion.sesion_id, datos["intencion_id"])
 
-    def _evento_confirmacion_pendiente(self, contenido_json: str) -> dict[str, Any] | None:
-        datos = json.loads(contenido_json)
-        if not datos.get("esperando_confirmacion"):
-            return None
+    def _evento_confirmacion_pendiente(self, pausa: PausaDelTurno) -> dict[str, Any] | None:
         return {
             "tipo": "confirmacion_pendiente",
-            "intencion_id": datos["intencion_id"],
-            "mandato_id": datos["mandato_id"],
-            "carrito_id": datos["carrito_id"],
-            "motivo": datos.get("motivo", ""),
+            "intencion_id": pausa.intencion_id,
+            "mandato_id": pausa.mandato_id,
+            "carrito_id": pausa.carrito_id,
+            "motivo": pausa.motivo,
         }

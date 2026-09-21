@@ -91,15 +91,46 @@ DEEPSEEK_API_KEY=sk-...
 #   apagado  sin clasificador: el agente de la etapa 7 tal cual
 # AGORA_CLASIFICADOR=hibrido      # opcional, default hibrido
 
-# --- Documentacion de soporte (migracion a agentes, etapa 2) ---------------- #
-# Embeddings de OpenAI para que el nodo de soporte responda con fragmentos de
-# docs/soporte/. Opcional: sin la llave, soporte contesta sin documentacion y
-# el resto de la app no cambia. El chat sigue siendo DeepSeek; esta llave
-# solo embebe la documentacion y las preguntas de soporte. Ver
-# docs/etapa-2-agentes-soporte-rag-documental.md.
+# --- Embeddings: soporte y catalogo (migracion a agentes, etapas 2 y 4) ----- #
+# Embeddings de OpenAI, para DOS indices que nunca se mezclan:
+#   - la documentacion de soporte (docs/soporte/), etapa 2;
+#   - el catalogo de productos, etapa 4, como tercer peldano de
+#     buscar_productos cuando el match por nombre no encuentra nada
+#     ("algo para piel reseca").
+# Opcional y sin variable propia para cada uno: sin la llave, soporte contesta
+# sin documentacion y el catalogo se navega con el match estructurado de
+# siempre -- el resto de la app no cambia. El chat sigue siendo DeepSeek; esta
+# llave solo embebe documentacion, productos y consultas. Ver
+# docs/etapa-2-agentes-soporte-rag-documental.md y
+# docs/etapa-4-agentes-especializados-retrieval-hibrido.md.
 OPENAI_API_KEY=sk-...
 # AGORA_EMBEDDINGS_MODELO=text-embedding-3-small   # opcional
 # AGORA_SOPORTE_DOCUMENTOS=docs/soporte             # opcional; tiene que existir si hay llave
+
+# --- Trazabilidad del agente ------------------------------------------------ #
+# Una linea .jsonl por cada turno de chat, con la cadena completa de decisiones:
+# que clasifico el orquestador y con que confianza, que agente atendio, que
+# herramientas se le ofrecieron al modelo, cuales pidio, cuales se le RECHAZARON
+# por estar fuera de ruta, que documentacion se le inyecto y de que archivos,
+# cuantas rondas dio el loop y cuanto tardo.
+# Por defecto va al lado de AGORA_BITACORA (agora_datos/trazas.jsonl), en un
+# archivo APARTE de recibos.jsonl: ese es la evidencia del experimento de dinero
+# y no se mezcla con transcripciones de chat.
+# Se lee desde otra terminal:  python -m agora.entradas.cli trazas --seguir
+# Contiene lo que escribio la persona: tratarlo como transcripcion.
+# AGORA_TRAZAS=agora_datos/trazas.jsonl   # opcional
+
+# --- Orquestacion del turno (migracion a agentes, etapa 3) ------------------ #
+# Si el turno corre como grafo de LangGraph (orquestador -> trabajador -> fin)
+# o derecho, como en las etapas 1-2. Los dos modos hacen exactamente lo mismo:
+# los nodos del grafo llaman a los mismos metodos del agente, y hay una prueba
+# de equivalencia que lo verifica. Ver docs/etapa-3-agentes-grafo-langgraph.md.
+#   grafo    por el grafo. Exige `langgraph` instalado
+#            (pip install -r requirements.txt).
+#   directo  el agente de las etapas 1-2, sin grafo ni dependencia de
+#            LangGraph. El interruptor para una demo, o para un venv que
+#            todavia no instalo langgraph.
+# AGORA_ORQUESTACION=grafo        # opcional, default grafo
 
 # --- Firma del titular (etapa 5) -------------------------------------------- #
 # El par ed25519 que firma los mandatos, "igual que v1": si los archivos no

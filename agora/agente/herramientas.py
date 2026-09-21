@@ -233,7 +233,33 @@ _ESQUEMA_BUSCAR_PRODUCTOS = {
         "consulta": {
             "type": "string",
             "description": "Texto libre para filtrar. Vacio devuelve todo el "
-            "catalogo de ese comercio.",
+            "catalogo de ese comercio. Si nombrar el producto no encuentra "
+            "nada, describi la necesidad ('algo para piel reseca') y la "
+            "busqueda intenta por significado.",
+        },
+        # Etapa 4, decision 1: las reglas duras son parametros de la
+        # consulta, no algo que el modelo filtre despues leyendo la lista.
+        # Un filtro aplicado aca no se puede desobedecer; uno pedido en el
+        # prompt, si. El catalogo de herramientas NO cambia: `buscar_productos`
+        # sigue siendo la misma herramienta, con mas argumentos opcionales.
+        "solo_disponibles": {
+            "type": "boolean",
+            "description": "true devuelve unicamente productos en stock. "
+            "Usalo cuando la persona quiere comprar; sin el tambien vienen "
+            "los agotados, que sirven para informar pero no se pueden "
+            "agregar a un carrito.",
+        },
+        "precio_min_cop": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Precio minimo en pesos colombianos, inclusive.",
+        },
+        "precio_max_cop": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Precio maximo en pesos colombianos, inclusive. "
+            "Usalo cuando la persona da un presupuesto ('algo por menos de "
+            "50 mil') en vez de filtrar vos la lista completa.",
         },
     },
     "required": ["comercio_id"],

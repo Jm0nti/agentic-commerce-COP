@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 
 from agora.agente.conversacion import Conversacion
+from agora.agente.pausa import detectar_pausa
 from agora.entradas.api.sesiones import AlmacenDeSesiones
 from agora.puertos.modelo_lenguaje import Mensaje
 
@@ -30,7 +31,14 @@ class _AgenteFalso:
         conversacion.mensajes.append(Mensaje(rol="user", contenido=mensaje_usuario))
         conversacion.mensajes.extend(self.proximos_mensajes_tool)
         self.proximos_mensajes_tool = []
+        conversacion.pausa = detectar_pausa(conversacion.mensajes)
         return self.proxima_respuesta
+
+    def reanudar(self, conversacion: Conversacion, decision) -> str:
+        """Etapa 5: el contrato del agente crecio -- `AlmacenDeSesiones`
+        reanuda con una `DecisionHumana` tipada en vez de un string."""
+        conversacion.pausa = None
+        return self.turno(conversacion, decision.como_aviso())
 
 
 def _mensaje_pagar(motivo: str, intencion_id: str = "int_1") -> Mensaje:

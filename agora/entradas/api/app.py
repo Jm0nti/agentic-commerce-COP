@@ -13,22 +13,22 @@ QUE HACE QUE FIRMAR/CONFIRMAR SIGA SIENDO DECISION HUMANA
 --------------------------------------------------------------
 `agente/herramientas.py:PROHIBIDAS` le niega `firmar`/`retomar` al agente a
 nivel de catalogo de herramientas -- eso no cambia aca. Las rutas `POST
-/propuestas/{id}/firmar` y `POST /intenciones/{id}/retomar` no las llama el
-agente: las llama el navegador, cuando la PERSONA aprieta un boton en el
-popup. El agente nunca tiene una herramienta que las alcance; la persona
-las alcanza por HTTP en lugar de por otra terminal -- el mismo cambio
-estructural que se le explico al usuario antes de este commit, ahora
-implementado.
+/propuestas/{id}/firmar`, `POST /propuestas/{id}/rechazar` y `POST
+/intenciones/{id}/retomar` no las llama el agente: las llama el navegador,
+cuando la PERSONA aprieta un boton en el popup. El agente nunca tiene una
+herramienta que las alcance; la persona las alcanza por HTTP en lugar de
+por otra terminal -- el mismo cambio estructural que se le explico al
+usuario antes de este commit, ahora implementado.
 
 SSE SOLO DISPARA EL POPUP, NUNCA LO RESUELVE
 -------------------------------------------------
 `GET /sesiones/{id}/eventos` empuja `propuesta_pendiente`/
 `confirmacion_pendiente` para que el frontend sepa CUANDO mostrar un modal.
-La resolucion (firmar, confirmar, rechazar) viaja por la respuesta HTTP
-directa de `/firmar` o `/retomar` -- incluyendo el texto que el agente
-contesta al enterarse, en `respuesta_agente` -- para que el modal se cierre
-con una respuesta en la mano, sin depender de que llegue algo mas por el
-stream.
+La resolucion (firmar, rechazar la propuesta, confirmar o rechazar el
+cobro) viaja por la respuesta HTTP directa de `/firmar`, `/rechazar` o
+`/retomar` -- incluyendo el texto que el agente contesta al enterarse, en
+`respuesta_agente` -- para que el modal se cierre con una respuesta en la
+mano, sin depender de que llegue algo mas por el stream.
 
 ENROLAR UN MEDIO DE PAGO, AL MARGEN DE CUALQUIER CHAT
 ------------------------------------------------------------
@@ -71,6 +71,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from ...agente.conversacion import Agente, LimiteDeTurnosExcedido
+from ...agente.pausa import DecisionHumana, TipoDePausa
 from ...composicion.contenedor import Contenedor
 from ...dominio.comun.errores import (
     CredencialesInvalidas,
@@ -91,6 +92,10 @@ class _MensajeEntrante(BaseModel):
 
 
 class _FirmarEntrante(BaseModel):
+    sesion_id: str
+
+
+class _RechazarPropuestaEntrante(BaseModel):
     sesion_id: str
 
 
@@ -262,13 +267,19 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         except ErrorDeDominio as exc:
             raise HTTPException(status_code=400, detail=exc.mensaje) from exc
 
-        aviso = (
-            f"(la persona firmo la propuesta {propuesta_id} desde el popup. "
-            f"El mandato quedo con mandato_id={mandato.mandato_id}, "
-            f"carrito_id={carrito_id}. Continua el flujo de compra llamando a "
-            "pagar() con ese mandato_id y ese carrito_id.)"
+        # Etapa 5: la decision viaja tipada. El texto que lee el modelo lo
+        # arma `DecisionHumana.como_aviso()`, no esta ruta.
+        respuesta_agente = _reanudar_si_hay_sesion(
+            sesiones,
+            cuerpo.sesion_id,
+            DecisionHumana(
+                tipo=TipoDePausa.FIRMA_DE_PROPUESTA,
+                aprobada=True,
+                propuesta_id=propuesta_id,
+                carrito_id=carrito_id,
+                mandato_id=mandato.mandato_id,
+            ),
         )
-        respuesta_agente = _continuar_si_hay_sesion(sesiones, cuerpo.sesion_id, aviso)
         return {
             "mandato_id": mandato.mandato_id,
             "carrito_id": carrito_id,
@@ -277,6 +288,36 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
             "expira": mandato.expira_en.isoformat(timespec="seconds"),
             "respuesta_agente": respuesta_agente,
         }
+
+    @app.post("/propuestas/{propuesta_id}/rechazar")
+    def rechazar_propuesta(
+        propuesta_id: str,
+        cuerpo: _RechazarPropuestaEntrante,
+        titular_id: str = Depends(_requiere_titular),
+    ) -> dict[str, Any]:
+        """La persona rechazo la propuesta desde el popup ("Cancelar"), sin
+        firmarla. A diferencia de `firmar`, esto no emite ningun `Mandato`
+        (`contenedor.rechazar_propuesta`, ver su docstring): solo deja
+        constancia en la bitacora y le avisa a la conversacion, exactamente
+        igual que `retomar` ya hace con `aprueba=False` -- antes de esta
+        ruta, rechazar una propuesta armada por el agente no le llegaba a
+        la charla de ninguna forma: el chat se quedaba con el ultimo
+        mensaje sobre la propuesta, como si nada hubiera pasado."""
+        try:
+            contenedor.rechazar_propuesta(propuesta_id, titular_id)
+        except ErrorDeDominio as exc:
+            raise HTTPException(status_code=400, detail=exc.mensaje) from exc
+
+        respuesta_agente = _reanudar_si_hay_sesion(
+            sesiones,
+            cuerpo.sesion_id,
+            DecisionHumana(
+                tipo=TipoDePausa.FIRMA_DE_PROPUESTA,
+                aprobada=False,
+                propuesta_id=propuesta_id,
+            ),
+        )
+        return {"propuesta_id": propuesta_id, "respuesta_agente": respuesta_agente}
 
     @app.post("/intenciones/{intencion_id}/retomar")
     def retomar(
@@ -314,14 +355,19 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         if recibo.motivo == "PENDING" and sesiones is not None and cuerpo.sesion_id:
             sesiones.registrar_pendiente(cuerpo.sesion_id, intencion_id)
 
-        decision = "aprobo" if cuerpo.aprueba else "rechazo"
-        aviso = (
-            f"(la persona {decision} desde el popup la confirmacion pendiente de "
-            f"la intencion {intencion_id}. ejecutado={recibo.ejecutado}, "
-            f"motivo={recibo.motivo}. Confirma el estado con consultar_estado "
-            "antes de contarle a la persona el resultado.)"
+        respuesta_agente = _reanudar_si_hay_sesion(
+            sesiones,
+            cuerpo.sesion_id,
+            DecisionHumana(
+                tipo=TipoDePausa.CONFIRMACION_DE_COBRO,
+                aprobada=cuerpo.aprueba,
+                intencion_id=intencion_id,
+                mandato_id=cuerpo.mandato_id,
+                carrito_id=cuerpo.carrito_id,
+                estado=recibo.motivo,
+                ejecutado=recibo.ejecutado,
+            ),
         )
-        respuesta_agente = _continuar_si_hay_sesion(sesiones, cuerpo.sesion_id, aviso)
         return {
             "ejecutado": recibo.ejecutado,
             "motivo": recibo.motivo,
@@ -449,19 +495,22 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
     return app
 
 
-def _continuar_si_hay_sesion(
-    sesiones: AlmacenDeSesiones | None, sesion_id: str, aviso: str
+def _reanudar_si_hay_sesion(
+    sesiones: AlmacenDeSesiones | None, sesion_id: str, decision: DecisionHumana
 ) -> str | None:
-    """`firmar`/`retomar` pueden invocarse con un `sesion_id` que ya no
-    existe (el proceso se reinicio entre que se mostro el popup y que la
-    persona lo resolvio) -- eso no es motivo para que la accion misma
+    """`firmar`/`rechazar`/`retomar` pueden invocarse con un `sesion_id` que
+    ya no existe (el proceso se reinicio entre que se mostro el popup y que
+    la persona lo resolvio) -- eso no es motivo para que la accion misma
     falle: el mandato ya se firmo o el cobro ya se resolvio de verdad.
     Sin sesion para avisarle, el frontend simplemente no recibe un texto
-    del agente y muestra el resultado crudo."""
+    del agente y muestra el resultado crudo.
+
+    Etapa 5: recibe una `DecisionHumana` tipada en vez de un string que
+    cada ruta armaba a mano."""
     if sesiones is None:
         return None
     try:
-        return sesiones.continuar(sesion_id, aviso)
+        return sesiones.reanudar(sesion_id, decision)
     except SesionDesconocida:
         return None
     except (ErrorDeDominio, LimiteDeTurnosExcedido):
