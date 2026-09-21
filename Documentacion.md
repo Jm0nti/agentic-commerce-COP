@@ -608,95 +608,14 @@ comentada completa en `docs/variables-de-entorno.md`.
 | `AGORA_API_HOST` / `AGORA_API_PORT` | `scripts/servir_api.py` | `0.0.0.0` / `8002` | Host y puerto de la API web |
 | `AGORA_WEBHOOK_HOST` / `AGORA_WEBHOOK_PORT` | `scripts/servir_webhook_wompi.py` | `0.0.0.0` / `8001` | Host y puerto del receptor de webhook |
 
----
 
-## 18. Hallazgos relevantes encontrados en el código
-
-### 18.1 El primer cobro real lo detuvo el antifraude de Wompi, no el mandato
-
-19 de agosto de 2026: un cobro de 2.000-2.050 COP fue rechazado por
-`payment_method.afe_decision: "DECLINE"` — el motor antifraude propio de
-Wompi, que ni el comercio ni el titular pueden ver, configurar o auditar. De
-todos los controles del camino (mandato ed25519, consentimiento del titular,
-topes duros de la bóveda, 3DS), fue el único que actuó, y es el único que no
-está del lado del comercio. La causa probable: el perfil del pagador era
-indistinguible de fraude automatizado (correo en `example.com`, sin datos de
-cliente, comercio = pagador). Detalle completo en `docs/decline-afe.md`.
-
-### 18.2 Discrepancia en el tope duro por transacción de `boveda/` (v1) — hallazgo histórico, ya cerrado
-
-`boveda/nucleo.py` (líneas 46-47) definía, al momento de este hallazgo:
-
-```python
-LIMITE_DURO_TX_COP = 2_000_000
-LIMITE_DURO_DIA_COP = 100_000
-```
-
-Esto **no coincidía** con lo que documentaban el `README.md` original y
-`docs/flujo.md` (histórico), que describían un tope de **20.000 COP por
-transacción** — cien veces más permisivo de lo que la documentación
-describía como protección, sin evidencia en el repositorio de por qué había
-cambiado (podría haber sido una modificación puntual para una prueba con
-montos mayores que quedó sin revertir).
-
-La discrepancia nunca llegó a confirmarse ni corregirse mientras `boveda/`
-estuvo activo, y quedó cerrada de hecho cuando `boveda/` se retiró del
-repositorio (ver `docs/limpieza-v1-boveda.md`): no queda ningún `boveda.cli`
-que operar contra producción. `agora/dominio/pago/topes.py`, la única fuente
-de topes duros vigente, implementa 20.000 COP/tx y 100.000 COP/día,
-consistente con la documentación actual.
-
-### 18.3 `RegistroDeEstados` sin persistencia SQLite propia hasta la etapa 6
-
-Corregido durante la etapa 6 (`gap-chat-firma-mandato`): antes de esa etapa,
-`consultar_estado` solo veía lo que había pasado en el *mismo proceso*, así
-que un `retomar` corrido en otra terminal (siempre es el caso: nunca es
-herramienta del agente) dejaba al chat diciendo "esperando confirmación" para
-siempre aunque ya se hubiera resuelto. Ya tiene adaptador SQLite
-(`RegistroDeEstadosSQLite`), pero **solo se activa con
-`AGORA_PERSISTENCIA=sqlite`** — con el valor por defecto (`memoria`), el
-problema original vuelve a aparecer.
-
-### 18.4 Migración de fuentes de pago v1 → v2 — decisión cerrada, no se hizo
-
-Existió un script (`scripts/migrar_fuentes_a_sqlite.py`) para migrar
-`boveda/secretos/fuentes.json` a la tabla `medio_de_pago` de `agora/`: corría
-en modo dry-run por defecto y estaba probado contra datos de ejemplo, pero
-nunca se corrió contra los datos reales. Con la limpieza de `boveda/`
-(`docs/limpieza-v1-boveda.md`) la decisión se cerró en sentido contrario: el
-histórico de datos de v1 no es relevante para esta versión del proyecto, así
-que no se migra, y el script se retiró del repositorio junto con su prueba
-(`tests/test_migracion_fuentes.py`). Los medios de pago de `agora/` se
-enrolan de nuevo, vía `EnrolarMedio`.
-
-### 18.5 Multi-comercio: la correspondencia medio↔comercio no viaja dentro de la firma
-
-Desde el 1 de septiembre de 2026, `agora/` soporta varios comercios reales de
-Wompi en el mismo proceso (`docs/viabilidad-multi-comercio-wompi.md`). Un
-`payment_source_id` de Wompi queda atado al comercio que lo creó, así que
-`EmitirMandato` resuelve el medio vinculado a ESE comercio
-(`RepositorioMedios.vinculado_con`) antes de firmar, y nunca firma con un
-medio de otro comercio.
-
-Lo que esa garantía **no** hace es viajar dentro de la carga firmada del
-mandato (`Mandato.canonico()`) ni volver a chequearse en `EjecutarIntencion`
-al cobrar — `violaciones_contra` no tiene un
-`medio_vinculado_a_otro_comercio` entre sus violaciones. Es una decisión
-consciente, documentada a propósito (ver `docs/flujo-propuesta-mandato.md`,
-sección 6, y `docs/viabilidad-multi-comercio-wompi.md`, sección "Amarre
-medio → comercio"): la alternativa era un mandato v3 con `comercio_id`
-dentro de `MedioDePagoRef`, más robusto pero con más superficie (exigiría
-conservar el verificador v2, igual que se conserva el de v1). Se eligió la
-opción liviana porque `EmitirMandato` es el único punto del sistema que
-construye un `Mandato` de verdad — un bug en otra parte que armara uno a
-mano con el medio equivocado no lo detectaría este chequeo.
 
 ---
 
-## 19. Rieles de pago colombianos: por qué Wompi + Nequi
+## 18. Rieles de pago colombianos: por qué Wompi + Nequi
 
 Resumen de `docs/informe-viabilidad-pagos-agenticos-co.md`: el riel elegido es
-**Wompi en producción, Plan Avanzado Agregador, con fuentes de pago Nequi**.
+**Wompi en producción, con fuentes de pago Nequi**.
 Alternativas descartadas: Bold (no documenta cobro recurrente), ePayco
 (tokenización solo para tarjeta), Treli (envuelve Wompi por debajo, esconde lo
 que la PoC quiere observar), el API directo de Bancolombia (sin ningún
@@ -742,10 +661,28 @@ Pendiente o fuera de alcance a propósito:
 
 - Un motor de riesgo real más allá de las heurísticas fijas de
   `_senales_blandas` en `dominio/mandato/politica.py`.
-- Probar el segundo brazo del experimento (`--sin-mandato` /
-  `exigir_mandato=False`) contra Wompi real con un `APPROVED` de verdad —
-  mientras el antifraude de Wompi siga rechazando ambos brazos, el
-  experimento no mide el efecto del mandato, mide el del antifraude.
 - Meter la correspondencia medio↔comercio dentro de la carga firmada del
   mandato (mandato v3) en vez de garantizarla solo procedimentalmente al
-  firmar — ver 18.5.
+  firmar.
+
+  - La correspondencia medio↔comercio no viaja dentro de la firma
+
+    `agora/` soporta varios comercios reales de
+    Wompi en el mismo proceso (`docs/viabilidad-multi-comercio-wompi.md`). Un
+    `payment_source_id` de Wompi queda atado al comercio que lo creó, así que
+    `EmitirMandato` resuelve el medio vinculado a ESE comercio
+    (`RepositorioMedios.vinculado_con`) antes de firmar, y nunca firma con un
+    medio de otro comercio.
+
+    Lo que esa garantía **no** hace es viajar dentro de la carga firmada del
+    mandato (`Mandato.canonico()`) ni volver a chequearse en `EjecutarIntencion`
+    al cobrar — `violaciones_contra` no tiene un
+    `medio_vinculado_a_otro_comercio` entre sus violaciones. Es una decisión
+    consciente, documentada a propósito (ver `docs/flujo-propuesta-mandato.md`,
+    sección 6, y `docs/viabilidad-multi-comercio-wompi.md`, sección "Amarre
+    medio → comercio"): la alternativa era un mandato v3 con `comercio_id`
+    dentro de `MedioDePagoRef`, más robusto pero con más superficie (exigiría
+    conservar el verificador v2, igual que se conserva el de v1). Se eligió la
+    opción liviana porque `EmitirMandato` es el único punto del sistema que
+    construye un `Mandato` de verdad — un bug en otra parte que armara uno a
+    mano con el medio equivocado no lo detectaría este chequeo.
