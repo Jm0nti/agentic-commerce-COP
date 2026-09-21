@@ -44,10 +44,24 @@ from ....dominio.catalogo.modelo import Producto
 from ....puertos.recuperacion import ProveedorDeEmbeddings
 
 # Coseno minimo para considerar que un producto tiene algo que ver con la
-# consulta. Sin calibrar contra embeddings reales (ver el documento de la
-# etapa 4): es un piso para no devolver cualquier cosa cuando la consulta no
-# se parece a nada del catalogo, no un umbral fino.
-PARECIDO_MINIMO_POR_DEFECTO = 0.25
+# consulta. MEDIDO contra OpenAI real el 19 de septiembre de 2026
+# (`scripts/validar_con_modelos_reales.py`, catalogo semilla de 24 productos,
+# `text-embedding-3-small`): consultas ajenas al catalogo ("un tractor
+# agricola usado", "clases de piano") tocaron techo en 0,288; necesidades que
+# el catalogo SI satisface arrancaron en 0,333.
+#
+# EL PISO NO ALCANZA, Y ESO ES UN HALLAZGO
+# ------------------------------------------
+# La misma medicion mostro que una necesidad PLAUSIBLE que el catalogo no
+# puede satisfacer ("algo para la piel reseca", contra un catalogo de
+# confites y papeleria) saca ~0,34 -- MAS que una consulta absurda. Ningun
+# umbral separa "no hay match" de "hay un match debil": a 0,31 el modelo
+# recibe una Chocolatina como respuesta a una crema. La defensa de verdad es
+# que este peldano solo corre cuando el estructurado no encontro nada, y que
+# la instruccion del nodo le pide al modelo no inventar. Ver
+# `docs/arquitectura-agentes/etapa-4-agentes-especializados-retrieval-
+# hibrido.md`, seccion de validacion.
+PARECIDO_MINIMO_POR_DEFECTO = 0.31
 LIMITE_POR_DEFECTO = 5
 
 

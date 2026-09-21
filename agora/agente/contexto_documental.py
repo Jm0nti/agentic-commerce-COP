@@ -36,10 +36,15 @@ from ..puertos.recuperacion import BuscadorDocumental, FragmentoRecuperado
 from .contexto import ContextoInyectado
 
 LIMITE_POR_DEFECTO = 4
-# Similitud coseno minima. Sin calibrar contra OpenAI real (ver
-# docs/etapa-2-agentes-soporte-rag-documental.md): es un piso para descartar
-# lo claramente ajeno, no un umbral fino.
-PUNTAJE_MINIMO_POR_DEFECTO = 0.25
+# Similitud coseno minima. MEDIDO contra OpenAI real el 19 de septiembre de
+# 2026 (`scripts/validar_con_modelos_reales.py`, corpus de 24 fragmentos,
+# `text-embedding-3-small`): las preguntas que el corpus SI contesta sacaron
+# >= 0,600 y las ajenas <= 0,255. El punto medio es 0,43.
+#
+# Antes era 0,25, elegido a ojo en la etapa 2, y dejaba pasar basura: "como
+# cambio una llanta" puntuaba 0,255 contra un fragmento de "como funciona una
+# compra" y se le inyectaba al modelo como documentacion pertinente.
+PUNTAJE_MINIMO_POR_DEFECTO = 0.43
 MAX_CARACTERES_POR_DEFECTO = 4000
 PALABRAS_PARA_CONSULTA_SUELTA = 5
 

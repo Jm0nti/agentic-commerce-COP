@@ -1,3 +1,12 @@
+# Levantar api
 python scripts/servir_api.py
- python scripts/servir_webhook_wompi.py
+
+#Webhook
+python scripts/servir_webhook_wompi.py
+
+# Conectar tunel ngrok
 ngrok http --url https://rhyme-armless-private.ngrok-free.dev 8001
+
+
+# Validar modelos
+python scripts/validar_con_modelos_reales.py

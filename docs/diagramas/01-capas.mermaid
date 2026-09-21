@@ -1,16 +1,25 @@
+---
+title: Las capas, despues de la migracion a agentes (etapas 1-5)
+---
 flowchart TB
     subgraph ENTRADAS["entradas/ · adaptadores primarios"]
         direction LR
-        CLI["cli/<br/>operacion y experimentos"]
+        CLI["cli/<br/>operacion · chat · trazas"]
         API["api/<br/>FastAPI · REST + SSE"]
         WH["webhooks/<br/>transaction.updated (por comercio_id)"]
     end
 
-    subgraph AGENTE["agente/ · FRONTERA DURA"]
+    subgraph AGENTE["agente/ · FRONTERA DURA · no importa aplicacion/, adaptadores/ ni entradas/"]
         direction LR
         HERR["herramientas.py<br/>lo que el LLM puede llamar"]
         CONV["conversacion.py<br/>el loop de turnos"]
         POL["politica.py<br/>system prompt y limites"]
+        CLAS["clasificacion/<br/>reglas · modelo · cadena<br/><small>etapa 1</small>"]
+        NOD["nodos.py · intencion.py<br/>lista blanca por ruta<br/><small>etapa 1</small>"]
+        DOC["contexto_documental.py<br/><small>etapa 2 · piso 0,43 medido</small>"]
+        GRA["grafo.py · agentes.py<br/>orquestador + 7 agentes<br/><small>etapas 3-4</small>"]
+        PAU["pausa.py<br/>PausaDelTurno · DecisionHumana<br/><small>etapa 5</small>"]
+        TRZ["traza.py<br/>un evento por turno"]
     end
 
     subgraph APP["aplicacion/ · casos de uso"]
@@ -19,7 +28,7 @@ flowchart TB
         EM["EmitirMandato"]
         EN["EnrolarMedio"]
         CE["ConciliarEvento"]
-        NC["NavegarCatalogo"]
+        NC["NavegarCatalogo<br/><small>3 peldanos de retrieval</small>"]
     end
 
     subgraph PUERTOS["puertos/ · interfaces · typing.Protocol"]
@@ -29,6 +38,9 @@ flowchart TB
         PR["LibroDeConsumo<br/>RepositorioMandatos<br/>RepositorioMedios (+comercio_id)"]
         PC["RepositorioCatalogo"]
         PL["ModeloDeLenguaje"]
+        POR["CompiladorDeGrafos<br/>PausaRequerida<br/><small>etapas 3 y 5</small>"]
+        PRE["BuscadorDocumental<br/>ProveedorDeEmbeddings<br/><small>etapa 2</small>"]
+        PBP["BuscadorSemanticoDeProductos<br/>FiltrosDeProducto<br/><small>etapa 4</small>"]
         PS["Reloj · GeneradorIds<br/>Firmante · Bitacora"]
     end
 
@@ -40,7 +52,7 @@ flowchart TB
         CAT["Comercio · Producto<br/>Carrito"]
     end
 
-    subgraph ADAP["adaptadores/ · adaptadores secundarios"]
+    subgraph ADAP["adaptadores/ · adaptadores secundarios · los unicos que importan librerias de terceros"]
         direction LR
         ARP["pasarelas/registro<br/>RegistroDePasarelas: por comercio_id"]
         AW["pasarelas/wompi<br/>dinero real, credenciales por comercio"]
@@ -49,13 +61,19 @@ flowchart TB
         AM["persistencia/memoria"]
         AD["llm/deepseek<br/>V4-Pro · V4-Flash"]
         AC["catalogo/semilla"]
+        AO["orquestacion/con_langgraph<br/>el UNICO que importa langgraph"]
+        AR["recuperacion/langchain_en_memoria<br/>indice documental"]
+        AE["embeddings/proveedor_openai<br/>text-embedding-3-small"]
+        ABP["busqueda_productos/semantico_en_memoria<br/>indice de catalogo · coseno numpy"]
     end
 
-    COMP["composicion/contenedor.py<br/>composition root · el unico que lee el entorno"]
+    COMP["composicion/contenedor.py · composicion/agente.py<br/>composition root · el unico que lee el entorno y arma el grafo"]
 
     ENTRADAS --> APP
     AGENTE -->|"solo mandato_id opacos"| APP
     AGENTE -.->|usa| PL
+    AGENTE -.->|usa| POR
+    AGENTE -.->|usa| PRE
     APP --> PUERTOS
     APP --> DOM
     PUERTOS --> DOM
@@ -65,7 +83,7 @@ flowchart TB
     COMP -->|inyecta| APP
     COMP -->|construye| ADAP
 
-    AGENTE x-.-x|"prohibido: sin credenciales<br/>test_fronteras.py falla el build"| ADAP
+    AGENTE x-.-x|"prohibido: sin credenciales, sin langgraph, sin langchain<br/>test_fronteras.py falla el build"| ADAP
 
     classDef dominio fill:#1e3a5f,stroke:#4a90d9,color:#e8f0f8
     classDef puerto fill:#3d2f5c,stroke:#9b7fc4,color:#f0e8f8
@@ -75,8 +93,8 @@ flowchart TB
     classDef raiz fill:#5c2f3d,stroke:#d96f8f,color:#f8e8ee
 
     class MAN,DIN,TOP,CAT dominio
-    class PP,PSEL,PR,PC,PL,PS puerto
-    class ARP,AW,AS,AQ,AM,AD,AC adaptador
-    class HERR,CONV,POL agente
+    class PP,PSEL,PR,PC,PL,POR,PRE,PBP,PS puerto
+    class ARP,AW,AS,AQ,AM,AD,AC,AO,AR,AE,ABP adaptador
+    class HERR,CONV,POL,CLAS,NOD,DOC,GRA,PAU,TRZ agente
     class CLI,API,WH entrada
     class COMP raiz

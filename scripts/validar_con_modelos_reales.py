@@ -125,16 +125,31 @@ PREGUNTAS_AJENAS = (
 # 3. Catalogo: necesidades descritas, no nombres de producto
 # --------------------------------------------------------------------------- #
 
+# El catalogo semilla son 24 productos de DOS categorias: confites y
+# papeleria. Las necesidades tienen que poder satisfacerse con eso -- en la
+# primera medicion (19 sep 2026) dos de ellas no podian ("algo para tomar
+# frio", "algo para la piel reseca") y contaminaron el piso sugerido.
 NECESIDADES = (
     "algo dulce para un antojo",
-    "algo para tomar frio",
-    "un regalo barato",
-    "algo para la piel reseca",
     "algo salado para picar",
+    "necesito algo para escribir",
+    "que me sirve para marcar lo importante de un texto",
+    "algo para borrar lo que escribi mal",
 )
+# Otro dominio: no existe ni deberia existir en este catalogo.
 NECESIDADES_AJENAS = (
     "un tractor agricola usado",
     "clases de piano",
+)
+# PLAUSIBLES en una tienda, pero este catalogo no las puede satisfacer. Se
+# miden aparte porque se comportan distinto: puntuan MAS que las ajenas (una
+# crema se parece mas a una chocolatina que un tractor), asi que ningun piso
+# las separa de un match debil. No entran en el calculo del umbral -- lo que
+# miden es cuanto relleno se cuela cuando la respuesta correcta es "no tengo
+# nada de eso".
+NECESIDADES_SIN_MATCH = (
+    "algo para la piel reseca",
+    "algo para tomar frio",
 )
 
 
@@ -298,23 +313,27 @@ def medir_catalogo(contenedor, salida: dict[str, Any]) -> None:
     dentro: list[float] = []
     fuera: list[float] = []
     detalle: list[dict[str, Any]] = []
-    for necesidad, esperada_relevante in (
-        [(n, True) for n in NECESIDADES] + [(n, False) for n in NECESIDADES_AJENAS]
+    sin_match: list[float] = []
+    for necesidad, grupo in (
+        [(n, "necesidad") for n in NECESIDADES]
+        + [(n, "ajena") for n in NECESIDADES_AJENAS]
+        + [(n, "sin match") for n in NECESIDADES_SIN_MATCH]
     ):
         try:
             puntuados = buscador.puntuar(necesidad, productos)[:4]
         except Exception as exc:  # noqa: BLE001 -- ver _fallo()
             _fallo(necesidad, exc, detalle)
             continue
-        etiqueta = "necesidad" if esperada_relevante else "AJENA    "
-        print(f"  [{etiqueta}] {necesidad}")
+        print(f"  [{grupo:<9}] {necesidad}")
         for producto, parecido in puntuados:
             print(f"      {parecido:.3f}  {producto.nombre[:40]:<42} "
                   f"{producto.categoria}")
         if puntuados:
-            (dentro if esperada_relevante else fuera).append(puntuados[0][1])
+            {"necesidad": dentro, "ajena": fuera, "sin match": sin_match}[grupo].append(
+                puntuados[0][1]
+            )
         detalle.append({
-            "necesidad": necesidad, "relevante": esperada_relevante,
+            "necesidad": necesidad, "grupo": grupo,
             "top": [{"producto": p.nombre, "parecido": round(v, 4)} for p, v in puntuados],
         })
 
@@ -325,15 +344,25 @@ def medir_catalogo(contenedor, salida: dict[str, Any]) -> None:
               f"(hoy {PARECIDO_MINIMO_POR_DEFECTO})")
         print("     en agora/adaptadores/busqueda_productos/"
               "semantico_en_memoria/buscador.py")
-    print(
-        "\n  Ojo con el juicio: que el top sea 'razonable' no alcanza. Lo que "
-        "importa\n  es que las necesidades saquen puntajes CLARAMENTE mas "
-        "altos que las ajenas.\n  Si no, el piso no separa nada y el modelo va "
-        "a recibir relleno."
-    )
+    if sin_match:
+        print(
+            f"\n  Necesidades SIN MATCH posible en este catalogo: tope "
+            f"{max(sin_match):.3f}."
+        )
+        if sugerido is not None and max(sin_match) >= sugerido:
+            print(
+                "  >>> QUEDAN POR ENCIMA DEL PISO SUGERIDO. Ningun umbral separa\n"
+                "      'no hay match' de 'hay un match debil': el modelo va a\n"
+                "      recibir un producto cualquiera como respuesta a algo que el\n"
+                "      catalogo no vende. Lo que contiene el daño no es el piso --\n"
+                "      es que el peldano semantico solo corre cuando el\n"
+                "      estructurado fallo, y que la instruccion del nodo le pide al\n"
+                "      modelo no inventar."
+            )
     salida["catalogo"] = {
         "piso_actual": PARECIDO_MINIMO_POR_DEFECTO, "piso_sugerido": sugerido,
-        "razon": razon, "detalle": detalle,
+        "razon": razon, "tope_sin_match": max(sin_match) if sin_match else None,
+        "detalle": detalle,
     }
 
 

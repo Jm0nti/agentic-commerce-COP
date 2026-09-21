@@ -271,19 +271,6 @@ apagaría también la protección del dinero real.
 | `.gitignore` | Qué queda fuera del control de versiones: el `.env`, la carpeta `agora_datos/` (bitácora + base SQLite + llave de firma), y los archivos sueltos de fuentes de pago o recibos. |
 | `requirements.txt` | Dependencias de Python (`fastapi`, `httpx`, `uvicorn`, `cryptography`, `pytest`, `python-dotenv`, `openai`). |
 
-## Antes de tocar producción
-
-- **Avisar al equipo de Wompi.** Un comercio cobrándose a sí mismo en bucle es
-  el patrón que dispara su monitoreo antifraude; que congelen la cuenta a
-  mitad del experimento cuesta semanas.
-- **Presupuestar la comisión** (2,65 % + $700 + IVA por transacción aprobada).
-  En un circuito cerrado, cada vuelta pierde el fee — con cobros de pocos
-  miles de pesos, la comisión puede superar el monto.
-- **Nequi antes que tarjeta**: cero superficie de datos de tarjeta,
-  consentimiento observable por push, revocación en un comando.
-- El primer cobro real de este proyecto (2.000-2.050 COP) fue **rechazado por
-  el motor antifraude de Wompi**, no por el mandato ni por falta de fondos —
-  ver `docs/decline-afe.md` y la sección "Hallazgos" de `Documentacion.md`.
 
 ## Qué prueba esto, y qué no
 
