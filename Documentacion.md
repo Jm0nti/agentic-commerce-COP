@@ -1,13 +1,8 @@
 # Documentación técnica
 
-Estado del código al 3 de septiembre de 2026, después de la etapa 7 (chat con
-firma integrada en una sola pestaña) y de agregar soporte multi-comercio
-(varios comercios reales de Wompi en el mismo proceso, ver
-`docs/viabilidad-multi-comercio-wompi.md`). Este documento complementa al
-`README.md`
+Este documento complementa al `README.md`
 (que explica qué es el proyecto y cómo correrlo) con el detalle de cada módulo,
-cómo se integran entre sí, y los hallazgos relevantes que se fueron
-encontrando en el camino.
+cómo se integran entre sí y posibles implementaciones a futuro.
 
 ---
 
