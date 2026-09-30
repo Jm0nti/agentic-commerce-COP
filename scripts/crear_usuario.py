@@ -37,11 +37,15 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-RAIZ_REPO = Path(__file__).resolve().parent.parent
-if str(RAIZ_REPO) not in sys.path:
-    sys.path.insert(0, str(RAIZ_REPO))
+_REPO = Path(__file__).resolve().parents[1]  # solo para sys.path
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
 
-from agora.composicion.configuracion import ConfiguracionInvalida, leer_configuracion  # noqa: E402
+from agora.composicion.configuracion import (  # noqa: E402
+    RAIZ_REPO,
+    ConfiguracionInvalida,
+    leer_configuracion,
+)
 from agora.composicion.contenedor import construir  # noqa: E402
 from agora.dominio.comun.errores import NombreDeUsuarioYaExiste  # noqa: E402
 

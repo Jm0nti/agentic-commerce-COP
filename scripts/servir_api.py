@@ -41,17 +41,17 @@ import os
 import sys
 from pathlib import Path
 
-RAIZ_REPO = Path(__file__).resolve().parent.parent
-if str(RAIZ_REPO) not in sys.path:
+_REPO = Path(__file__).resolve().parents[1]  # solo para sys.path
+if str(_REPO) not in sys.path:
     # Para poder correr `python scripts/servir_api.py` directo, sin
     # depender de que el paquete este instalado o de que se invoque con
     # `python -m` (mismo patron que `scripts/servir_webhook_wompi.py`).
-    sys.path.insert(0, str(RAIZ_REPO))
+    sys.path.insert(0, str(_REPO))
 
 import uvicorn  # noqa: E402
 
 from agora.composicion.agente import construir_agente  # noqa: E402
-from agora.composicion.configuracion import leer_configuracion  # noqa: E402
+from agora.composicion.configuracion import RAIZ_REPO, leer_configuracion  # noqa: E402
 from agora.composicion.contenedor import construir  # noqa: E402
 from agora.entradas.api.app import crear_app  # noqa: E402
 from agora.entradas.api.sondeo_pagos import SondeoDePagosPendientes  # noqa: E402

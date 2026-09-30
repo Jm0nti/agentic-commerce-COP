@@ -44,3 +44,6 @@ docs/arquitectura-agentes/
 
 
 Claude outputs/
+# pip install -e .
+*.egg-info/
+build/

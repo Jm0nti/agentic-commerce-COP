@@ -119,7 +119,22 @@ from ..adaptadores.pasarelas.wompi.config import ConfiguracionWompi
 from ..adaptadores.pasarelas.wompi.config import ConfiguracionInvalida as ConfiguracionWompiInvalida
 from ..dominio.pago.modelo import Ambiente
 
-RAIZ_REPO = Path(__file__).resolve().parent.parent.parent
+
+
+def _raiz_del_repo() -> Path:
+    """La carpeta que tiene `pyproject.toml`, subiendo desde este archivo.
+
+    Por marcador y no por `parent.parent.parent`: el refactor a la Clean
+    Architecture de Bancolombia mueve este modulo, y una raiz mal contada no
+    falla -- apunta `agora.db` a otra carpeta y SQLite crea ahi una base
+    vacia sin avisar (roadmap, riesgo R4)."""
+    for carpeta in Path(__file__).resolve().parents:
+        if (carpeta / "pyproject.toml").is_file():
+            return carpeta
+    raise RuntimeError("no se encontro pyproject.toml subiendo desde " + __file__)
+
+
+RAIZ_REPO = _raiz_del_repo()
 BITACORA_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "recibos.jsonl"
 NOMBRE_DE_TRAZAS = "trazas.jsonl"
 SQLITE_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "agora.db"

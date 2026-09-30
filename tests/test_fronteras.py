@@ -18,6 +18,36 @@ import pytest
 
 RAIZ = Path(__file__).resolve().parent.parent / "agora"
 
+# Ruta (posix, relativa a agora/) -> capa. La capa de un archivo, y la de un
+# import, sale de esta tabla por el prefijo MAS LARGO que coincida -- no del
+# primer segmento de la ruta. Cuando el refactor a la Clean Architecture de
+# Bancolombia mueva carpetas (evolucion-refactor/, Fase 2 en adelante), lo
+# que cambia es esta tabla; y un archivo que no aparezca aca hace fallar
+# `test_todo_modulo_tiene_capa` en vez de quedar sin reglas.
+CAPAS: dict[str, str] = {
+    "__init__.py": "raiz",
+    "dominio": "dominio",
+    "puertos": "puertos",
+    "aplicacion": "aplicacion",
+    "agente": "agente",
+    "adaptadores": "adaptadores",
+    "entradas": "entradas",
+    "composicion": "composicion",
+}
+
+# Contra el falso verde: si un movimiento deja una capa vacia, todas sus
+# reglas pasan sin mirar nada. Minimos = conteo del 30 sep 2026. Bajar uno
+# tiene que ser una decision, no un accidente.
+MINIMO_DE_MODULOS_POR_CAPA: dict[str, int] = {
+    "dominio": 10,
+    "puertos": 11,
+    "aplicacion": 11,
+    "agente": 16,
+    "adaptadores": 61,
+    "entradas": 10,
+    "composicion": 4,
+}
+
 # quien -> lo que NO puede importar
 REGLAS: dict[str, tuple[str, ...]] = {
     # El nucleo no sabe que existe el mundo exterior.
@@ -137,8 +167,18 @@ def _imports(archivo: Path, raiz: Path = RAIZ) -> list[str]:
     return fuera
 
 
-def _capa(archivo: Path, raiz: Path = RAIZ) -> str:
-    return archivo.relative_to(raiz).parts[0]
+def _capa_de(ruta: str) -> str | None:
+    """Capa de un archivo ('agente/grafo.py') o de un modulo importado
+    ('agora.agente.grafo' o el relativo ya normalizado 'agente.grafo').
+    `None` para lo que no es de agora/ (terceros, stdlib)."""
+    if not ruta.endswith(".py"):
+        ruta = ruta.removeprefix("agora.").replace(".", "/")
+    coinciden = [p for p in CAPAS if ruta == p or ruta.startswith(p + "/")]
+    return CAPAS[max(coinciden, key=len)] if coinciden else None
+
+
+def _capa(archivo: Path, raiz: Path = RAIZ) -> str | None:
+    return _capa_de(archivo.relative_to(raiz).as_posix())
 
 
 def _violaciones_de_dependencia(archivo: Path, raiz: Path = RAIZ) -> list[str]:
@@ -146,9 +186,7 @@ def _violaciones_de_dependencia(archivo: Path, raiz: Path = RAIZ) -> list[str]:
     prohibidas = REGLAS.get(capa, ())
     ofensas = []
     for imp in _imports(archivo, raiz):
-        primero = imp.split(".")[0]
-        # tanto `agora.adaptadores...` como el relativo ya normalizado
-        objetivo = imp.split(".")[1] if primero == "agora" else primero
+        objetivo = _capa_de(imp)
         if objetivo in prohibidas:
             ofensas.append(
                 f"{archivo.relative_to(raiz.parent)} (capa '{capa}') importa "
@@ -208,6 +246,39 @@ def test_capas_puras_sin_infraestructura(archivo: Path) -> None:
             )
 
 
+# Lo que el agente no puede tocar ni como interfaz: los casos de uso, los
+# adaptadores, y los puertos de pasarela, firma, repositorios (llaves, medios
+# de pago) y autenticacion. Antes se miraba si el import contenia la palabra
+# "pasarela" y no "puertos" -- una regla que un renombre de carpeta apaga sin
+# que ninguna prueba se entere.
+PUERTOS_VEDADOS_AL_AGENTE = (
+    "puertos.pasarela",
+    "puertos.firma",
+    "puertos.repositorios",
+    "puertos.autenticacion",
+)
+
+
+def _alcanza_pagos(importado: str) -> bool:
+    return _capa_de(importado) in ("aplicacion", "adaptadores") or any(
+        _es_modulo(importado, p) for p in PUERTOS_VEDADOS_AL_AGENTE
+    )
+
+
+def test_todo_modulo_tiene_capa() -> None:
+    sin_capa = [p.relative_to(RAIZ).as_posix() for p in _modulos() if _capa(p) is None]
+    assert not sin_capa, "archivos fuera de CAPAS, sin ninguna regla:\n  " + "\n  ".join(sin_capa)
+
+
+@pytest.mark.parametrize("capa", sorted(MINIMO_DE_MODULOS_POR_CAPA))
+def test_ninguna_capa_queda_vacia(capa: str) -> None:
+    n = sum(1 for p in _modulos() if _capa(p) == capa)
+    assert n >= MINIMO_DE_MODULOS_POR_CAPA[capa], (
+        f"la capa '{capa}' tiene {n} modulos (minimo {MINIMO_DE_MODULOS_POR_CAPA[capa]}): "
+        "si se movieron, actualizar CAPAS; si no, sus reglas no estan mirando nada"
+    )
+
+
 def test_el_agente_no_alcanza_ninguna_pasarela() -> None:
     """La frontera de la PoC, dicha una vez mas y sin parametrizar.
 
@@ -220,7 +291,7 @@ def test_el_agente_no_alcanza_ninguna_pasarela() -> None:
         if _capa(archivo) != "agente":
             continue
         for imp in _imports(archivo):
-            if "pasarela" in imp and "puertos" not in imp:
+            if _alcanza_pagos(imp):
                 ofensas.append(f"{archivo.name}: {imp}")
     assert not ofensas, (
         "El agente alcanza una pasarela de pagos:\n  " + "\n  ".join(ofensas)
@@ -261,12 +332,19 @@ def test_los_modulos_de_la_migracion_estan_bajo_las_reglas_de_su_capa(relativo: 
 
 def _es_modulo(importado: str, prefijo: str) -> bool:
     """`adaptadores.x...` o `agora.adaptadores.x...` -- no `langchain_core.x`."""
+    base = RAIZ / prefijo.replace(".", "/")
+    assert base.is_dir() or base.with_suffix(".py").is_file(), (
+        f"una regla apunta a '{prefijo}', que ya no existe en agora/: si se "
+        "movio, actualizar la regla -- si no, compara contra nada y pasa siempre"
+    )
     sin_raiz = importado[len("agora."):] if importado.startswith("agora.") else importado
     return sin_raiz == prefijo or sin_raiz.startswith(prefijo + ".")
 
 
 def _modulos_bajo(prefijo: str) -> list[Path]:
-    return [p for p in _modulos() if p.relative_to(RAIZ).as_posix().startswith(prefijo)]
+    encontrados = [p for p in _modulos() if p.relative_to(RAIZ).as_posix().startswith(prefijo)]
+    assert encontrados, f"ningun modulo bajo '{prefijo}': si se movio, actualizar la regla"
+    return encontrados
 
 
 def test_el_indice_documental_nunca_se_mezcla_con_el_catalogo() -> None:
@@ -404,7 +482,7 @@ def test_los_agentes_especializados_no_alcanzan_ninguna_pasarela() -> None:
     exactamente el modulo donde un import de mas seria peor."""
     ofensas = [
         i for i in _imports(RAIZ / "agente" / "agentes.py")
-        if "pasarela" in i or _es_modulo(i, "aplicacion") or _es_modulo(i, "adaptadores")
+        if _alcanza_pagos(i)
     ]
 
     assert not ofensas, "agente/agentes.py cruza una frontera:\n  " + "\n  ".join(ofensas)
@@ -436,7 +514,7 @@ def test_la_pausa_no_alcanza_ningun_caso_de_uso_ni_pasarela() -> None:
     `EmitirMandato`, el agente estaria a un import de firmar solo."""
     ofensas = [
         i for i in _imports(RAIZ / "agente" / "pausa.py")
-        if _es_modulo(i, "aplicacion") or _es_modulo(i, "adaptadores") or "pasarela" in i
+        if _alcanza_pagos(i)
     ]
 
     assert not ofensas, "agente/pausa.py cruza una frontera:\n  " + "\n  ".join(ofensas)
@@ -601,3 +679,35 @@ def test_el_detector_atrapa_importaciones_dinamicas(tmp_path: Path) -> None:
         tmp_path, "agente/intruso.py", 'p = __import__("agora.adaptadores.pasarelas.wompi")\n',
     )
     assert _importaciones_dinamicas(archivo)
+
+
+@pytest.mark.parametrize(
+    "importado",
+    [
+        "puertos.pasarela",
+        "agora.puertos.firma",
+        "puertos.repositorios",
+        "agora.puertos.autenticacion",
+        "adaptadores.pasarelas.wompi",
+        "agora.aplicacion.ejecutar_intencion",
+    ],
+)
+def test_el_detector_atrapa_al_agente_alcanzando_pagos(importado: str) -> None:
+    """Incluye lo que la regla vieja ("pasarela" en el nombre y no "puertos")
+    dejaba pasar: el puerto de la pasarela y el de firma."""
+    assert _alcanza_pagos(importado)
+
+
+@pytest.mark.parametrize("importado", ["puertos.modelo_lenguaje", "agora.puertos.sistema", "json"])
+def test_el_detector_deja_al_agente_usar_sus_puertos(importado: str) -> None:
+    assert not _alcanza_pagos(importado)
+
+
+def test_el_detector_atrapa_un_archivo_sin_capa(tmp_path: Path) -> None:
+    raiz, archivo = _agora_de_mentira(tmp_path, "capa_nueva/intruso.py", "import os\n")
+    assert _capa(archivo, raiz) is None
+
+
+def test_el_detector_atrapa_una_regla_que_apunta_a_un_modulo_que_no_existe() -> None:
+    with pytest.raises(AssertionError, match="ya no existe"):
+        _es_modulo("agora.dominio.x", "dominio.carpeta_que_se_movio")

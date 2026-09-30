@@ -73,7 +73,6 @@ import json
 import os
 import sys
 import time
-from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -82,10 +81,8 @@ from ...dominio.comun.errores import ErrorDeDominio
 from ...dominio.mandato.modelo import Intencion
 from ...dominio.pago.modelo import MedioDePagoRef, Proveedor
 from ...composicion.agente import construir_agente
-from ...composicion.configuracion import ConfiguracionInvalida, leer_configuracion
+from ...composicion.configuracion import RAIZ_REPO, ConfiguracionInvalida, leer_configuracion
 from ...composicion.contenedor import Contenedor, construir
-
-RAIZ_REPO = Path(__file__).resolve().parent.parent.parent.parent
 
 
 def _armar_contenedor() -> Contenedor:

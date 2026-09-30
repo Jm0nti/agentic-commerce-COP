@@ -221,6 +221,8 @@ cumple el papel de `co.com.bancolombia` en Java. Ver D1.
 
 ## 4. Decisiones a tomar (ADRs)
 
+> **Estado: aceptadas.** Las diez recomendaciones se aprobaron tal cual el 30 sep 2026.
+
 Cada una trae una recomendación. Conviene cerrarlas **antes** de la Fase 1.
 
 **D1. La forma de los módulos en Python.**
@@ -319,6 +321,14 @@ Reglas para **todas** las fases:
   cómo los *entry points* consultan datos (el resultado debe ser el mismo).
 
 ### Fase 0: Preparación y red de seguridad (1 a 1,5 días) · sin mover código
+
+> **✅ Hecha (30 sep 2026).** Queda en 1.140 pruebas; ver `linea-base.md`. Diferencias con lo planeado:
+> - El detector no se probó "sobre ambos layouts": el layout nuevo todavía no existe. Lo que sí quedó es que la capa sale de la tabla `CAPAS`, así que la Fase 2 solo agrega entradas y las pruebas del detector se reescriben ahí.
+> - Además, una regla que apunta a un módulo o carpeta que ya no existe (`_es_modulo`, `_modulos_bajo`) ahora falla en vez de pasar en vacío.
+> - La frontera del agente quedó **más estricta**: también le quedan vedados los *puertos* de pasarela, firma, repositorios y autenticación. La regla anterior los dejaba pasar.
+> - El flujo de punta a punta en modo simulado no se registró aparte: lo cubren `test_cli.py` y `test_api_app.py`.
+> - El mandato dorado se firmó con una llave de prueba fija, no se exportó de `agora.db`: prueba lo mismo sin sacar datos reales de la base.
+> - Pendiente de Juan: `git switch -c refactor/clean-architecture-bancolombia` y el commit (ver el resumen de la sesión).
 
 1. **Dejar el árbol limpio.** Los 7 archivos que hoy aparecen modificados en `dev`
    (`dinero.py`, `pago/*`, `utilidades/*`, `cmds.txt`) **solo difieren en los

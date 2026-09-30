@@ -1,20 +1,3 @@
-fastapi>=0.115
-httpx>=0.27
-uvicorn>=0.30
-cryptography>=42.0
-pytest>=8.0
-python-dotenv>=1.0
-openai
-numpy
-# Migracion a agentes, etapa 2 (docs/etapa-2-agentes-soporte-rag-documental.md):
-# fragmentar Markdown + vector store en memoria para la documentacion de
-# soporte. Solo `langchain-core` y los splitters, no el paquete `langchain`
-# completo. Los embeddings usan el SDK `openai` de arriba, sin langchain-openai.
-langchain-core>=1.0
-langchain-text-splitters>=1.0
-# Migracion a agentes, etapa 3 (docs/etapa-3-agentes-grafo-langgraph.md): el
-# turno corre como grafo (orquestador -> trabajador -> fin). Solo lo importa
-# `agora/adaptadores/orquestacion/con_langgraph/`, detras del puerto
-# `puertos/orquestacion.py`. Con AGORA_ORQUESTACION=directo la app corre sin
-# esta dependencia.
-langgraph>=1.0
+# Las dependencias viven en pyproject.toml. Esto instala el proyecto en modo
+# editable con las de desarrollo (pytest). Correr desde la raiz del repo.
+-e .[dev]

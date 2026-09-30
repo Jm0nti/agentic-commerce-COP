@@ -32,12 +32,12 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-RAIZ_REPO = Path(__file__).resolve().parent.parent
-if str(RAIZ_REPO) not in sys.path:
+_REPO = Path(__file__).resolve().parents[1]  # solo para sys.path
+if str(_REPO) not in sys.path:
     # Para poder correr `python scripts/generar_catalogo_semilla.py` directo,
     # sin depender de que el paquete este instalado (mismo patron que los
     # demas scripts/).
-    sys.path.insert(0, str(RAIZ_REPO))
+    sys.path.insert(0, str(_REPO))
 
 from agora.adaptadores.catalogo.semilla import RUTA_POR_DEFECTO  # noqa: E402
 from agora.adaptadores.catalogo.semilla import serializacion  # noqa: E402
@@ -49,6 +49,7 @@ from agora.adaptadores.llm.deepseek import (  # noqa: E402
 from agora.adaptadores.sistema.ids import GeneradorIdsUuid  # noqa: E402
 from agora.aplicacion.generar_catalogo_semilla import GenerarCatalogoSemilla  # noqa: E402
 from agora.dominio.comun.errores import ErrorDeModeloDeLenguaje  # noqa: E402
+from agora.composicion.configuracion import RAIZ_REPO  # noqa: E402
 from utilidades.env import cargar_env_desde_archivo  # noqa: E402
 
 CATEGORIAS_POR_DEFECTO = ("tecnologia", "moda", "hogar", "restaurantes", "libros")

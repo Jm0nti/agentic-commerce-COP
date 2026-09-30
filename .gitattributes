@@ -1,0 +1,4 @@
+# Git guarda LF; cada quien hace checkout con el final de linea de su sistema.
+# Sin esto, un `git mv` + edicion en Windows muestra el archivo entero como
+# cambiado y git deja de detectar el renombre (roadmap, Fase 0.1).
+* text=auto
