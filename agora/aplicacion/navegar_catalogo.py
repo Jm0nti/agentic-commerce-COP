@@ -128,6 +128,14 @@ class NavegarCatalogo:
     def ver_producto(self, producto_id: str) -> Producto:
         return self._catalogo.ver_producto(producto_id)
 
+    def ver_carrito(self, carrito_id: str) -> Carrito:
+        return self._carritos.obtener(carrito_id)
+
+    def ver_propuesta(self, propuesta_id: str) -> PropuestaDeMandato:
+        """Solo lectura: firmarla es de `EmitirMandato`, rechazarla de
+        `RechazarPropuesta`."""
+        return self._propuestas.obtener(propuesta_id)
+
     # -- armar el carrito ---------------------------------------------------- #
 
     def armar_carrito(

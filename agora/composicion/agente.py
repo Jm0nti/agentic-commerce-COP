@@ -47,7 +47,6 @@ from ..agente.herramientas import construir_herramientas
 from ..agente.intencion import ClasificadorDeIntencion
 from ..aplicacion.navegar_catalogo import ItemPedido
 from ..dominio.catalogo.modelo import Comercio, Producto
-from ..dominio.mandato.modelo import Intencion
 from ..puertos.busqueda_productos import FiltrosDeProducto
 from ..puertos.modelo_lenguaje import ModeloDeLenguaje
 from ..puertos.orquestacion import CompiladorDeGrafos
@@ -131,19 +130,10 @@ def construir_agente(contenedor: Contenedor) -> Agente | AgenteEnGrafo | None:
         }
 
     def pagar(mandato_id: str, carrito_id: str) -> dict[str, Any]:
-        carrito = contenedor.carritos.obtener(carrito_id)
-        intencion = Intencion(
-            intencion_id=contenedor.ids.nuevo("int"),
-            mandato_id=mandato_id,
-            comercio_id=carrito.comercio_id,
-            carrito_id=carrito_id,
-            monto=carrito.total,
-        )
-        # `carrito_hash` viene del carrito recien recuperado, nunca de un
-        # argumento del modelo: es lo que hace valer el Cart Mandate cuando
-        # el mandato se firmo atado a un carrito (`EmitirMandato`). Ver el
-        # docstring de `EjecutarIntencion.__call__`.
-        recibo = contenedor.ejecutar_intencion(intencion, carrito_hash=carrito.hash_canonico)
+        # Comercio, monto y `carrito_hash` salen del carrito guardado, nunca
+        # de un argumento del modelo (ver `aplicacion/pagar_carrito.py`).
+        recibo = contenedor.pagar_carrito(mandato_id, carrito_id)
+        intencion = recibo.intencion
         resultado: dict[str, Any] = {
             "intencion_id": intencion.intencion_id,
             # `mandato_id`/`carrito_id` de vuelta en el resultado (no solo

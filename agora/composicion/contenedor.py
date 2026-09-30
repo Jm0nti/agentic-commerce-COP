@@ -86,10 +86,14 @@ from ..aplicacion.enrolar_medio import (
     EnrolarMedio,
     IniciarEnrolamiento,
 )
+from ..aplicacion.listar_mandatos import ListarMandatos
+from ..aplicacion.listar_medios import ListarMediosVivos
 from ..aplicacion.navegar_catalogo import NavegarCatalogo
+from ..aplicacion.pagar_carrito import PagarCarrito
 from ..aplicacion.rechazar_propuesta import RechazarPropuesta
 from ..aplicacion.revocar_medio import RevocarMedio
 from ..dominio.mandato.modelo import Verificador
+from ..dominio.pago.modelo import Ambiente
 from ..dominio.pago.topes import TopesDuros
 from ..dominio.catalogo.modelo import Producto
 from ..puertos.autenticacion import HasherDeContrasenas
@@ -179,6 +183,11 @@ class Contenedor:
     confirmar_enrolamiento: ConfirmarEnrolamiento
     revocar_medio: RevocarMedio
     consultar_estado: ConsultarEstado
+    # -- Fase 1 del refactor a la Clean Architecture de Bancolombia: lo que
+    # `entradas/` antes leia directo de los repositorios de arriba.
+    pagar_carrito: PagarCarrito
+    listar_medios_vivos: ListarMediosVivos
+    listar_mandatos: ListarMandatos
     # `None` cuando no hay DEEPSEEK_API_KEY -- ver `ConfiguracionAgora.
     # deepseek_llave_api`. El resto del contenedor (mandatos, cobros,
     # catalogo, enrolamiento) no depende de que esto exista.
@@ -194,6 +203,13 @@ class Contenedor:
     # proveedor de embeddings que el buscador documental, pero OTRO indice:
     # la decision 1 pide dos indices que nunca se mezclan.
     buscador_semantico_productos: BuscadorSemanticoDeProductos | None = None
+
+    @property
+    def ambiente(self) -> Ambiente:
+        """Lo unico de `config` que necesitan los puntos de entrada (armar un
+        `MedioDePagoRef`, mostrarlo): se lo pasan como valor, sin recibir la
+        configuracion entera."""
+        return self.config.ambiente
 
 
 def construir(
@@ -340,6 +356,9 @@ def construir(
     confirmar_enrolamiento = ConfirmarEnrolamiento(selector_pasarela, medios, bitacora)
     revocar_medio = RevocarMedio(selector_pasarela=selector_pasarela, medios=medios, bitacora=bitacora)
     consultar_estado = ConsultarEstado(estados=estados)
+    pagar_carrito = PagarCarrito(ejecutar=ejecutar_intencion, carritos=carritos, ids=ids)
+    listar_medios_vivos = ListarMediosVivos(medios=medios, ambiente=config.ambiente)
+    listar_mandatos = ListarMandatos(mandatos=mandatos, consumo=consumo, ambiente=config.ambiente)
 
     modelo_lenguaje: ModeloDeLenguaje | None = None
     if config.deepseek_llave_api:
@@ -382,6 +401,9 @@ def construir(
         confirmar_enrolamiento=confirmar_enrolamiento,
         revocar_medio=revocar_medio,
         consultar_estado=consultar_estado,
+        pagar_carrito=pagar_carrito,
+        listar_medios_vivos=listar_medios_vivos,
+        listar_mandatos=listar_mandatos,
         modelo_lenguaje=modelo_lenguaje,
         buscador_documental=buscador_documental,
         buscador_semantico_productos=buscador_semantico_productos,

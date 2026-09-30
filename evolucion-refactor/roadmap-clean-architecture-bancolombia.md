@@ -370,6 +370,14 @@ carpeta y una raíz del repo que no depende de la ubicación del archivo.
 
 ### Fase 1: Sanear las fronteras en el layout actual (1,5 a 2 días)
 
+> **✅ Hecha (30 sep 2026).** Queda en 1.156 pruebas; también se corrió de punta a punta por CLI en modo simulado con SQLite temporal (enrolar, emitir, pagar, retomar, estado, mandatos, fuentes). Diferencias con lo planeado:
+> - **`PagarCarrito`** (`aplicacion/pagar_carrito.py`) reemplaza a `ObtenerCarrito` y al `ids.nuevo` suelto. La misma `Intencion` se armaba a mano en cuatro lugares (la herramienta `pagar` del agente, `cli pagar`, `cli retomar` y `POST /intenciones/{id}/retomar`); ahora comercio, monto y `carrito_hash` salen siempre del carrito guardado, en un solo lugar.
+> - `ObtenerPropuesta` y la lectura del carrito para el popup quedaron como `NavegarCatalogo.ver_propuesta` y `ver_carrito`, no como clases aparte. `ConsultarConsumo` quedó dentro de `ListarMandatos`. `ListarMediosVivos` sí es un caso de uso propio.
+> - La API recibe un `DependenciasDeLaApi` (un `Protocol` con casos de uso, `ambiente` y `reloj`). El `Contenedor` lo cumple sin que la API lo importe, así que las pruebas y `servir_api.py` no cambiaron.
+> - La CLI **sigue** importando `composicion`, porque es composition root hasta la Fase 5. Quedó como `EXCEPCIONES_PROVISORIAS` en `test_fronteras.py`, con una prueba que avisa cuando deja de hacer falta. Igual ya no toca ningún repositorio: lo verifica una regla nueva sobre el AST de `entradas/`.
+> - Cambio visible: si el cobro falla con un error de dominio, `cli pagar` ahora imprime `[x] …` en vez de un traceback.
+> - **Pasados a otras fases, para no mover dos veces lo mismo:** llevar `Verificador` a los puertos pasa a la Fase 2, donde de todos modos va a `model/mandato/gateways/`. Partir `enrolar_medio.py` y `autenticacion.py` pasa a la Fase 3, donde cada caso de uso recibe su carpeta.
+
 Las brechas de diseño se corrigen **antes** de mover archivos. Así, si algo se
 rompe, se sabe que fue por diseño y no por un import.
 

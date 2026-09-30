@@ -55,7 +55,7 @@ def _mensaje_pagar(motivo: str, intencion_id: str = "int_1") -> Mensaje:
 
 def test_un_pagar_que_queda_pending_se_registra_solo_como_pendiente():
     agente = _AgenteFalso()
-    sesiones = AlmacenDeSesiones(agente, contenedor=None)
+    sesiones = AlmacenDeSesiones(agente, ver_carrito=None)
     sesion_id = sesiones.crear("tit_1")
     agente.proximos_mensajes_tool = [_mensaje_pagar("PENDING", "int_1")]
 
@@ -66,7 +66,7 @@ def test_un_pagar_que_queda_pending_se_registra_solo_como_pendiente():
 
 def test_un_pagar_ya_resuelto_no_se_registra():
     agente = _AgenteFalso()
-    sesiones = AlmacenDeSesiones(agente, contenedor=None)
+    sesiones = AlmacenDeSesiones(agente, ver_carrito=None)
     sesion_id = sesiones.crear("tit_1")
     agente.proximos_mensajes_tool = [_mensaje_pagar("APPROVED", "int_2")]
 
@@ -77,7 +77,7 @@ def test_un_pagar_ya_resuelto_no_se_registra():
 
 def test_resolver_pendiente_avisa_a_la_conversacion_y_encola_un_evento_sse():
     agente = _AgenteFalso()
-    sesiones = AlmacenDeSesiones(agente, contenedor=None)
+    sesiones = AlmacenDeSesiones(agente, ver_carrito=None)
     sesion_id = sesiones.crear("tit_1")
     sesiones.registrar_pendiente(sesion_id, "int_3")
     agente.proxima_respuesta = "genial, tu pago ya quedo aprobado"
@@ -92,7 +92,7 @@ def test_resolver_pendiente_avisa_a_la_conversacion_y_encola_un_evento_sse():
 
 def test_resolver_pendiente_de_una_intencion_no_registrada_no_hace_nada():
     agente = _AgenteFalso()
-    sesiones = AlmacenDeSesiones(agente, contenedor=None)
+    sesiones = AlmacenDeSesiones(agente, ver_carrito=None)
 
     resultado = sesiones.resolver_pendiente("int_fantasma", "aprobado")
 
@@ -103,7 +103,7 @@ def test_resolver_pendiente_de_una_sesion_que_ya_no_existe_no_levanta():
     # Simula un reinicio parcial: la intencion se registro pero la sesion
     # (en memoria, efimera) ya no esta.
     agente = _AgenteFalso()
-    sesiones = AlmacenDeSesiones(agente, contenedor=None)
+    sesiones = AlmacenDeSesiones(agente, ver_carrito=None)
     sesiones.registrar_pendiente("ses_fantasma", "int_4")
 
     resultado = sesiones.resolver_pendiente("int_4", "aprobado")

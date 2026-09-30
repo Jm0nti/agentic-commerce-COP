@@ -41,7 +41,7 @@ CAPAS: dict[str, str] = {
 MINIMO_DE_MODULOS_POR_CAPA: dict[str, int] = {
     "dominio": 10,
     "puertos": 11,
-    "aplicacion": 11,
+    "aplicacion": 14,
     "agente": 16,
     "adaptadores": 61,
     "entradas": 10,
@@ -69,8 +69,29 @@ REGLAS: dict[str, tuple[str, ...]] = {
     # `test_el_detector_atrapa_al_agente_importando_un_caso_de_uso`.
     "agente": ("aplicacion", "adaptadores", "entradas", "composicion"),
     # Las entradas reciben los adaptadores ya armados desde composicion.
-    "entradas": ("adaptadores",),
+    # `composicion` se agrego en la Fase 1 del refactor a la Clean
+    # Architecture de Bancolombia: un entry point recibe casos de uso, no
+    # sabe quien los arma.
+    "entradas": ("adaptadores", "composicion"),
 }
+
+# Archivo -> capas que TODAVIA puede importar aunque REGLAS lo prohiba. Cada
+# entrada es deuda con fecha de vencimiento, no una excepcion de diseno.
+EXCEPCIONES_PROVISORIAS: dict[str, tuple[str, ...]] = {
+    # La CLI arma su propio contenedor (es composition root) hasta que la
+    # Fase 5 mueva el arranque a `app-service`.
+    "entradas/cli/__main__.py": ("composicion",),
+}
+
+# Atributos del `Contenedor` que son repositorios o adaptadores crudos. Un
+# entry point no los toca (Fase 1): lo que necesite leer, lo pide a un caso de
+# uso. Se mira el AST, no los imports: el `Contenedor` llega por parametro y
+# `contenedor.carritos.obtener(...)` no deja ningun import que revisar.
+REPOSITORIOS_DEL_CONTENEDOR = frozenset({
+    "mandatos", "medios", "consumo", "carritos", "propuestas", "estados",
+    "usuarios", "llaves", "ids", "catalogo", "selector_pasarela",
+    "selector_firmante", "verificador", "bitacora", "bitacora_trazas",
+})
 
 # Modulos de terceros que tampoco deberian aparecer segun la capa.
 PROHIBIDOS_POR_CAPA: dict[str, tuple[str, ...]] = {
@@ -183,7 +204,8 @@ def _capa(archivo: Path, raiz: Path = RAIZ) -> str | None:
 
 def _violaciones_de_dependencia(archivo: Path, raiz: Path = RAIZ) -> list[str]:
     capa = _capa(archivo, raiz)
-    prohibidas = REGLAS.get(capa, ())
+    permitidas = EXCEPCIONES_PROVISORIAS.get(archivo.relative_to(raiz).as_posix(), ())
+    prohibidas = tuple(c for c in REGLAS.get(capa, ()) if c not in permitidas)
     ofensas = []
     for imp in _imports(archivo, raiz):
         objetivo = _capa_de(imp)
@@ -209,6 +231,15 @@ def _violaciones_de_libreria_de_llm(archivo: Path, raiz: Path = RAIZ) -> list[st
                 "adaptador en adaptadores/ -- nunca directo en esta capa."
             )
     return ofensas
+
+
+def _accesos_a_repositorios(archivo: Path) -> list[str]:
+    arbol = ast.parse(archivo.read_text(encoding="utf-8"), filename=str(archivo))
+    return [
+        f"{archivo.name}:{nodo.lineno} .{nodo.attr}"
+        for nodo in ast.walk(arbol)
+        if isinstance(nodo, ast.Attribute) and nodo.attr in REPOSITORIOS_DEL_CONTENEDOR
+    ]
 
 
 def _importaciones_dinamicas(archivo: Path) -> list[str]:
@@ -277,6 +308,28 @@ def test_ninguna_capa_queda_vacia(capa: str) -> None:
         f"la capa '{capa}' tiene {n} modulos (minimo {MINIMO_DE_MODULOS_POR_CAPA[capa]}): "
         "si se movieron, actualizar CAPAS; si no, sus reglas no estan mirando nada"
     )
+
+
+def test_las_entradas_solo_hablan_con_casos_de_uso() -> None:
+    """Fase 1: ni un repositorio por atributo del contenedor, ni el modulo de
+    repositorios por import."""
+    ofensas = []
+    for archivo in _modulos():
+        if _capa(archivo) != "entradas":
+            continue
+        ofensas += _accesos_a_repositorios(archivo)
+        ofensas += [
+            f"{archivo.name}: {i}" for i in _imports(archivo) if _es_modulo(i, "puertos.repositorios")
+        ]
+    assert not ofensas, "un entry point toca un repositorio:\n  " + "\n  ".join(ofensas)
+
+
+def test_las_excepciones_provisorias_siguen_haciendo_falta() -> None:
+    """Si la CLI deja de importar `composicion`, la excepcion sobra: borrarla,
+    para que no quede una puerta abierta que nadie usa."""
+    for relativo, capas in EXCEPCIONES_PROVISORIAS.items():
+        importadas = {_capa_de(i) for i in _imports(RAIZ / relativo)}
+        assert set(capas) <= importadas, f"{relativo} ya no necesita {capas}"
 
 
 def test_el_agente_no_alcanza_ninguna_pasarela() -> None:
@@ -711,3 +764,18 @@ def test_el_detector_atrapa_un_archivo_sin_capa(tmp_path: Path) -> None:
 def test_el_detector_atrapa_una_regla_que_apunta_a_un_modulo_que_no_existe() -> None:
     with pytest.raises(AssertionError, match="ya no existe"):
         _es_modulo("agora.dominio.x", "dominio.carpeta_que_se_movio")
+
+
+def test_el_detector_atrapa_una_entrada_importando_composicion(tmp_path: Path) -> None:
+    raiz, archivo = _agora_de_mentira(
+        tmp_path, "entradas/api/intruso.py", "from ...composicion.contenedor import Contenedor\n",
+    )
+    ofensas = _violaciones_de_dependencia(archivo, raiz)
+    assert ofensas and "composicion" in ofensas[0]
+
+
+def test_el_detector_atrapa_una_entrada_leyendo_un_repositorio(tmp_path: Path) -> None:
+    _, archivo = _agora_de_mentira(
+        tmp_path, "entradas/api/intruso.py", "def f(d):\n    return d.carritos.obtener('x')\n",
+    )
+    assert _accesos_a_repositorios(archivo)

@@ -1,10 +1,13 @@
-# Línea base del refactor (Fase 0)
+# Línea base del refactor
 
 Tomada el 30 sep 2026 sobre `dev@5b7f30b` más los cambios de la Fase 0. Python 3.10, Linux.
 
-- **1.140 pruebas en verde**: las 1.117 originales, 19 nuevas en `test_fronteras.py` y 4 en `test_invariantes_del_refactor.py`.
-- Módulos por capa (`agora/`): dominio 10, puertos 11, aplicacion 11, agente 16, adaptadores 61, entradas 10, composicion 4. Son los mínimos de `MINIMO_DE_MODULOS_POR_CAPA`.
+- **Fase 0: 1.140 pruebas en verde**: las 1.117 originales, 19 nuevas en `test_fronteras.py` y 4 en `test_invariantes_del_refactor.py`.
+- **Fase 1: 1.156 pruebas en verde.** Suman 13 en `test_fronteras.py` (las reglas nuevas, más las parametrizadas sobre los 3 casos de uso nuevos) y 3 en `test_pagar_carrito.py`. `aplicacion` pasa a tener 14 módulos.
+- Módulos por capa (Fase 0) (`agora/`): dominio 10, puertos 11, aplicacion 11, agente 16, adaptadores 61, entradas 10, composicion 4. Son los mínimos de `MINIMO_DE_MODULOS_POR_CAPA`.
 - Criterio de cada fase: **ningún archivo de esta tabla baja su número**. Si una prueba se mueve de archivo, se suma en el destino. El total nunca baja.
+
+Conteo vigente (Fase 1):
 
 | Archivo | Pruebas |
 |---|---:|
@@ -45,13 +48,14 @@ Tomada el 30 sep 2026 sobre `dev@5b7f30b` más los cambios de la Fase 0. Python 
 | `tests/test_emitir_mandato.py` | 6 |
 | `tests/test_enrolar_medio.py` | 10 |
 | `tests/test_firma_ed25519.py` | 3 |
-| `tests/test_fronteras.py` | 464 |
+| `tests/test_fronteras.py` | 477 |
 | `tests/test_generar_catalogo_semilla.py` | 11 |
 | `tests/test_invariantes_del_refactor.py` | 4 |
 | `tests/test_libro_consumo_memoria.py` | 10 |
 | `tests/test_libro_consumo_sqlite.py` | 15 |
 | `tests/test_navegar_catalogo.py` | 7 |
 | `tests/test_navegar_catalogo_hibrido.py` | 11 |
+| `tests/test_pagar_carrito.py` | 3 |
 | `tests/test_pasarela_simulada.py` | 15 |
 | `tests/test_pausa_humana.py` | 25 |
 | `tests/test_puerto_orquestacion.py` | 16 |

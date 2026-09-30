@@ -31,8 +31,7 @@ que no hace falta -- ni conviene -- meter async/await en un agente que
 QUE NO HACE ESTE MODULO
 --------------------------
 No firma propuestas ni resuelve confirmaciones -- eso lo sigue haciendo
-`app.py`, llamando directo a `contenedor.emitir_mandato`/`contenedor.
-ejecutar_intencion.retomar`, exactamente como `entradas/cli/__main__.py:
+`app.py`, llamando a `EmitirMandato`/`PagarCarrito.retomar`, exactamente como `entradas/cli/__main__.py:
 cmd_firmar`/`cmd_retomar`. Este modulo solo le avisa despues a la
 conversacion correspondiente (`reanudar`) para que el agente se entere y
 conteste -- la persona sigue siendo quien decide firmar o confirmar, nunca
@@ -72,11 +71,11 @@ import threading
 import uuid
 from dataclasses import dataclass, field
 from queue import Queue
-from typing import Any
+from typing import Any, Callable
 
 from ...agente.conversacion import Agente, Conversacion
 from ...agente.pausa import DecisionHumana, PausaDelTurno, TipoDePausa
-from ...composicion.contenedor import Contenedor
+from ...dominio.catalogo.modelo import Carrito
 
 
 class SesionDesconocida(Exception):
@@ -109,9 +108,11 @@ class AlmacenDeSesiones:
     entre procesos (propuestas, mandatos, estados) ya vive en sqlite desde
     la etapa 6; esto solo une esas piezas en una sola pestana."""
 
-    def __init__(self, agente: Agente, contenedor: Contenedor) -> None:
+    def __init__(self, agente: Agente, ver_carrito: Callable[[str], Carrito]) -> None:
+        """`ver_carrito` es `NavegarCatalogo.ver_carrito`: los items del
+        popup de firma salen de un caso de uso, nunca de un repositorio."""
         self._agente = agente
-        self._contenedor = contenedor
+        self._ver_carrito = ver_carrito
         self._sesiones: dict[str, _Sesion] = {}
         self._lock = threading.Lock()
         # Etapa 9: que intencion_id le pertenece a que sesion, mientras la
@@ -258,7 +259,7 @@ class AlmacenDeSesiones:
             sesion.eventos.put(evento)
 
     def _evento_propuesta_pendiente(self, pausa: PausaDelTurno) -> dict[str, Any] | None:
-        carrito = self._contenedor.carritos.obtener(pausa.carrito_id)
+        carrito = self._ver_carrito(pausa.carrito_id)
         return {
             "tipo": "propuesta_pendiente",
             "propuesta_id": pausa.propuesta_id,

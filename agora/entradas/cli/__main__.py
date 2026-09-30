@@ -78,7 +78,6 @@ from dotenv import load_dotenv
 
 from ...aplicacion.navegar_catalogo import ItemPedido
 from ...dominio.comun.errores import ErrorDeDominio
-from ...dominio.mandato.modelo import Intencion
 from ...dominio.pago.modelo import MedioDePagoRef, Proveedor
 from ...composicion.agente import construir_agente
 from ...composicion.configuracion import RAIZ_REPO, ConfiguracionInvalida, leer_configuracion
@@ -142,11 +141,11 @@ def cmd_enrolar(a, contenedor: Contenedor) -> int:
 
 
 def cmd_fuentes(a, contenedor: Contenedor) -> int:
-    vivos = contenedor.medios.vivos(a.titular, contenedor.config.ambiente)
+    vivos = contenedor.listar_medios_vivos(a.titular)
     if not vivos:
-        print(f"Sin medios de pago vivos para '{a.titular}' en '{contenedor.config.ambiente.value}'.")
+        print(f"Sin medios de pago vivos para '{a.titular}' en '{contenedor.ambiente.value}'.")
         return 0
-    print(f"{len(vivos)} medio(s) vivo(s) para '{a.titular}' ({contenedor.config.ambiente.value})\n")
+    print(f"{len(vivos)} medio(s) vivo(s) para '{a.titular}' ({contenedor.ambiente.value})\n")
     for ref in vivos:
         print(f"  {ref.proveedor.value:10} {ref.id_externo}")
     return 0
@@ -154,7 +153,7 @@ def cmd_fuentes(a, contenedor: Contenedor) -> int:
 
 def cmd_revocar(a, contenedor: Contenedor) -> int:
     ref = MedioDePagoRef(
-        proveedor=Proveedor(a.proveedor), ambiente=contenedor.config.ambiente, id_externo=a.id_externo,
+        proveedor=Proveedor(a.proveedor), ambiente=contenedor.ambiente, id_externo=a.id_externo,
     )
     try:
         estado = contenedor.revocar_medio(ref, a.titular)
@@ -263,8 +262,8 @@ def cmd_firmar(a, contenedor: Contenedor) -> int:
     tenga que pasarle un carrito_id distinto."""
     try:
         mandato = contenedor.emitir_mandato(a.propuesta_id, a.titular)
-        carrito = contenedor.carritos.obtener(
-            contenedor.propuestas.obtener(a.propuesta_id).carrito_id
+        carrito = contenedor.navegar_catalogo.ver_carrito(
+            contenedor.navegar_catalogo.ver_propuesta(a.propuesta_id).carrito_id
         )
     except ErrorDeDominio as exc:
         print(f"[x] {exc.mensaje}")
@@ -285,19 +284,11 @@ def cmd_firmar(a, contenedor: Contenedor) -> int:
 
 def cmd_pagar(a, contenedor: Contenedor) -> int:
     try:
-        carrito = contenedor.carritos.obtener(a.carrito_id)
+        recibo = contenedor.pagar_carrito(a.mandato_id, a.carrito_id)
     except ErrorDeDominio as exc:
         print(f"[x] {exc.mensaje}")
         return 1
-
-    intencion = Intencion(
-        intencion_id=contenedor.ids.nuevo("int"),
-        mandato_id=a.mandato_id,
-        comercio_id=carrito.comercio_id,
-        carrito_id=a.carrito_id,
-        monto=carrito.total,
-    )
-    recibo = contenedor.ejecutar_intencion(intencion, carrito_hash=carrito.hash_canonico)
+    intencion = recibo.intencion
 
     print(f"  intencion    {intencion.intencion_id}")
     print(f"  ejecutado    {recibo.ejecutado}")
@@ -324,18 +315,8 @@ def cmd_retomar(a, contenedor: Contenedor) -> int:
     contra el mismo `Intencion` -- no alcanza con el `intencion_id` solo.
     """
     try:
-        carrito = contenedor.carritos.obtener(a.carrito_id)
-    except ErrorDeDominio as exc:
-        print(f"[x] {exc.mensaje}")
-        return 1
-
-    intencion = Intencion(
-        intencion_id=a.intencion_id, mandato_id=a.mandato_id,
-        comercio_id=carrito.comercio_id, carrito_id=a.carrito_id, monto=carrito.total,
-    )
-    try:
-        recibo = contenedor.ejecutar_intencion.retomar(
-            intencion, aprueba=not a.rechazar, carrito_hash=carrito.hash_canonico,
+        recibo = contenedor.pagar_carrito.retomar(
+            a.intencion_id, a.mandato_id, a.carrito_id, aprueba=not a.rechazar,
         )
     except ErrorDeDominio as exc:
         print(f"[x] {exc.mensaje}")
@@ -357,12 +338,11 @@ def cmd_estado(a, contenedor: Contenedor) -> int:
 
 
 def cmd_mandatos(a, contenedor: Contenedor) -> int:
-    mandatos = contenedor.mandatos.listar(contenedor.config.ambiente)
+    mandatos = contenedor.listar_mandatos()
     if not mandatos:
         print("Sin mandatos.")
         return 0
-    for m in mandatos:
-        consumo = contenedor.consumo.consumo_de(m.mandato_id)
+    for m, consumo in mandatos:
         print(
             f"  {m.mandato_id}  {m.comercio_id:24} {m.monto_max!s:>12}  "
             f"usos {consumo.usos}/{m.usos_max}"

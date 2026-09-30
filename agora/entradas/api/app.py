@@ -48,7 +48,7 @@ Antes de esta version, `titular_id` llegaba como texto libre desde
 `chat.html` (un `<input>` guardado en `localStorage`), sin ninguna
 verificacion -- cualquiera podia escribir el `titular_id` de otro y ver
 sus medios de pago. Ahora `POST /auth/iniciar-sesion` verifica usuario y
-contrasena (`contenedor.iniciar_sesion`, `aplicacion/autenticacion.py`,
+contrasena (`IniciarSesion`, `aplicacion/autenticacion.py`,
 usuarios creados de antemano con `scripts/crear_usuario.py` -- no hay
 registro por HTTP) y deja una cookie httponly (`entradas/api/
 autenticacion.py:AlmacenDeSesionesWeb`). Toda ruta que antes aceptaba
@@ -64,7 +64,7 @@ from __future__ import annotations
 import json
 import queue
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
@@ -72,19 +72,51 @@ from pydantic import BaseModel
 
 from ...agente.conversacion import Agente, LimiteDeTurnosExcedido
 from ...agente.pausa import DecisionHumana, TipoDePausa
-from ...composicion.contenedor import Contenedor
+from ...aplicacion.autenticacion import IniciarSesion
+from ...aplicacion.emitir_mandato import EmitirMandato
+from ...aplicacion.enrolar_medio import (
+    ConfirmarEnrolamiento,
+    ConsultarEnrolamiento,
+    IniciarEnrolamiento,
+)
+from ...aplicacion.listar_medios import ListarMediosVivos
+from ...aplicacion.navegar_catalogo import NavegarCatalogo
+from ...aplicacion.pagar_carrito import PagarCarrito
+from ...aplicacion.rechazar_propuesta import RechazarPropuesta
+from ...aplicacion.revocar_medio import RevocarMedio
 from ...dominio.comun.errores import (
     CredencialesInvalidas,
     ErrorDeDominio,
     PasarelaNoDisponible,
     SesionInvalida,
 )
-from ...dominio.mandato.modelo import Intencion
-from ...dominio.pago.modelo import MedioDePagoRef, Proveedor
+from ...dominio.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
+from ...puertos.sistema import Reloj
 from .autenticacion import COOKIE_SESION, DURACION_SESION, AlmacenDeSesionesWeb
 from .sesiones import AlmacenDeSesiones, SesionDesconocida
 
 RAIZ_ESTATICO = Path(__file__).resolve().parent / "estatico"
+
+
+class DependenciasDeLaApi(Protocol):
+    """Todo lo que esta app puede tocar: casos de uso, el ambiente como valor
+    y el reloj de las sesiones web. Ningun repositorio -- un entry point
+    delega en un caso de uso (Clean Architecture de Bancolombia, Fase 1 del
+    refactor). En produccion es el `Contenedor` de `composicion/`, que cumple
+    este contrato sin que esta app lo importe."""
+
+    ambiente: Ambiente
+    reloj: Reloj
+    iniciar_sesion: IniciarSesion
+    navegar_catalogo: NavegarCatalogo
+    emitir_mandato: EmitirMandato
+    rechazar_propuesta: RechazarPropuesta
+    pagar_carrito: PagarCarrito
+    iniciar_enrolamiento: IniciarEnrolamiento
+    consultar_enrolamiento: ConsultarEnrolamiento
+    confirmar_enrolamiento: ConfirmarEnrolamiento
+    listar_medios_vivos: ListarMediosVivos
+    revocar_medio: RevocarMedio
 
 
 class _MensajeEntrante(BaseModel):
@@ -129,19 +161,23 @@ class _ConfirmarEnrolamientoEntrante(BaseModel):
 class _RevocarMedioEntrante(BaseModel):
     # `proveedor` viaja en el cuerpo (no en la URL) porque `id_externo` solo
     # es unico DENTRO de un proveedor. `ambiente` no viaja -- sale de
-    # `contenedor.config.ambiente`, igual que en `listar_medios`: nunca de un
+    # `dependencias.ambiente`, igual que en `listar_medios`: nunca de un
     # campo que mande el cliente.
     proveedor: str
 
 
-def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
+def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastAPI:
     """Factoria pura. `agente` puede ser `None` (falta `DEEPSEEK_API_KEY`,
     mismo criterio que `entradas/cli/__main__.py:cmd_chat`) -- el proceso
     igual levanta, pero `POST /sesiones` responde 503 en vez de arrancar
     una charla que no puede hablarle a ningun modelo."""
 
-    sesiones = AlmacenDeSesiones(agente, contenedor) if agente is not None else None
-    sesiones_web = AlmacenDeSesionesWeb(contenedor.reloj)
+    sesiones = (
+        AlmacenDeSesiones(agente, dependencias.navegar_catalogo.ver_carrito)
+        if agente is not None
+        else None
+    )
+    sesiones_web = AlmacenDeSesionesWeb(dependencias.reloj)
     app = FastAPI(title="agora -- chat con firma en una sola pestana")
     # Expuesto para pruebas (`tests/test_api_app.py`): leer la cola de
     # eventos de una sesion directo, sin pelear con como el `TestClient` de
@@ -183,7 +219,7 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
     @app.post("/auth/iniciar-sesion")
     def iniciar_sesion(cuerpo: _IniciarSesionEntrante, response: Response) -> dict[str, Any]:
         try:
-            usuario = contenedor.iniciar_sesion(cuerpo.nombre_usuario, cuerpo.contrasena)
+            usuario = dependencias.iniciar_sesion(cuerpo.nombre_usuario, cuerpo.contrasena)
         except CredencialesInvalidas as exc:
             raise HTTPException(status_code=401, detail=exc.mensaje) from exc
         token = sesiones_web.crear(usuario)
@@ -262,8 +298,8 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         de la peticion -- antes de esta version cualquiera podia mandar el
         `titular_id` que quisiera y firmar en nombre de otro."""
         try:
-            mandato = contenedor.emitir_mandato(propuesta_id, titular_id)
-            carrito_id = contenedor.propuestas.obtener(propuesta_id).carrito_id
+            mandato = dependencias.emitir_mandato(propuesta_id, titular_id)
+            carrito_id = dependencias.navegar_catalogo.ver_propuesta(propuesta_id).carrito_id
         except ErrorDeDominio as exc:
             raise HTTPException(status_code=400, detail=exc.mensaje) from exc
 
@@ -297,14 +333,14 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
     ) -> dict[str, Any]:
         """La persona rechazo la propuesta desde el popup ("Cancelar"), sin
         firmarla. A diferencia de `firmar`, esto no emite ningun `Mandato`
-        (`contenedor.rechazar_propuesta`, ver su docstring): solo deja
+        (`RechazarPropuesta`, ver su docstring): solo deja
         constancia en la bitacora y le avisa a la conversacion, exactamente
         igual que `retomar` ya hace con `aprueba=False` -- antes de esta
         ruta, rechazar una propuesta armada por el agente no le llegaba a
         la charla de ninguna forma: el chat se quedaba con el ultimo
         mensaje sobre la propuesta, como si nada hubiera pasado."""
         try:
-            contenedor.rechazar_propuesta(propuesta_id, titular_id)
+            dependencias.rechazar_propuesta(propuesta_id, titular_id)
         except ErrorDeDominio as exc:
             raise HTTPException(status_code=400, detail=exc.mensaje) from exc
 
@@ -329,20 +365,8 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         `Intencion` -- no alcanza con el `intencion_id` solo (ver el
         docstring de `retomar` en `aplicacion/ejecutar_intencion.py`)."""
         try:
-            carrito = contenedor.carritos.obtener(cuerpo.carrito_id)
-        except ErrorDeDominio as exc:
-            raise HTTPException(status_code=400, detail=exc.mensaje) from exc
-
-        intencion = Intencion(
-            intencion_id=intencion_id,
-            mandato_id=cuerpo.mandato_id,
-            comercio_id=carrito.comercio_id,
-            carrito_id=cuerpo.carrito_id,
-            monto=carrito.total,
-        )
-        try:
-            recibo = contenedor.ejecutar_intencion.retomar(
-                intencion, aprueba=cuerpo.aprueba, carrito_hash=carrito.hash_canonico,
+            recibo = dependencias.pagar_carrito.retomar(
+                intencion_id, cuerpo.mandato_id, cuerpo.carrito_id, cuerpo.aprueba,
             )
         except ErrorDeDominio as exc:
             raise HTTPException(status_code=400, detail=exc.mensaje) from exc
@@ -401,7 +425,7 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         `EnrolarMedio` para la CLI -- aca no se queda bloqueado sondeando,
         eso es tarea de quien llame a `estado_enrolamiento` despues."""
         try:
-            proceso = contenedor.iniciar_enrolamiento(cuerpo.telefono, cuerpo.correo, cuerpo.comercio_id)
+            proceso = dependencias.iniciar_enrolamiento(cuerpo.telefono, cuerpo.correo, cuerpo.comercio_id)
         except PasarelaNoDisponible as exc:
             raise HTTPException(status_code=502, detail=exc.mensaje) from exc
         except ErrorDeDominio as exc:
@@ -418,7 +442,7 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         "iniciar" para este token (ver el docstring de aplicacion/
         enrolar_medio.py:ConsultarEnrolamiento)."""
         try:
-            estado = contenedor.consultar_enrolamiento(token, comercio_id)
+            estado = dependencias.consultar_enrolamiento(token, comercio_id)
         except PasarelaNoDisponible as exc:
             raise HTTPException(status_code=502, detail=exc.mensaje) from exc
         except ErrorDeDominio as exc:
@@ -436,8 +460,8 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         un dato que el cliente podria inventar. Mismo criterio con
         `titular_id`: sale de la cookie de sesion, nunca del cuerpo."""
         try:
-            estado = contenedor.consultar_enrolamiento(cuerpo.token, cuerpo.comercio_id).estado
-            ref = contenedor.confirmar_enrolamiento(
+            estado = dependencias.consultar_enrolamiento(cuerpo.token, cuerpo.comercio_id).estado
+            ref = dependencias.confirmar_enrolamiento(
                 cuerpo.token, cuerpo.correo, titular_id, estado, cuerpo.comercio_id
             )
         except PasarelaNoDisponible as exc:
@@ -450,13 +474,13 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
     def listar_medios(titular_id: str = Depends(_requiere_titular)) -> dict[str, Any]:
         """Los medios vivos del titular AUTENTICADO (cookie de sesion, ver
         `_requiere_titular`) en el ambiente que ya tiene configurado este
-        proceso (`contenedor.config.ambiente`) -- mismo criterio que
+        proceso (`ListarMediosVivos`) -- mismo criterio que
         `entradas/cli/__main__.py:cmd_fuentes`, sin selector de ambiente en
         la peticion: la pasarela (simulada/wompi) y el ambiente los fija
         el .env del servidor, no el navegador. Antes de esta version
         `titular_id` viajaba como query param que cualquiera podia cambiar
         para ver los medios de otro."""
-        vivos = contenedor.medios.vivos(titular_id, contenedor.config.ambiente)
+        vivos = dependencias.listar_medios_vivos(titular_id)
         return {"medios": [ref.to_json() for ref in vivos]}
 
     @app.post("/medios/{id_externo}/revocar")
@@ -476,7 +500,7 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
         try:
             ref = MedioDePagoRef(
                 proveedor=Proveedor(cuerpo.proveedor),
-                ambiente=contenedor.config.ambiente,
+                ambiente=dependencias.ambiente,
                 id_externo=id_externo,
             )
         except ValueError as exc:
@@ -484,7 +508,7 @@ def crear_app(agente: Agente | None, contenedor: Contenedor) -> FastAPI:
                 status_code=400, detail=f"proveedor invalido: {cuerpo.proveedor!r}"
             ) from exc
         try:
-            estado = contenedor.revocar_medio(ref, titular_id)
+            estado = dependencias.revocar_medio(ref, titular_id)
         except ErrorDeDominio as exc:
             raise HTTPException(status_code=400, detail=exc.mensaje) from exc
         # "aviso" viaja vacio salvo que Wompi no haya podido anular la
