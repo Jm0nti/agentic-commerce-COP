@@ -15,9 +15,9 @@ Tambien es lo que deja a los puntos de entrada sin tocar un repositorio
 
 from __future__ import annotations
 
-from ..dominio.mandato.modelo import Intencion
-from ..puertos.repositorios import RepositorioCarritos
-from ..puertos.sistema import GeneradorIds
+from ..model.mandato.modelo import Intencion
+from ..model.catalogo.gateways.repositorios import RepositorioCarritos
+from ..model.commons.gateways.sistema import GeneradorIds
 from .ejecutar_intencion import EjecutarIntencion, Recibo
 
 

@@ -14,7 +14,7 @@ from __future__ import annotations
 import threading
 from dataclasses import dataclass
 
-from ....dominio.pago.modelo import Ambiente, MedioDePagoRef
+from ....model.pago.modelo import Ambiente, MedioDePagoRef
 
 
 @dataclass

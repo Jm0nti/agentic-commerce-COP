@@ -35,7 +35,11 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 
-from ....puertos.recuperacion import DocumentoFuente, FragmentoRecuperado, ProveedorDeEmbeddings
+from ....model.agente.gateways.recuperacion import (
+    DocumentoFuente,
+    FragmentoRecuperado,
+    ProveedorDeEmbeddings,
+)
 
 TAMANO_FRAGMENTO_POR_DEFECTO = 900
 SOLAPAMIENTO_POR_DEFECTO = 150

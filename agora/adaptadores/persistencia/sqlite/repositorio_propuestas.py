@@ -10,9 +10,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ....dominio.comun.dinero import Dinero
-from ....dominio.comun.errores import PropuestaDesconocida
-from ....dominio.mandato.modelo import PropuestaDeMandato
+from ....model.commons.dinero import Dinero
+from ....model.commons.errores import PropuestaDesconocida
+from ....model.mandato.modelo import PropuestaDeMandato
 from .conexion import abrir_conexion
 
 

@@ -37,10 +37,10 @@ from fastapi.testclient import TestClient
 from agora.composicion.agente import construir_agente
 from agora.composicion.configuracion import leer_configuracion
 from agora.composicion.contenedor import construir
-from agora.dominio.catalogo.modelo import Disponibilidad
+from agora.model.catalogo.modelo import Disponibilidad
 from agora.entradas.api.app import crear_app
 from agora.entradas.api.sondeo_pagos import SondeoDePagosPendientes
-from agora.puertos.modelo_lenguaje import LlamadaHerramienta, RespuestaModelo
+from agora.model.agente.gateways.modelo_lenguaje import LlamadaHerramienta, RespuestaModelo
 
 
 class _ModeloProgramable:

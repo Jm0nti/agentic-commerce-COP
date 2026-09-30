@@ -19,9 +19,9 @@ from agora.agente.contexto_documental import (
     armar_consulta,
     sin_cifras,
 )
-from agora.dominio.comun.errores import RecuperacionNoDisponible
-from agora.puertos.modelo_lenguaje import Mensaje
-from agora.puertos.recuperacion import FragmentoRecuperado
+from agora.model.commons.errores import RecuperacionNoDisponible
+from agora.model.agente.gateways.modelo_lenguaje import Mensaje
+from agora.model.agente.gateways.recuperacion import FragmentoRecuperado
 
 
 class _BuscadorFijo:

@@ -15,8 +15,8 @@ from typing import Any, Protocol
 
 from openai import OpenAI, OpenAIError
 
-from ....dominio.comun.errores import ModeloNoDisponible, RespuestaModeloInvalida
-from ....puertos.modelo_lenguaje import (
+from ....model.commons.errores import ModeloNoDisponible, RespuestaModeloInvalida
+from ....model.agente.gateways.modelo_lenguaje import (
     DefinicionHerramienta,
     LlamadaHerramienta,
     Mensaje,

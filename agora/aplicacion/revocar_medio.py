@@ -32,11 +32,11 @@ y `entradas/api/app.py:revocar_medio` ya se actualizaron para leer
 
 from __future__ import annotations
 
-from ..dominio.comun.errores import MedioNoRegistrado
-from ..dominio.pago.modelo import MedioDePagoRef
-from ..puertos.pasarela import EstadoMedio, SelectorDePasarela
-from ..puertos.repositorios import RepositorioMedios
-from ..puertos.sistema import Bitacora
+from ..model.commons.errores import MedioNoRegistrado
+from ..model.pago.modelo import MedioDePagoRef
+from ..model.pago.gateways.pasarela import EstadoMedio, SelectorDePasarela
+from ..model.pago.gateways.repositorios import RepositorioMedios
+from ..model.commons.gateways.sistema import Bitacora
 
 
 class RevocarMedio:

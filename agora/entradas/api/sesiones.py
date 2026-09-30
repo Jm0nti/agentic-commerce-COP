@@ -75,7 +75,7 @@ from typing import Any, Callable
 
 from ...agente.conversacion import Agente, Conversacion
 from ...agente.pausa import DecisionHumana, PausaDelTurno, TipoDePausa
-from ...dominio.catalogo.modelo import Carrito
+from ...model.catalogo.modelo import Carrito
 
 
 class SesionDesconocida(Exception):

@@ -12,11 +12,19 @@ una propiedad del sistema.
 from __future__ import annotations
 
 import ast
+import functools
+import sys
 from pathlib import Path
 
 import pytest
 
-RAIZ = Path(__file__).resolve().parent.parent / "agora"
+import agora
+
+# Las raices de `agora` en disco: `agora/` y cada modulo del scaffold ya
+# migrado (`domain/model/src/agora`, ...) -- ver `agora/__init__.py`. Las
+# rutas de esta prueba son relativas a su raiz ("model/pago/modelo.py"), asi
+# que no importa en que carpeta del scaffold viva cada modulo.
+RAICES: tuple[Path, ...] = tuple(Path(p).resolve() for p in agora.__path__)
 
 # Ruta (posix, relativa a agora/) -> capa. La capa de un archivo, y la de un
 # import, sale de esta tabla por el prefijo MAS LARGO que coincida -- no del
@@ -26,8 +34,8 @@ RAIZ = Path(__file__).resolve().parent.parent / "agora"
 # `test_todo_modulo_tiene_capa` en vez de quedar sin reglas.
 CAPAS: dict[str, str] = {
     "__init__.py": "raiz",
-    "dominio": "dominio",
-    "puertos": "puertos",
+    # Fase 2: `dominio/` y `puertos/` se fusionaron en `domain/model`.
+    "model": "model",
     "aplicacion": "aplicacion",
     "agente": "agente",
     "adaptadores": "adaptadores",
@@ -39,8 +47,7 @@ CAPAS: dict[str, str] = {
 # reglas pasan sin mirar nada. Minimos = conteo del 30 sep 2026. Bajar uno
 # tiene que ser una decision, no un accidente.
 MINIMO_DE_MODULOS_POR_CAPA: dict[str, int] = {
-    "dominio": 10,
-    "puertos": 11,
+    "model": 24,
     "aplicacion": 14,
     "agente": 16,
     "adaptadores": 61,
@@ -51,8 +58,8 @@ MINIMO_DE_MODULOS_POR_CAPA: dict[str, int] = {
 # quien -> lo que NO puede importar
 REGLAS: dict[str, tuple[str, ...]] = {
     # El nucleo no sabe que existe el mundo exterior.
-    "dominio": ("puertos", "aplicacion", "adaptadores", "agente", "entradas", "composicion"),
-    "puertos": ("aplicacion", "adaptadores", "agente", "entradas", "composicion"),
+    # Entidades y gateways juntos, como en el scaffold de Bancolombia.
+    "model": ("aplicacion", "adaptadores", "agente", "entradas", "composicion"),
     # Los casos de uso hablan con interfaces, nunca con implementaciones.
     "aplicacion": ("adaptadores", "entradas", "composicion"),
     # Un adaptador no orquesta.
@@ -95,8 +102,7 @@ REPOSITORIOS_DEL_CONTENEDOR = frozenset({
 
 # Modulos de terceros que tampoco deberian aparecer segun la capa.
 PROHIBIDOS_POR_CAPA: dict[str, tuple[str, ...]] = {
-    "dominio": ("httpx", "requests", "fastapi", "sqlite3", "os"),
-    "puertos": ("httpx", "requests", "fastapi", "sqlite3"),
+    "model": ("httpx", "requests", "fastapi", "sqlite3", "os"),
     # `importlib`: con el se puede importar un adaptador por nombre, en un
     # string, sin que aparezca ningun `import` que este archivo pueda leer.
     "agente": ("httpx", "sqlite3", "importlib"),
@@ -125,7 +131,7 @@ MODULOS_DE_LA_MIGRACION_A_AGENTES = (
     # etapa 2
     "agente/contexto.py",
     "agente/contexto_documental.py",
-    "puertos/recuperacion.py",
+    "model/agente/gateways/recuperacion.py",
     "adaptadores/embeddings/__init__.py",
     "adaptadores/embeddings/proveedor_openai/__init__.py",
     "adaptadores/embeddings/proveedor_openai/adaptador.py",
@@ -136,13 +142,13 @@ MODULOS_DE_LA_MIGRACION_A_AGENTES = (
     "adaptadores/recuperacion/langchain_en_memoria/documentos.py",
     # etapa 3
     "agente/grafo.py",
-    "puertos/orquestacion.py",
+    "model/agente/gateways/orquestacion.py",
     "adaptadores/orquestacion/__init__.py",
     "adaptadores/orquestacion/con_langgraph/__init__.py",
     "adaptadores/orquestacion/con_langgraph/compilador.py",
     # etapa 4
     "agente/agentes.py",
-    "puertos/busqueda_productos.py",
+    "model/catalogo/gateways/busqueda_productos.py",
     "adaptadores/busqueda_productos/__init__.py",
     "adaptadores/busqueda_productos/semantico_en_memoria/__init__.py",
     "adaptadores/busqueda_productos/semantico_en_memoria/buscador.py",
@@ -153,17 +159,34 @@ MODULOS_DE_LA_MIGRACION_A_AGENTES = (
 )
 
 
-def _modulos() -> list[Path]:
-    return [p for p in RAIZ.rglob("*.py") if "__pycache__" not in str(p)]
+def _raiz_de(archivo: Path) -> Path:
+    return next(r for r in RAICES if archivo.is_relative_to(r))
 
 
-def _imports(archivo: Path, raiz: Path = RAIZ) -> list[str]:
+def _rel(archivo: Path, raiz: Path | None = None) -> str:
+    """'model/pago/modelo.py': relativo a la raiz de `agora` que lo contiene."""
+    return archivo.relative_to(raiz or _raiz_de(archivo)).as_posix()
+
+
+def _archivo(relativo: str) -> Path:
+    candidatos = [r / relativo for r in RAICES if (r / relativo).is_file()]
+    assert candidatos, f"{relativo} no existe en ninguna raiz de agora: si se movio, actualizar la regla"
+    return candidatos[0]
+
+
+@functools.cache
+def _modulos() -> tuple[Path, ...]:
+    return tuple(p for r in RAICES for p in r.rglob("*.py") if "__pycache__" not in p.parts)
+
+
+@functools.cache
+def _imports(archivo: Path, raiz: Path | None = None) -> list[str]:
     """Todo lo importado, normalizado. Resuelve los relativos a absolutos.
 
     `raiz` es parametro solo para que las pruebas del detector (al final
     del archivo) puedan armar un `agora/` de mentira en `tmp_path`."""
     arbol = ast.parse(archivo.read_text(encoding="utf-8"), filename=str(archivo))
-    partes_actuales = archivo.relative_to(raiz).parts[:-1]
+    partes_actuales = tuple(_rel(archivo, raiz).split("/"))[:-1]
     fuera: list[str] = []
 
     for nodo in ast.walk(arbol):
@@ -198,26 +221,26 @@ def _capa_de(ruta: str) -> str | None:
     return CAPAS[max(coinciden, key=len)] if coinciden else None
 
 
-def _capa(archivo: Path, raiz: Path = RAIZ) -> str | None:
-    return _capa_de(archivo.relative_to(raiz).as_posix())
+def _capa(archivo: Path, raiz: Path | None = None) -> str | None:
+    return _capa_de(_rel(archivo, raiz))
 
 
-def _violaciones_de_dependencia(archivo: Path, raiz: Path = RAIZ) -> list[str]:
+def _violaciones_de_dependencia(archivo: Path, raiz: Path | None = None) -> list[str]:
     capa = _capa(archivo, raiz)
-    permitidas = EXCEPCIONES_PROVISORIAS.get(archivo.relative_to(raiz).as_posix(), ())
+    permitidas = EXCEPCIONES_PROVISORIAS.get(_rel(archivo, raiz), ())
     prohibidas = tuple(c for c in REGLAS.get(capa, ()) if c not in permitidas)
     ofensas = []
     for imp in _imports(archivo, raiz):
         objetivo = _capa_de(imp)
         if objetivo in prohibidas:
             ofensas.append(
-                f"{archivo.relative_to(raiz.parent)} (capa '{capa}') importa "
+                f"{_rel(archivo, raiz)} (capa '{capa}') importa "
                 f"'{imp}'.\nLa capa '{capa}' no puede depender de '{objetivo}'."
             )
     return ofensas
 
 
-def _violaciones_de_libreria_de_llm(archivo: Path, raiz: Path = RAIZ) -> list[str]:
+def _violaciones_de_libreria_de_llm(archivo: Path, raiz: Path | None = None) -> list[str]:
     capa = _capa(archivo, raiz)
     if capa in CAPAS_QUE_PUEDEN_IMPORTAR_LLM:
         return []
@@ -226,7 +249,7 @@ def _violaciones_de_libreria_de_llm(archivo: Path, raiz: Path = RAIZ) -> list[st
         primero = imp.split(".")[0]
         if any(primero == lib or primero.startswith(f"{lib}_") for lib in LIBRERIAS_DE_LLM):
             ofensas.append(
-                f"{archivo.relative_to(raiz.parent)} (capa '{capa}') importa '{imp}'. "
+                f"{_rel(archivo, raiz)} (capa '{capa}') importa '{imp}'. "
                 "Una libreria de LLM/orquestacion entra detras de un puerto, con su "
                 "adaptador en adaptadores/ -- nunca directo en esta capa."
             )
@@ -271,7 +294,7 @@ def test_capas_puras_sin_infraestructura(archivo: Path) -> None:
     for imp in _imports(archivo):
         if imp.split(".")[0] in prohibidos:
             pytest.fail(
-                f"{archivo.relative_to(RAIZ.parent)} (capa '{capa}') importa "
+                f"{_rel(archivo)} (capa '{capa}') importa "
                 f"'{imp}'. Esa capa tiene que poder correr sin red, sin disco y "
                 "sin variables de entorno."
             )
@@ -282,11 +305,17 @@ def test_capas_puras_sin_infraestructura(archivo: Path) -> None:
 # de pago) y autenticacion. Antes se miraba si el import contenia la palabra
 # "pasarela" y no "puertos" -- una regla que un renombre de carpeta apaga sin
 # que ninguna prueba se entere.
+REPOSITORIOS_DEL_MODELO = (
+    "model.mandato.gateways.repositorios",
+    "model.pago.gateways.repositorios",
+    "model.catalogo.gateways.repositorios",
+    "model.usuario.gateways.repositorios",
+)
 PUERTOS_VEDADOS_AL_AGENTE = (
-    "puertos.pasarela",
-    "puertos.firma",
-    "puertos.repositorios",
-    "puertos.autenticacion",
+    "model.pago.gateways.pasarela",
+    "model.mandato.gateways.firma",
+    "model.usuario.gateways.autenticacion",
+    *REPOSITORIOS_DEL_MODELO,
 )
 
 
@@ -297,7 +326,7 @@ def _alcanza_pagos(importado: str) -> bool:
 
 
 def test_todo_modulo_tiene_capa() -> None:
-    sin_capa = [p.relative_to(RAIZ).as_posix() for p in _modulos() if _capa(p) is None]
+    sin_capa = [_rel(p) for p in _modulos() if _capa(p) is None]
     assert not sin_capa, "archivos fuera de CAPAS, sin ninguna regla:\n  " + "\n  ".join(sin_capa)
 
 
@@ -319,7 +348,7 @@ def test_las_entradas_solo_hablan_con_casos_de_uso() -> None:
             continue
         ofensas += _accesos_a_repositorios(archivo)
         ofensas += [
-            f"{archivo.name}: {i}" for i in _imports(archivo) if _es_modulo(i, "puertos.repositorios")
+            f"{archivo.name}: {i}" for i in _imports(archivo) if any(_es_modulo(i, m) for m in REPOSITORIOS_DEL_MODELO)
         ]
     assert not ofensas, "un entry point toca un repositorio:\n  " + "\n  ".join(ofensas)
 
@@ -328,7 +357,7 @@ def test_las_excepciones_provisorias_siguen_haciendo_falta() -> None:
     """Si la CLI deja de importar `composicion`, la excepcion sobra: borrarla,
     para que no quede una puerta abierta que nadie usa."""
     for relativo, capas in EXCEPCIONES_PROVISORIAS.items():
-        importadas = {_capa_de(i) for i in _imports(RAIZ / relativo)}
+        importadas = {_capa_de(i) for i in _imports(_archivo(relativo))}
         assert set(capas) <= importadas, f"{relativo} ya no necesita {capas}"
 
 
@@ -375,7 +404,7 @@ def test_el_agente_no_importa_nada_por_nombre_en_un_string() -> None:
 
 @pytest.mark.parametrize("relativo", MODULOS_DE_LA_MIGRACION_A_AGENTES)
 def test_los_modulos_de_la_migracion_estan_bajo_las_reglas_de_su_capa(relativo: str) -> None:
-    archivo = RAIZ / relativo
+    archivo = _archivo(relativo)
     assert archivo in _modulos(), f"{relativo} no existe o quedo fuera de _modulos()"
     assert _capa(archivo) == relativo.split("/")[0]
 
@@ -385,8 +414,8 @@ def test_los_modulos_de_la_migracion_estan_bajo_las_reglas_de_su_capa(relativo: 
 
 def _es_modulo(importado: str, prefijo: str) -> bool:
     """`adaptadores.x...` o `agora.adaptadores.x...` -- no `langchain_core.x`."""
-    base = RAIZ / prefijo.replace(".", "/")
-    assert base.is_dir() or base.with_suffix(".py").is_file(), (
+    ruta = prefijo.replace(".", "/")
+    assert any((r / ruta).is_dir() or (r / f"{ruta}.py").is_file() for r in RAICES), (
         f"una regla apunta a '{prefijo}', que ya no existe en agora/: si se "
         "movio, actualizar la regla -- si no, compara contra nada y pasa siempre"
     )
@@ -395,7 +424,7 @@ def _es_modulo(importado: str, prefijo: str) -> bool:
 
 
 def _modulos_bajo(prefijo: str) -> list[Path]:
-    encontrados = [p for p in _modulos() if p.relative_to(RAIZ).as_posix().startswith(prefijo)]
+    encontrados = [p for p in _modulos() if _rel(p).startswith(prefijo)]
     assert encontrados, f"ningun modulo bajo '{prefijo}': si se movio, actualizar la regla"
     return encontrados
 
@@ -408,7 +437,7 @@ def test_el_indice_documental_nunca_se_mezcla_con_el_catalogo() -> None:
     ofensas = []
     for archivo in _modulos_bajo("adaptadores/recuperacion/") + _modulos_bajo("adaptadores/embeddings/"):
         ofensas += [f"{archivo.name}: {i}" for i in _imports(archivo) if "catalogo" in i.split(".")]
-    for archivo in _modulos_bajo("adaptadores/catalogo/") + [RAIZ / "puertos" / "catalogo.py"]:
+    for archivo in _modulos_bajo("adaptadores/catalogo/") + [_archivo("model/catalogo/gateways/catalogo.py")]:
         ofensas += [
             f"{archivo.name}: {i}"
             for i in _imports(archivo)
@@ -444,7 +473,7 @@ def test_langgraph_vive_en_un_solo_modulo_de_agora() -> None:
     _adaptador` ya prohibe langgraph fuera de `adaptadores/`; esto ademas
     exige que dentro de `adaptadores/` tampoco se desparrame."""
     con_langgraph = sorted(
-        archivo.relative_to(RAIZ).as_posix()
+        _rel(archivo)
         for archivo in _modulos()
         if any(i.split(".")[0] == "langgraph" for i in _imports(archivo))
     )
@@ -457,19 +486,19 @@ def test_el_puerto_de_orquestacion_no_conoce_ninguna_libreria_de_grafos() -> Non
     Lo unico que puede importar es la biblioteca estandar."""
     ofensas = [
         i
-        for i in _imports(RAIZ / "puertos" / "orquestacion.py")
+        for i in _imports(_archivo("model/agente/gateways/orquestacion.py"))
         if i.split(".")[0] not in ("dataclasses", "typing", "__future__")
     ]
 
-    assert not ofensas, "puertos/orquestacion.py importa de mas:\n  " + "\n  ".join(ofensas)
+    assert not ofensas, "model/agente/gateways/orquestacion.py importa de mas:\n  " + "\n  ".join(ofensas)
 
 
 def test_el_grafo_del_agente_solo_conoce_el_puerto() -> None:
     """`agente/grafo.py` arma la topologia del turno sin saber quien la
     compila: recibe el `CompiladorDeGrafos` por constructor."""
-    importados = _imports(RAIZ / "agente" / "grafo.py")
+    importados = _imports(_archivo("agente/grafo.py"))
 
-    assert any(_es_modulo(i, "puertos.orquestacion") for i in importados)
+    assert any(_es_modulo(i, "model.agente.gateways.orquestacion") for i in importados)
     assert not [i for i in importados if i.split(".")[0] == "langgraph"]
     assert not [i for i in importados if _es_modulo(i, "adaptadores")]
 
@@ -487,7 +516,7 @@ def test_el_indice_de_productos_no_alcanza_el_repositorio_del_catalogo() -> None
         ofensas += [
             f"{archivo.name}: {i}"
             for i in _imports(archivo)
-            if _es_modulo(i, "adaptadores.catalogo") or _es_modulo(i, "puertos.catalogo")
+            if _es_modulo(i, "adaptadores.catalogo") or _es_modulo(i, "model.catalogo.gateways.catalogo")
         ]
     assert not ofensas, (
         "el buscador semantico de productos alcanza el catalogo:\n  " + "\n  ".join(ofensas)
@@ -510,7 +539,7 @@ def test_el_indice_de_productos_y_el_documental_no_se_conocen() -> None:
             f"{archivo.name}: {i}"
             for i in _imports(archivo)
             if _es_modulo(i, "adaptadores.busqueda_productos")
-            or _es_modulo(i, "puertos.busqueda_productos")
+            or _es_modulo(i, "model.catalogo.gateways.busqueda_productos")
         ]
     assert not ofensas, "los dos indices se cruzan:\n  " + "\n  ".join(ofensas)
 
@@ -520,13 +549,13 @@ def test_el_puerto_de_busqueda_de_productos_no_conoce_ninguna_libreria() -> None
     frontera, sobre objetos de dominio: nada de numpy ni de vector stores."""
     ofensas = [
         i
-        for i in _imports(RAIZ / "puertos" / "busqueda_productos.py")
+        for i in _imports(_archivo("model/catalogo/gateways/busqueda_productos.py"))
         if i.split(".")[0] not in ("dataclasses", "typing", "__future__")
-        and not _es_modulo(i, "dominio.catalogo.modelo")
+        and not _es_modulo(i, "model.catalogo.modelo")
     ]
 
     assert not ofensas, (
-        "puertos/busqueda_productos.py importa de mas:\n  " + "\n  ".join(ofensas)
+        "model/catalogo/gateways/busqueda_productos.py importa de mas:\n  " + "\n  ".join(ofensas)
     )
 
 
@@ -534,7 +563,7 @@ def test_los_agentes_especializados_no_alcanzan_ninguna_pasarela() -> None:
     """`agente/agentes.py` decide que herramientas ve cada agente: es
     exactamente el modulo donde un import de mas seria peor."""
     ofensas = [
-        i for i in _imports(RAIZ / "agente" / "agentes.py")
+        i for i in _imports(_archivo("agente/agentes.py"))
         if _alcanza_pagos(i)
     ]
 
@@ -550,7 +579,7 @@ def test_la_traza_no_conoce_ningun_adaptador_de_bitacora() -> None:
     el destino de las trazas (a stdout, a otro formato) obligaria a tocar el
     agente."""
     ofensas = [
-        i for i in _imports(RAIZ / "agente" / "traza.py")
+        i for i in _imports(_archivo("agente/traza.py"))
         if _es_modulo(i, "adaptadores") or _es_modulo(i, "composicion")
     ]
 
@@ -566,7 +595,7 @@ def test_la_pausa_no_alcanza_ningun_caso_de_uso_ni_pasarela() -> None:
     pedido de una persona desde `entradas/`. Si este modulo pudiera importar
     `EmitirMandato`, el agente estaria a un import de firmar solo."""
     ofensas = [
-        i for i in _imports(RAIZ / "agente" / "pausa.py")
+        i for i in _imports(_archivo("agente/pausa.py"))
         if _alcanza_pagos(i)
     ]
 
@@ -576,7 +605,7 @@ def test_la_pausa_no_alcanza_ningun_caso_de_uso_ni_pasarela() -> None:
 def test_el_puerto_de_orquestacion_define_la_pausa_sin_conocer_el_motor() -> None:
     """Detener el grafo no necesita nada del motor: `PausaRequerida` es una
     excepcion del puerto, no el `interrupt()` de ninguna libreria."""
-    fuente = (RAIZ / "puertos" / "orquestacion.py").read_text(encoding="utf-8")
+    fuente = (_archivo("model/agente/gateways/orquestacion.py")).read_text(encoding="utf-8")
 
     assert "class PausaRequerida" in fuente
     assert "interrupt" not in fuente.replace("`interrupt()`", "")
@@ -588,7 +617,7 @@ def test_solo_agente_pausa_arma_el_aviso_que_lee_el_modelo() -> None:
     ahora en un solo archivo."""
     marcas = ("Continua el flujo de compra llamando a", "no hay mandato ni pago")
     culpables = [
-        p.relative_to(RAIZ).as_posix()
+        _rel(p)
         for p in _modulos()
         for marca in marcas
         if marca in p.read_text(encoding="utf-8")
@@ -639,7 +668,7 @@ def test_el_detector_atrapa_al_agente_importando_entradas(tmp_path: Path) -> Non
         "from openai import OpenAI",
     ],
 )
-@pytest.mark.parametrize("capa", ["dominio", "puertos", "aplicacion", "agente", "entradas"])
+@pytest.mark.parametrize("capa", ["model", "aplicacion", "agente", "entradas", "composicion"])
 def test_el_detector_atrapa_librerias_de_llm_fuera_de_adaptadores(
     tmp_path: Path, capa: str, linea: str
 ) -> None:
@@ -660,7 +689,7 @@ def test_el_detector_atrapa_al_puerto_de_orquestacion_importando_langgraph(
     """El acople de la etapa 3, puesto a proposito: el puerto que existe
     para aislar LangGraph, importando LangGraph."""
     raiz, archivo = _agora_de_mentira(
-        tmp_path, "puertos/orquestacion.py", "from langgraph.graph import StateGraph\n",
+        tmp_path, "model/agente/gateways/orquestacion.py", "from langgraph.graph import StateGraph\n",
     )
     assert _violaciones_de_libreria_de_llm(archivo, raiz)
 
@@ -690,12 +719,12 @@ def test_el_detector_atrapa_al_buscador_de_productos_yendo_al_catalogo(
     raiz, _ = _agora_de_mentira(
         tmp_path,
         "adaptadores/busqueda_productos/semantico_en_memoria/intruso.py",
-        "from ....puertos.catalogo import RepositorioCatalogo\n",
+        "from ....model.catalogo.gateways.catalogo import RepositorioCatalogo\n",
     )
     archivo = raiz / "adaptadores/busqueda_productos/semantico_en_memoria/intruso.py"
     ofensas = [
         i for i in _imports(archivo, raiz)
-        if _es_modulo(i, "adaptadores.catalogo") or _es_modulo(i, "puertos.catalogo")
+        if _es_modulo(i, "adaptadores.catalogo") or _es_modulo(i, "model.catalogo.gateways.catalogo")
     ]
     assert ofensas
 
@@ -704,13 +733,13 @@ def test_el_detector_atrapa_al_puerto_de_productos_importando_numpy(
     tmp_path: Path,
 ) -> None:
     raiz, _ = _agora_de_mentira(
-        tmp_path, "puertos/busqueda_productos.py", "import numpy as np\n",
+        tmp_path, "model/catalogo/gateways/busqueda_productos.py", "import numpy as np\n",
     )
-    archivo = raiz / "puertos/busqueda_productos.py"
+    archivo = raiz / "model/catalogo/gateways/busqueda_productos.py"
     ofensas = [
         i for i in _imports(archivo, raiz)
         if i.split(".")[0] not in ("dataclasses", "typing", "__future__")
-        and not _es_modulo(i, "dominio.catalogo.modelo")
+        and not _es_modulo(i, "model.catalogo.modelo")
     ]
     assert ofensas
 
@@ -737,10 +766,10 @@ def test_el_detector_atrapa_importaciones_dinamicas(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "importado",
     [
-        "puertos.pasarela",
-        "agora.puertos.firma",
-        "puertos.repositorios",
-        "agora.puertos.autenticacion",
+        "model.pago.gateways.pasarela",
+        "agora.model.mandato.gateways.firma",
+        "model.pago.gateways.repositorios",
+        "agora.model.usuario.gateways.autenticacion",
         "adaptadores.pasarelas.wompi",
         "agora.aplicacion.ejecutar_intencion",
     ],
@@ -751,7 +780,7 @@ def test_el_detector_atrapa_al_agente_alcanzando_pagos(importado: str) -> None:
     assert _alcanza_pagos(importado)
 
 
-@pytest.mark.parametrize("importado", ["puertos.modelo_lenguaje", "agora.puertos.sistema", "json"])
+@pytest.mark.parametrize("importado", ["model.agente.gateways.modelo_lenguaje", "agora.model.commons.gateways.sistema", "json"])
 def test_el_detector_deja_al_agente_usar_sus_puertos(importado: str) -> None:
     assert not _alcanza_pagos(importado)
 
@@ -763,7 +792,7 @@ def test_el_detector_atrapa_un_archivo_sin_capa(tmp_path: Path) -> None:
 
 def test_el_detector_atrapa_una_regla_que_apunta_a_un_modulo_que_no_existe() -> None:
     with pytest.raises(AssertionError, match="ya no existe"):
-        _es_modulo("agora.dominio.x", "dominio.carpeta_que_se_movio")
+        _es_modulo("agora.model.x", "model.carpeta_que_se_movio")
 
 
 def test_el_detector_atrapa_una_entrada_importando_composicion(tmp_path: Path) -> None:
@@ -779,3 +808,25 @@ def test_el_detector_atrapa_una_entrada_leyendo_un_repositorio(tmp_path: Path) -
         tmp_path, "entradas/api/intruso.py", "def f(d):\n    return d.carritos.obtener('x')\n",
     )
     assert _accesos_a_repositorios(archivo)
+
+
+# -- Fase 2: domain/model ------------------------------------------------------ #
+
+
+def _ajenos_al_modelo(archivo: Path, raiz: Path | None = None) -> list[str]:
+    return [
+        i for i in _imports(archivo, raiz)
+        if _capa_de(i) != "model" and i.split(".")[0] not in sys.stdlib_module_names | {"__future__"}
+    ]
+
+
+@pytest.mark.parametrize("archivo", [p for p in _modulos() if _capa(p) == "model"], ids=_rel)
+def test_el_modelo_solo_conoce_el_modelo_y_la_biblioteca_estandar(archivo: Path) -> None:
+    """El `whitelistedDependencies` del `validateStructure` de Bancolombia,
+    en su version mas estricta: la lista blanca esta vacia."""
+    assert not _ajenos_al_modelo(archivo)
+
+
+def test_el_detector_atrapa_al_modelo_importando_una_libreria(tmp_path: Path) -> None:
+    raiz, archivo = _agora_de_mentira(tmp_path, "model/pago/intruso.py", "from pydantic import BaseModel\n")
+    assert _ajenos_al_modelo(archivo, raiz) == ["pydantic"]

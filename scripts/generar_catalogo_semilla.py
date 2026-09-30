@@ -48,7 +48,7 @@ from agora.adaptadores.llm.deepseek import (  # noqa: E402
 )
 from agora.adaptadores.sistema.ids import GeneradorIdsUuid  # noqa: E402
 from agora.aplicacion.generar_catalogo_semilla import GenerarCatalogoSemilla  # noqa: E402
-from agora.dominio.comun.errores import ErrorDeModeloDeLenguaje  # noqa: E402
+from agora.model.commons.errores import ErrorDeModeloDeLenguaje
 from agora.composicion.configuracion import RAIZ_REPO  # noqa: E402
 from utilidades.env import cargar_env_desde_archivo  # noqa: E402
 

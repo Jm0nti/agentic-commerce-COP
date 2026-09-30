@@ -4,8 +4,8 @@ quien pregunta (ver `entradas/api/app.py:listar_medios`)."""
 
 from __future__ import annotations
 
-from ..dominio.pago.modelo import Ambiente, MedioDePagoRef
-from ..puertos.repositorios import RepositorioMedios
+from ..model.pago.modelo import Ambiente, MedioDePagoRef
+from ..model.pago.gateways.repositorios import RepositorioMedios
 
 
 class ListarMediosVivos:

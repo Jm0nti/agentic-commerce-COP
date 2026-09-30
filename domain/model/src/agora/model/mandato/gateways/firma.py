@@ -65,3 +65,11 @@ class GeneradorDeLlaves(Protocol):
     def generar(self) -> tuple[bytes, bytes]:
         """`(llave_privada, llave_publica)`, los dos crudos."""
         ...
+
+
+class Verificador(Protocol):
+    """Verifica una firma ed25519 sobre la carga canonica de un mandato. Vivia
+    dentro de `dominio/mandato/modelo.py`: es un puerto, no parte de la
+    entidad (Fase 2 del refactor)."""
+
+    def verifica(self, firma: bytes, carga: bytes, llave_publica: bytes) -> bool: ...

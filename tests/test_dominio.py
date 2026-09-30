@@ -12,12 +12,12 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from agora.dominio.catalogo.modelo import Carrito, ItemCarrito
-from agora.dominio.comun.dinero import CERO, Dinero
-from agora.dominio.mandato.modelo import Consumo, Intencion, Mandato
-from agora.dominio.mandato.politica import Decision, evaluar
-from agora.dominio.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
-from agora.dominio.pago.topes import TopesDuros
+from agora.model.catalogo.modelo import Carrito, ItemCarrito
+from agora.model.commons.dinero import CERO, Dinero
+from agora.model.mandato.modelo import Consumo, Intencion, Mandato
+from agora.model.mandato.politica import Decision, evaluar
+from agora.model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
+from agora.model.pago.topes import TopesDuros
 
 AHORA = datetime(2026, 8, 19, 15, 0, tzinfo=timezone.utc)
 

@@ -20,9 +20,9 @@ from agora.composicion.configuracion import (
     leer_configuracion,
 )
 from agora.composicion.contenedor import construir
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.mandato.modelo import Intencion, Mandato
-from agora.dominio.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
+from agora.model.commons.dinero import Dinero
+from agora.model.mandato.modelo import Intencion, Mandato
+from agora.model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
 
 
 def _registro_wompi(tmp_path: Path, comercio_id: str = "com_x", **credenciales) -> str:

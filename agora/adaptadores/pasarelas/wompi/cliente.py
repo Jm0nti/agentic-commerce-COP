@@ -17,7 +17,7 @@ from typing import Any
 
 import httpx
 
-from ....dominio.comun.errores import ErrorDePasarela, PasarelaNoDisponible
+from ....model.commons.errores import ErrorDePasarela, PasarelaNoDisponible
 from .config import ConfiguracionWompi
 
 

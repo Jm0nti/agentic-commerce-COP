@@ -28,7 +28,7 @@ from agora.agente.conversacion import Agente, LimiteDeTurnosExcedido
 from agora.agente.grafo import AgenteEnGrafo
 from agora.agente.herramientas import CATALOGO_DE_HERRAMIENTAS, construir_herramientas
 from agora.agente.intencion import ClasificacionDeIntencion, OrigenDeClasificacion, TipoDeIntencion
-from agora.puertos.modelo_lenguaje import LlamadaHerramienta, Mensaje, RespuestaModelo
+from agora.model.agente.gateways.modelo_lenguaje import LlamadaHerramienta, Mensaje, RespuestaModelo
 
 
 class _ModeloGuionado:
@@ -346,7 +346,7 @@ def test_la_topologia_es_el_orquestador_y_un_nodo_por_agente():
     la condicional que la etapa 3 se nego a poner de utileria ahora es real
     -- siete destinos, todos alcanzables (`DefinicionDeGrafo` lo valida)."""
     from agora.agente.grafo import definir_grafo_del_turno
-    from agora.puertos.orquestacion import FIN
+    from agora.model.agente.gateways.orquestacion import FIN
 
     agente, _, _, _ = _armar_agente(lambda: [], [], False)
 

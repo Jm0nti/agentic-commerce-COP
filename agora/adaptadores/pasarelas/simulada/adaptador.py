@@ -18,8 +18,8 @@ import threading
 from dataclasses import replace
 from typing import Any
 
-from ....dominio.comun.errores import ErrorDePasarela
-from ....dominio.pago.modelo import (
+from ....model.commons.errores import ErrorDePasarela
+from ....model.pago.modelo import (
     Ambiente,
     EstadoCobro,
     MedioDePagoRef,
@@ -27,8 +27,8 @@ from ....dominio.pago.modelo import (
     Proveedor,
     ResultadoCobro,
 )
-from ....puertos.pasarela import EstadoMedio, MedioEnProceso, SolicitudEnrolamiento
-from ....puertos.sistema import GeneradorIds
+from ....model.pago.gateways.pasarela import EstadoMedio, MedioEnProceso, SolicitudEnrolamiento
+from ....model.commons.gateways.sistema import GeneradorIds
 from .guion import Desenlace, GuionSimulado
 
 

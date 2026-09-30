@@ -16,8 +16,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ....dominio.catalogo.modelo import Comercio, Producto
-from ....dominio.comun.errores import ComercioDesconocido, ProductoDesconocido
+from ....model.catalogo.modelo import Comercio, Producto
+from ....model.commons.errores import ComercioDesconocido, ProductoDesconocido
 from . import serializacion
 
 RUTA_POR_DEFECTO = Path(__file__).resolve().parent / "datos" / "catalogo.json"

@@ -46,13 +46,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..dominio.catalogo.modelo import Carrito, Comercio, Disponibilidad, ItemCarrito, Producto
-from ..dominio.comun.errores import ErrorDeDominio, ProductoDeOtroComercio, ProductoNoDisponible
-from ..dominio.mandato.modelo import PropuestaDeMandato
-from ..puertos.busqueda_productos import BuscadorSemanticoDeProductos, FiltrosDeProducto
-from ..puertos.catalogo import RepositorioCatalogo
-from ..puertos.repositorios import RepositorioCarritos, RepositorioPropuestas
-from ..puertos.sistema import GeneradorIds
+from ..model.catalogo.modelo import Carrito, Comercio, Disponibilidad, ItemCarrito, Producto
+from ..model.commons.errores import ErrorDeDominio, ProductoDeOtroComercio, ProductoNoDisponible
+from ..model.mandato.modelo import PropuestaDeMandato
+from ..model.catalogo.gateways.busqueda_productos import (
+    BuscadorSemanticoDeProductos,
+    FiltrosDeProducto,
+)
+from ..model.catalogo.gateways.catalogo import RepositorioCatalogo
+from ..model.catalogo.gateways.repositorios import RepositorioCarritos
+from ..model.mandato.gateways.repositorios import RepositorioPropuestas
+from ..model.commons.gateways.sistema import GeneradorIds
 
 
 @dataclass(frozen=True)

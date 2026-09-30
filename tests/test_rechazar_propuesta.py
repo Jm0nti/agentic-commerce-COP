@@ -8,9 +8,9 @@ import pytest
 
 from agora.adaptadores.persistencia.memoria import RepositorioPropuestasEnMemoria
 from agora.aplicacion.rechazar_propuesta import RechazarPropuesta
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.comun.errores import PropuestaDesconocida
-from agora.dominio.mandato.modelo import PropuestaDeMandato
+from agora.model.commons.dinero import Dinero
+from agora.model.commons.errores import PropuestaDesconocida
+from agora.model.mandato.modelo import PropuestaDeMandato
 
 
 class _BitacoraEnLista:

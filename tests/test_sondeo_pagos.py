@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from agora.dominio.comun.errores import EstadoDesconocido
+from agora.model.commons.errores import EstadoDesconocido
 from agora.entradas.api.sondeo_pagos import SondeoDePagosPendientes
 
 

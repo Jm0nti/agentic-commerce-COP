@@ -14,7 +14,7 @@ import json
 from agora.agente.conversacion import Agente
 from agora.agente.herramientas import CATALOGO_DE_HERRAMIENTAS, construir_herramientas
 from agora.agente.intencion import ClasificacionDeIntencion, OrigenDeClasificacion, TipoDeIntencion
-from agora.puertos.modelo_lenguaje import LlamadaHerramienta, Mensaje, RespuestaModelo
+from agora.model.agente.gateways.modelo_lenguaje import LlamadaHerramienta, Mensaje, RespuestaModelo
 
 
 class _ModeloGuionado:

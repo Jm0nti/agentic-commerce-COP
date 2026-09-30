@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ....dominio.pago.modelo import Ambiente
+from ....model.pago.modelo import Ambiente
 
 URLS: dict[Ambiente, str] = {
     Ambiente.SANDBOX: "https://sandbox.wompi.co/v1",

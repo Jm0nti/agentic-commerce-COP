@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import threading
 
-from ....dominio.comun.errores import PropuestaDesconocida
-from ....dominio.mandato.modelo import PropuestaDeMandato
+from ....model.commons.errores import PropuestaDesconocida
+from ....model.mandato.modelo import PropuestaDeMandato
 
 
 class RepositorioPropuestasEnMemoria:

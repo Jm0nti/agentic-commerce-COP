@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from ..dominio.catalogo.modelo import Comercio, Producto
+from ..modelo import Comercio, Producto
 
 
 class RepositorioCatalogo(Protocol):

@@ -16,7 +16,7 @@ from dataclasses import replace
 from agora.composicion.agente import construir_agente
 from agora.composicion.configuracion import leer_configuracion
 from agora.composicion.contenedor import construir
-from agora.dominio.mandato.modelo import Intencion
+from agora.model.mandato.modelo import Intencion
 
 
 def _producto_barato(contenedor):
@@ -25,7 +25,7 @@ def _producto_barato(contenedor):
     politica blanda (`esperando_confirmacion_humana`) en vez de rechazarse
     de una por el tope duro. Mismo criterio que `tests/test_composicion.py`.
     """
-    from agora.dominio.catalogo.modelo import Disponibilidad
+    from agora.model.catalogo.modelo import Disponibilidad
 
     for comercio in contenedor.navegar_catalogo.buscar_comercios():
         for producto in contenedor.navegar_catalogo.buscar_productos(comercio.comercio_id):

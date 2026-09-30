@@ -19,7 +19,7 @@ from typing import Any, Sequence
 
 from openai import OpenAI, OpenAIError
 
-from ....dominio.comun.errores import RecuperacionNoDisponible, RespuestaDeEmbeddingsInvalida
+from ....model.commons.errores import RecuperacionNoDisponible, RespuestaDeEmbeddingsInvalida
 from .config import ConfiguracionEmbeddingsOpenAI
 
 

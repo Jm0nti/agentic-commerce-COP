@@ -20,13 +20,15 @@ Cuando el refactor mueva un modulo, se actualizan los imports de este archivo
 from __future__ import annotations
 
 import importlib
+from pathlib import Path
 
+import agora
 from agora.adaptadores.catalogo.semilla.repositorio import RUTA_POR_DEFECTO as CATALOGO_POR_DEFECTO
 from agora.adaptadores.persistencia.sqlite.serializacion import fila_a_mandato, mandato_a_fila
 from agora.adaptadores.sistema.firma_ed25519 import VerificadorEd25519
 from agora.composicion import configuracion
-from agora.dominio.comun.errores import ErrorDeDominio
-from agora.dominio.pago.modelo import Ambiente
+from agora.model.commons.errores import ErrorDeDominio
+from agora.model.pago.modelo import Ambiente
 from agora.entradas.api.app import RAIZ_ESTATICO
 
 # -- R2: mandato dorado ------------------------------------------------------ #
@@ -111,10 +113,11 @@ def _subclases(clase: type) -> list[type]:
 def test_los_errores_que_ve_el_agente_no_cambian() -> None:
     # Importar todo agora/: tras el refactor los errores pueden vivir en otros
     # modulos, y una subclase solo existe si su modulo se importo.
-    raiz = configuracion.RAIZ_REPO / "agora"
-    for archivo in raiz.rglob("*.py"):
-        partes = archivo.relative_to(raiz.parent).with_suffix("").parts
-        importlib.import_module(".".join(partes[:-1] if partes[-1] == "__init__" else partes))
+    # `agora.__path__`: `agora/` y cada modulo del scaffold ya migrado.
+    for raiz in map(Path, agora.__path__):
+        for archivo in raiz.rglob("*.py"):
+            partes = ("agora", *archivo.relative_to(raiz).with_suffix("").parts)
+            importlib.import_module(".".join(partes[:-1] if partes[-1] == "__init__" else partes))
 
     encontrados = {
         c.__name__: c.reintentable

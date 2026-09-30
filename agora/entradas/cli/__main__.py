@@ -77,8 +77,8 @@ import time
 from dotenv import load_dotenv
 
 from ...aplicacion.navegar_catalogo import ItemPedido
-from ...dominio.comun.errores import ErrorDeDominio
-from ...dominio.pago.modelo import MedioDePagoRef, Proveedor
+from ...model.commons.errores import ErrorDeDominio
+from ...model.pago.modelo import MedioDePagoRef, Proveedor
 from ...composicion.agente import construir_agente
 from ...composicion.configuracion import RAIZ_REPO, ConfiguracionInvalida, leer_configuracion
 from ...composicion.contenedor import Contenedor, construir

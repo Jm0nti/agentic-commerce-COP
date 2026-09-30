@@ -49,7 +49,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Sequence
 
-from ..puertos.modelo_lenguaje import Mensaje
+from ..model.agente.gateways.modelo_lenguaje import Mensaje
 
 
 class TipoDePausa(str, Enum):

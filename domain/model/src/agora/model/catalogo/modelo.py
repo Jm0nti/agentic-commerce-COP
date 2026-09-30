@@ -23,8 +23,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from ..comun.dinero import CERO, Dinero
-from ..comun.identidad import CarritoId, ComercioId, ProductoId, TurnoId
+from ..commons.dinero import CERO, Dinero
+from ..commons.identidad import CarritoId, ComercioId, ProductoId, TurnoId
 
 
 class Disponibilidad(str, Enum):

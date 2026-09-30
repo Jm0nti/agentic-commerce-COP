@@ -35,12 +35,12 @@ ceremonia: vive directo en `entradas/api/autenticacion.py`, igual que
 
 from __future__ import annotations
 
-from ..dominio.comun.errores import CredencialesInvalidas, NombreDeUsuarioYaExiste
-from ..dominio.usuario.modelo import Usuario
-from ..puertos.autenticacion import HasherDeContrasenas
-from ..puertos.firma import GeneradorDeLlaves
-from ..puertos.repositorios import RepositorioLlaves, RepositorioUsuarios
-from ..puertos.sistema import GeneradorIds, Reloj
+from ..model.commons.errores import CredencialesInvalidas, NombreDeUsuarioYaExiste
+from ..model.usuario.modelo import Usuario
+from ..model.usuario.gateways.autenticacion import HasherDeContrasenas
+from ..model.mandato.gateways.firma import GeneradorDeLlaves
+from ..model.usuario.gateways.repositorios import RepositorioLlaves, RepositorioUsuarios
+from ..model.commons.gateways.sistema import GeneradorIds, Reloj
 
 
 class RegistrarUsuario:

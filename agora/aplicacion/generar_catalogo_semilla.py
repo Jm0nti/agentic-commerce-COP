@@ -31,11 +31,11 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from ..dominio.catalogo.modelo import Comercio, Disponibilidad, Producto
-from ..dominio.comun.dinero import Dinero
-from ..dominio.comun.errores import RespuestaModeloInvalida
-from ..puertos.modelo_lenguaje import ModeloDeLenguaje
-from ..puertos.sistema import GeneradorIds
+from ..model.catalogo.modelo import Comercio, Disponibilidad, Producto
+from ..model.commons.dinero import Dinero
+from ..model.commons.errores import RespuestaModeloInvalida
+from ..model.agente.gateways.modelo_lenguaje import ModeloDeLenguaje
+from ..model.commons.gateways.sistema import GeneradorIds
 
 SISTEMA = """Sos un generador de datos de prueba para una demo de comercio \
 electronico agentico en Colombia. Inventas UN comercio ficticio y sus \

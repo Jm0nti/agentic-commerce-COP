@@ -117,7 +117,7 @@ from typing import Mapping
 
 from ..adaptadores.pasarelas.wompi.config import ConfiguracionWompi
 from ..adaptadores.pasarelas.wompi.config import ConfiguracionInvalida as ConfiguracionWompiInvalida
-from ..dominio.pago.modelo import Ambiente
+from ..model.pago.modelo import Ambiente
 
 
 

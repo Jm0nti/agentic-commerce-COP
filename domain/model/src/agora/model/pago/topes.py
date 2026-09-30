@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..comun.dinero import Dinero
+from ..commons.dinero import Dinero
 
 
 @dataclass(frozen=True)

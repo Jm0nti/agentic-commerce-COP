@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import threading
 
-from ....dominio.usuario.modelo import Usuario
+from ....model.usuario.modelo import Usuario
 
 
 class RepositorioUsuariosEnMemoria:

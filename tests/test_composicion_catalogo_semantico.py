@@ -16,8 +16,8 @@ import pytest
 from agora.composicion.agente import construir_agente
 from agora.composicion.configuracion import leer_configuracion
 from agora.composicion.contenedor import construir
-from agora.puertos.busqueda_productos import FiltrosDeProducto
-from agora.puertos.modelo_lenguaje import RespuestaModelo
+from agora.model.catalogo.gateways.busqueda_productos import FiltrosDeProducto
+from agora.model.agente.gateways.modelo_lenguaje import RespuestaModelo
 
 
 def _entorno(tmp_path, **extra) -> dict:

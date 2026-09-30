@@ -37,7 +37,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol, Sequence
 
-from ..dominio.catalogo.modelo import Disponibilidad, Producto
+from ..modelo import Disponibilidad, Producto
 
 
 @dataclass(frozen=True)

@@ -19,7 +19,7 @@ from agora.adaptadores.persistencia.sqlite.conexion import abrir_conexion
 from agora.adaptadores.persistencia.sqlite.repositorio_medios import (
     RepositorioMediosSQLite,
 )
-from agora.dominio.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
+from agora.model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
 
 
 @dataclass

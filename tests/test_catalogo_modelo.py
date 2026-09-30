@@ -8,8 +8,8 @@ este archivo solo cubre lo que se agrego encima.
 
 from __future__ import annotations
 
-from agora.dominio.catalogo.modelo import Comercio, Disponibilidad, Producto
-from agora.dominio.comun.dinero import Dinero
+from agora.model.catalogo.modelo import Comercio, Disponibilidad, Producto
+from agora.model.commons.dinero import Dinero
 
 
 def test_comercio_descripcion_por_defecto_es_vacia():

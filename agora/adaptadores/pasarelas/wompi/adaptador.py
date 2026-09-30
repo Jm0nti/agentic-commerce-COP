@@ -19,15 +19,15 @@ import hmac
 import json
 from typing import Any
 
-from ....dominio.comun.errores import ErrorDePasarela
-from ....dominio.pago.modelo import (
+from ....model.commons.errores import ErrorDePasarela
+from ....model.pago.modelo import (
     EstadoCobro,
     MedioDePagoRef,
     OrdenDeCobro,
     Proveedor,
     ResultadoCobro,
 )
-from ....puertos.pasarela import EstadoMedio, MedioEnProceso, SolicitudEnrolamiento
+from ....model.pago.gateways.pasarela import EstadoMedio, MedioEnProceso, SolicitudEnrolamiento
 from .cliente import ClienteWompi
 from .config import ConfiguracionWompi
 

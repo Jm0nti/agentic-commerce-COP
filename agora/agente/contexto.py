@@ -27,7 +27,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol, Sequence
 
-from ..puertos.modelo_lenguaje import Mensaje
+from ..model.agente.gateways.modelo_lenguaje import Mensaje
 
 
 @dataclass(frozen=True)

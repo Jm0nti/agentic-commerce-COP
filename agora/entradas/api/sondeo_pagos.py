@@ -53,7 +53,7 @@ import threading
 from typing import Callable
 
 from ...aplicacion.consultar_estado import EstadoIntencion
-from ...dominio.comun.errores import EstadoDesconocido
+from ...model.commons.errores import EstadoDesconocido
 from .sesiones import AlmacenDeSesiones
 
 _ESTADOS_FINALES = {"aprobado", "rechazado"}

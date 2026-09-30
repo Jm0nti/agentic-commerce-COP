@@ -36,11 +36,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..dominio.comun.errores import ErrorDePasarela
-from ..dominio.pago.modelo import EstadoCobro, ResultadoCobro
-from ..puertos.pasarela import SelectorDePasarela
-from ..puertos.repositorios import LibroDeConsumo, RegistroDeEstados
-from ..puertos.sistema import Bitacora
+from ..model.commons.errores import ErrorDePasarela
+from ..model.pago.modelo import EstadoCobro, ResultadoCobro
+from ..model.pago.gateways.pasarela import SelectorDePasarela
+from ..model.mandato.gateways.repositorios import LibroDeConsumo
+from ..model.pago.gateways.repositorios import RegistroDeEstados
+from ..model.commons.gateways.sistema import Bitacora
 
 
 @dataclass(frozen=True)

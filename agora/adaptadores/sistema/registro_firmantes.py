@@ -15,8 +15,8 @@ a usar -- una decision explicita, no un accidente de implementacion.
 
 from __future__ import annotations
 
-from ...dominio.comun.errores import SinLlaveDeFirma
-from ...puertos.repositorios import RepositorioLlaves
+from ...model.commons.errores import SinLlaveDeFirma
+from ...model.usuario.gateways.repositorios import RepositorioLlaves
 from .firma_ed25519 import FirmanteEd25519, firmante_desde_bytes
 
 

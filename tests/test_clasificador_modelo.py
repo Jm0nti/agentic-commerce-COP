@@ -19,8 +19,8 @@ from agora.agente.clasificacion.modelo import (
     interpretar_respuesta,
 )
 from agora.agente.intencion import OrigenDeClasificacion, TipoDeIntencion
-from agora.dominio.comun.errores import ModeloNoDisponible, RespuestaModeloInvalida
-from agora.puertos.modelo_lenguaje import LlamadaHerramienta, Mensaje
+from agora.model.commons.errores import ModeloNoDisponible, RespuestaModeloInvalida
+from agora.model.agente.gateways.modelo_lenguaje import LlamadaHerramienta, Mensaje
 
 
 class _ModeloFijo:

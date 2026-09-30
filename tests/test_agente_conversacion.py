@@ -10,8 +10,8 @@ import pytest
 
 from agora.agente.conversacion import Agente, LimiteDeTurnosExcedido
 from agora.agente.herramientas import Herramienta
-from agora.dominio.comun.errores import ProductoDesconocido
-from agora.puertos.modelo_lenguaje import LlamadaHerramienta, Mensaje, RespuestaModelo
+from agora.model.commons.errores import ProductoDesconocido
+from agora.model.agente.gateways.modelo_lenguaje import LlamadaHerramienta, Mensaje, RespuestaModelo
 
 
 class _ModeloGuionado:

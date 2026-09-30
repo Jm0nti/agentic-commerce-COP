@@ -84,14 +84,14 @@ from ...aplicacion.navegar_catalogo import NavegarCatalogo
 from ...aplicacion.pagar_carrito import PagarCarrito
 from ...aplicacion.rechazar_propuesta import RechazarPropuesta
 from ...aplicacion.revocar_medio import RevocarMedio
-from ...dominio.comun.errores import (
+from ...model.commons.errores import (
     CredencialesInvalidas,
     ErrorDeDominio,
     PasarelaNoDisponible,
     SesionInvalida,
 )
-from ...dominio.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
-from ...puertos.sistema import Reloj
+from ...model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
+from ...model.commons.gateways.sistema import Reloj
 from .autenticacion import COOKIE_SESION, DURACION_SESION, AlmacenDeSesionesWeb
 from .sesiones import AlmacenDeSesiones, SesionDesconocida
 

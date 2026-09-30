@@ -3,9 +3,9 @@ lleva consumido (`cli mandatos`)."""
 
 from __future__ import annotations
 
-from ..dominio.mandato.modelo import Consumo, Mandato
-from ..dominio.pago.modelo import Ambiente
-from ..puertos.repositorios import LibroDeConsumo, RepositorioMandatos
+from ..model.mandato.modelo import Consumo, Mandato
+from ..model.pago.modelo import Ambiente
+from ..model.mandato.gateways.repositorios import LibroDeConsumo, RepositorioMandatos
 
 
 class ListarMandatos:

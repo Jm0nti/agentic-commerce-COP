@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from ....dominio.catalogo.modelo import Comercio, Disponibilidad, Producto
-from ....dominio.comun.dinero import Dinero
+from ....model.catalogo.modelo import Comercio, Disponibilidad, Producto
+from ....model.commons.dinero import Dinero
 
 
 def comercio_a_json(comercio: Comercio) -> dict[str, Any]:

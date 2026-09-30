@@ -68,11 +68,16 @@ from __future__ import annotations
 
 import time
 
-from ..dominio.comun.errores import MedioNoAprobado
-from ..dominio.pago.modelo import Ambiente, MedioDePagoRef
-from ..puertos.pasarela import EstadoMedio, MedioEnProceso, SelectorDePasarela, SolicitudEnrolamiento
-from ..puertos.repositorios import RepositorioMedios
-from ..puertos.sistema import Bitacora
+from ..model.commons.errores import MedioNoAprobado
+from ..model.pago.modelo import Ambiente, MedioDePagoRef
+from ..model.pago.gateways.pasarela import (
+    EstadoMedio,
+    MedioEnProceso,
+    SelectorDePasarela,
+    SolicitudEnrolamiento,
+)
+from ..model.pago.gateways.repositorios import RepositorioMedios
+from ..model.commons.gateways.sistema import Bitacora
 
 ESTADOS_FINALES_TOKEN = frozenset({"APPROVED", "DECLINED", "ERROR", "VOIDED"})
 ESPERA_PUSH_SEG = 300

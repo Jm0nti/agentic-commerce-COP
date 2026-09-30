@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ....puertos.recuperacion import DocumentoFuente
+from ....model.agente.gateways.recuperacion import DocumentoFuente
 
 
 def cargar_markdown(directorio: Path, raiz: Path | None = None) -> list[DocumentoFuente]:

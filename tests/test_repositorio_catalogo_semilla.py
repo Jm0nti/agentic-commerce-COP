@@ -12,9 +12,9 @@ import pytest
 
 from agora.adaptadores.catalogo.semilla import RepositorioCatalogoSemilla
 from agora.adaptadores.catalogo.semilla import serializacion
-from agora.dominio.catalogo.modelo import Comercio, Disponibilidad, Producto
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.comun.errores import ComercioDesconocido, ProductoDesconocido
+from agora.model.catalogo.modelo import Comercio, Disponibilidad, Producto
+from agora.model.commons.dinero import Dinero
+from agora.model.commons.errores import ComercioDesconocido, ProductoDesconocido
 
 
 def _catalogo_de_prueba(tmp_path):

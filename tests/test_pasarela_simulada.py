@@ -21,15 +21,9 @@ from agora.adaptadores.pasarelas.simulada import (
     GuionSimulado,
 )
 from agora.adaptadores.sistema.ids import GeneradorIdsUuid
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.comun.errores import ErrorDePasarela
-from agora.dominio.pago.modelo import (
-    Ambiente,
-    EstadoCobro,
-    MedioDePagoRef,
-    OrdenDeCobro,
-    Proveedor,
-)
+from agora.model.commons.dinero import Dinero
+from agora.model.commons.errores import ErrorDePasarela
+from agora.model.pago.modelo import Ambiente, EstadoCobro, MedioDePagoRef, OrdenDeCobro, Proveedor
 
 
 def _pasarela() -> AdaptadorSimulado:
@@ -121,7 +115,7 @@ def test_guion_personalizado_gana_a_la_heuristica():
 
 
 def test_flujo_de_enrolamiento_completo():
-    from agora.puertos.pasarela import SolicitudEnrolamiento
+    from agora.model.pago.gateways.pasarela import SolicitudEnrolamiento
 
     pasarela = _pasarela()
     en_proceso = pasarela.preparar_medio(

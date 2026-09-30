@@ -26,11 +26,11 @@ from agora.adaptadores.persistencia.memoria import (
 )
 from agora.adaptadores.sistema import GeneradorIdsUuid, VerificadorEd25519
 from agora.aplicacion.ejecutar_intencion import EjecutarIntencion
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.mandato.modelo import Intencion, Mandato
-from agora.dominio.mandato.politica import Decision
-from agora.dominio.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
-from agora.dominio.pago.topes import TopesDuros
+from agora.model.commons.dinero import Dinero
+from agora.model.mandato.modelo import Intencion, Mandato
+from agora.model.mandato.politica import Decision
+from agora.model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
+from agora.model.pago.topes import TopesDuros
 
 AHORA = datetime(2026, 8, 25, 15, 0, tzinfo=timezone.utc)
 
@@ -259,7 +259,7 @@ def test_retomar_rechazado_libera_la_reserva():
 
 
 def test_retomar_sin_reserva_pendiente_levanta():
-    from agora.dominio.comun.errores import ReservaNoEncontrada
+    from agora.model.commons.errores import ReservaNoEncontrada
 
     sk = Ed25519PrivateKey.generate()
     ejecutar, mandatos, _, _, _ = _armar()

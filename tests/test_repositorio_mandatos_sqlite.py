@@ -12,10 +12,10 @@ import pytest
 from agora.adaptadores.persistencia.sqlite.repositorio_mandatos import (
     RepositorioMandatosSQLite,
 )
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.comun.errores import MandatoDesconocido, MandatoDeOtroAmbiente
-from agora.dominio.mandato.modelo import Mandato
-from agora.dominio.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
+from agora.model.commons.dinero import Dinero
+from agora.model.commons.errores import MandatoDesconocido, MandatoDeOtroAmbiente
+from agora.model.mandato.modelo import Mandato
+from agora.model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
 
 HOY = datetime(2026, 8, 25, 12, 0, tzinfo=timezone.utc)
 

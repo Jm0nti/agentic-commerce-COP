@@ -46,10 +46,10 @@ from ..agente.grafo import AgenteEnGrafo
 from ..agente.herramientas import construir_herramientas
 from ..agente.intencion import ClasificadorDeIntencion
 from ..aplicacion.navegar_catalogo import ItemPedido
-from ..dominio.catalogo.modelo import Comercio, Producto
-from ..puertos.busqueda_productos import FiltrosDeProducto
-from ..puertos.modelo_lenguaje import ModeloDeLenguaje
-from ..puertos.orquestacion import CompiladorDeGrafos
+from ..model.catalogo.modelo import Comercio, Producto
+from ..model.catalogo.gateways.busqueda_productos import FiltrosDeProducto
+from ..model.agente.gateways.modelo_lenguaje import ModeloDeLenguaje
+from ..model.agente.gateways.orquestacion import CompiladorDeGrafos
 from .configuracion import MODOS_ORQUESTACION, ConfiguracionInvalida
 from .contenedor import Contenedor
 

@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 
 from agora.adaptadores.persistencia.memoria import RepositorioPropuestasEnMemoria
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.comun.errores import PropuestaDesconocida
-from agora.dominio.mandato.modelo import PropuestaDeMandato
+from agora.model.commons.dinero import Dinero
+from agora.model.commons.errores import PropuestaDesconocida
+from agora.model.mandato.modelo import PropuestaDeMandato
 
 
 def _propuesta(propuesta_id: str = "prp_1") -> PropuestaDeMandato:

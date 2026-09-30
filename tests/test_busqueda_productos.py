@@ -16,10 +16,10 @@ from agora.adaptadores.busqueda_productos.semantico_en_memoria import (
     BuscadorSemanticoEnMemoria,
     texto_de,
 )
-from agora.dominio.catalogo.modelo import Disponibilidad, Producto
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.comun.errores import RecuperacionNoDisponible
-from agora.puertos.busqueda_productos import FiltrosDeProducto
+from agora.model.catalogo.modelo import Disponibilidad, Producto
+from agora.model.commons.dinero import Dinero
+from agora.model.commons.errores import RecuperacionNoDisponible
+from agora.model.catalogo.gateways.busqueda_productos import FiltrosDeProducto
 
 CREMA = Producto(
     producto_id="prd_crema", comercio_id="com_1", nombre="Crema hidratante",

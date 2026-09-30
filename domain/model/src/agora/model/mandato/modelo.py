@@ -28,16 +28,13 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any
 
-from ..comun.dinero import CERO, Dinero
+from ..commons.dinero import CERO, Dinero
 from ..pago.modelo import MedioDePagoRef
+from .gateways.firma import Verificador
 
 VERSION = 2
-
-
-class Verificador(Protocol):
-    def verifica(self, firma: bytes, carga: bytes, llave_publica: bytes) -> bool: ...
 
 
 @dataclass

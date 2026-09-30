@@ -24,8 +24,8 @@ Wompi y otros todavia simulados en el mismo catalogo).
 
 from __future__ import annotations
 
-from ...dominio.comun.errores import ComercioSinCredencialesWompi
-from ...puertos.pasarela import PasarelaDePagos
+from ...model.commons.errores import ComercioSinCredencialesWompi
+from ...model.pago.gateways.pasarela import PasarelaDePagos
 
 
 class RegistroDePasarelas:

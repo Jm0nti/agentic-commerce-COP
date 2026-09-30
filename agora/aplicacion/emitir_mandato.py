@@ -74,17 +74,18 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import timedelta
 
-from ..dominio.comun.errores import PropuestaInvalida, SinMedioDePagoVivo, SinMedioVinculadoAlComercio
-from ..dominio.mandato.modelo import Mandato
-from ..dominio.pago.modelo import Ambiente
-from ..puertos.firma import SelectorDeFirmante
-from ..puertos.repositorios import (
-    RepositorioCarritos,
-    RepositorioMandatos,
-    RepositorioMedios,
-    RepositorioPropuestas,
+from ..model.commons.errores import (
+    PropuestaInvalida,
+    SinMedioDePagoVivo,
+    SinMedioVinculadoAlComercio,
 )
-from ..puertos.sistema import Bitacora, GeneradorIds, Reloj
+from ..model.mandato.modelo import Mandato
+from ..model.pago.modelo import Ambiente
+from ..model.mandato.gateways.firma import SelectorDeFirmante
+from ..model.catalogo.gateways.repositorios import RepositorioCarritos
+from ..model.mandato.gateways.repositorios import RepositorioMandatos, RepositorioPropuestas
+from ..model.pago.gateways.repositorios import RepositorioMedios
+from ..model.commons.gateways.sistema import Bitacora, GeneradorIds, Reloj
 
 
 class EmitirMandato:

@@ -47,7 +47,7 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-from ..puertos.modelo_lenguaje import Mensaje
+from ..model.agente.gateways.modelo_lenguaje import Mensaje
 from .nodos import Ruta
 
 EVENTO = "turno_del_agente"

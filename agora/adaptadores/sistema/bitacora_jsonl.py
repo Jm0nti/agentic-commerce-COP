@@ -22,7 +22,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from ...puertos.sistema import Reloj
+from ...model.commons.gateways.sistema import Reloj
 
 
 def _serializable(valor: Any) -> Any:

@@ -52,20 +52,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..dominio.comun.errores import ReservaNoEncontrada
-from ..dominio.mandato.modelo import Intencion
-from ..dominio.mandato.politica import Decision, Dictamen, evaluar
-from ..dominio.pago.modelo import Ambiente, EstadoCobro, OrdenDeCobro, ResultadoCobro
-from ..dominio.pago.topes import TopesDuros
-from ..puertos.pasarela import SelectorDePasarela
-from ..puertos.repositorios import (
+from ..model.commons.errores import ReservaNoEncontrada
+from ..model.mandato.modelo import Intencion
+from ..model.mandato.politica import Decision, Dictamen, evaluar
+from ..model.pago.modelo import Ambiente, EstadoCobro, OrdenDeCobro, ResultadoCobro
+from ..model.pago.topes import TopesDuros
+from ..model.pago.gateways.pasarela import SelectorDePasarela
+from ..model.mandato.gateways.repositorios import (
     LibroDeConsumo,
-    RegistroDeEstados,
     RepositorioMandatos,
     Reserva,
     TopeAgotado,
 )
-from ..puertos.sistema import Bitacora, Reloj
+from ..model.pago.gateways.repositorios import RegistroDeEstados
+from ..model.commons.gateways.sistema import Bitacora, Reloj
 
 
 @dataclass(frozen=True)

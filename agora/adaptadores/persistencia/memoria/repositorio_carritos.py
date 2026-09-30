@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import threading
 
-from ....dominio.catalogo.modelo import Carrito
-from ....dominio.comun.errores import CarritoDesconocido
+from ....model.catalogo.modelo import Carrito
+from ....model.commons.errores import CarritoDesconocido
 
 
 class RepositorioCarritosEnMemoria:

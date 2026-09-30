@@ -21,8 +21,8 @@ from agora.composicion.configuracion import (
 )
 from agora.composicion.contenedor import construir
 from agora.entradas.cli.__main__ import cmd_chat
-from agora.puertos.modelo_lenguaje import RespuestaModelo
-from agora.puertos.recuperacion import FragmentoRecuperado
+from agora.model.agente.gateways.modelo_lenguaje import RespuestaModelo
+from agora.model.agente.gateways.recuperacion import FragmentoRecuperado
 
 
 def _entorno(tmp_path, **extra) -> dict:

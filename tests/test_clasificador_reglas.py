@@ -120,7 +120,7 @@ def test_hola_con_un_pedido_no_es_solo_social(reglas):
 def test_ignora_el_historial(reglas):
     """Una regla que dependiera del contexto dejaria de ser inequivoca: el
     historial es asunto del clasificador con modelo."""
-    from agora.puertos.modelo_lenguaje import Mensaje
+    from agora.model.agente.gateways.modelo_lenguaje import Mensaje
 
     historial = [Mensaje(rol="assistant", contenido="¿Queres que arme el carrito?")]
     assert not reglas.clasificar("si", historial).decidida

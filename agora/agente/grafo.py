@@ -63,8 +63,8 @@ from dataclasses import dataclass, replace
 
 from typing import Any
 
-from ..puertos.modelo_lenguaje import Mensaje
-from ..puertos.orquestacion import (
+from ..model.agente.gateways.modelo_lenguaje import Mensaje
+from ..model.agente.gateways.orquestacion import (
     FIN,
     AristaCondicional,
     CompiladorDeGrafos,

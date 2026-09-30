@@ -24,8 +24,8 @@ motivo para una tabla nueva (`RegistroDeEstados` es para el otro caso:
 
 from __future__ import annotations
 
-from ..puertos.repositorios import RepositorioPropuestas
-from ..puertos.sistema import Bitacora
+from ..model.mandato.gateways.repositorios import RepositorioPropuestas
+from ..model.commons.gateways.sistema import Bitacora
 
 
 class RechazarPropuesta:

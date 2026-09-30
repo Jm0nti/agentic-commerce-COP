@@ -399,6 +399,15 @@ y se verifica, con la estructura de siempre.
 
 ### Fase 2: `domain/model` (1,5 a 2 días)
 
+> **✅ Hecha (30 sep 2026).** Queda en 1.189 pruebas, con el flujo de CLI de punta a punta en simulado y los 5 scripts arrancando sin errores. `pip install -e .` también funciona desde fuera del repo.
+> - **Cómo se enchufa el módulo:** el código vive en `domain/model/src/agora/model/`, y `agora/__init__.py` agrega esa carpeta a `agora.__path__` (tupla `_MODULOS`: cada fase suma la suya). Así `agora.model.*` se importa igual desde el repo, los scripts, pytest y una instalación editable. Límite: no sirve para un wheel. Si algún día hace falta, se pasa a PEP 420 con un pyproject por módulo (Fase 8).
+> - **Sin módulos puente (D6):** las 312 sentencias de import de `agora/`, `tests/` y `scripts/` se reescribieron de una vez con un script que lee el AST. No quedó nada viejo que borrar en la Fase 6.
+> - **Gateways:** cada agregado tiene su carpeta `gateways/`, y cada puerto viejo se movió **entero** (con su docstring) al agregado que le corresponde. `puertos/repositorios.py` se partió en cuatro: mandato, pago, catálogo y usuario. `Verificador` salió de la entidad y se fue a `model/mandato/gateways/firma.py`. Los tipos que solo existen como contrato de un puerto (`Reserva`, `TopeAgotado`, `FiltrosDeProducto`, los DTOs de la pasarela, `Mensaje`, `DefinicionDeGrafo`, `PausaRequerida`) se quedaron junto a su gateway, en vez de pasar al archivo de la entidad.
+> - **Los puertos del agente** (LLM, orquestación, recuperación) quedaron en `model/agente/gateways/`. Los tipos propios del agente llegan en la Fase 3.
+> - **`errores.py` no se partió:** se movió entero a `model/commons/errores.py`. La prueba que congela nombres y `reintentable` sigue en verde.
+> - **`test_fronteras.py`** ahora recorre todas las raíces de `agora.__path__` y guarda en caché el AST de cada archivo: en la VM del puente la suite completa bajó de ~110 s a ~45 s. Regla nueva: `model` solo importa `model` y la biblioteca estándar, que equivale al `whitelistedDependencies` de Bancolombia con la lista vacía. La frontera del agente ahora nombra los gateways nuevos, entre ellos los cuatro de repositorios.
+> - **Pendiente para la Fase 7:** los docstrings y la documentación todavía citan rutas `dominio/…` y `puertos/…`.
+
 1. Crear el esqueleto `domain/model/src/agora/model/…` y mover con `git mv`
    `dominio/*` → `model/<agregado>/`.
 2. Fusionar los puertos: partir `puertos/repositorios.py` por agregado y llevar

@@ -10,8 +10,8 @@ import unicodedata
 import pytest
 
 from agora.adaptadores.recuperacion.langchain_en_memoria import BuscadorDocumentalLangChain
-from agora.dominio.comun.errores import RecuperacionNoDisponible
-from agora.puertos.recuperacion import DocumentoFuente
+from agora.model.commons.errores import RecuperacionNoDisponible
+from agora.model.agente.gateways.recuperacion import DocumentoFuente
 
 _DIMENSIONES = 128
 

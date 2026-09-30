@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from ...puertos.modelo_lenguaje import Mensaje
+from ...model.agente.gateways.modelo_lenguaje import Mensaje
 from ..intencion import ClasificacionDeIntencion, ClasificadorDeIntencion
 
 

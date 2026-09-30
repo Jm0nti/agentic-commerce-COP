@@ -15,12 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from ..dominio.pago.modelo import (
-    Ambiente,
-    MedioDePagoRef,
-    OrdenDeCobro,
-    ResultadoCobro,
-)
+from ..modelo import Ambiente, MedioDePagoRef, OrdenDeCobro, ResultadoCobro
 
 
 @dataclass(frozen=True)

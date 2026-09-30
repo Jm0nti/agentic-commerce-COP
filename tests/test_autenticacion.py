@@ -28,14 +28,14 @@ from agora.adaptadores.persistencia.sqlite import (
 from agora.adaptadores.sistema import GeneradorIdsUuid, HasherPBKDF2, RegistroDeFirmantes
 from agora.adaptadores.sistema.firma_ed25519 import generar_par_ed25519
 from agora.aplicacion.autenticacion import IniciarSesion, RegistrarUsuario
-from agora.dominio.comun.errores import (
+from agora.model.commons.errores import (
     CredencialesInvalidas,
     NombreDeUsuarioYaExiste,
     SinLlaveDeFirma,
 )
-from agora.dominio.usuario.modelo import Usuario
+from agora.model.usuario.modelo import Usuario
 from agora.entradas.api.autenticacion import AlmacenDeSesionesWeb
-from agora.dominio.comun.errores import SesionInvalida
+from agora.model.commons.errores import SesionInvalida
 
 AHORA = datetime(2026, 9, 4, 12, 0, tzinfo=timezone.utc)
 

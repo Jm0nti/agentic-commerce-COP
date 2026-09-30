@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from agora.composicion.configuracion import leer_configuracion
 from agora.composicion.contenedor import construir
 from agora.entradas.cli.__main__ import cmd_chat
-from agora.puertos.modelo_lenguaje import RespuestaModelo
+from agora.model.agente.gateways.modelo_lenguaje import RespuestaModelo
 
 
 class _ModeloDeTexto:

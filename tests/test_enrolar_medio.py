@@ -18,9 +18,9 @@ import pytest
 from agora.adaptadores.pasarelas.registro import RegistroDePasarelas
 from agora.adaptadores.persistencia.memoria import RepositorioMediosEnMemoria
 from agora.aplicacion.enrolar_medio import EnrolarMedio
-from agora.dominio.comun.errores import MedioNoAprobado
-from agora.dominio.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
-from agora.puertos.pasarela import EstadoMedio, MedioEnProceso
+from agora.model.commons.errores import MedioNoAprobado
+from agora.model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
+from agora.model.pago.gateways.pasarela import EstadoMedio, MedioEnProceso
 
 COMERCIO_ID = "com_1"
 

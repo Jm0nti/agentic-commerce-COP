@@ -12,9 +12,9 @@ from __future__ import annotations
 
 import threading
 
-from ....dominio.comun.errores import MandatoDesconocido, MandatoDeOtroAmbiente
-from ....dominio.mandato.modelo import Mandato
-from ....dominio.pago.modelo import Ambiente
+from ....model.commons.errores import MandatoDesconocido, MandatoDeOtroAmbiente
+from ....model.mandato.modelo import Mandato
+from ....model.pago.modelo import Ambiente
 
 
 class RepositorioMandatosEnMemoria:

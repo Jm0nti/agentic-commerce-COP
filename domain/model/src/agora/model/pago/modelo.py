@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from ..comun.dinero import Dinero
+from ..commons.dinero import Dinero
 
 
 class Ambiente(str, Enum):

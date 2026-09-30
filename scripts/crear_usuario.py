@@ -47,7 +47,7 @@ from agora.composicion.configuracion import (  # noqa: E402
     leer_configuracion,
 )
 from agora.composicion.contenedor import construir  # noqa: E402
-from agora.dominio.comun.errores import NombreDeUsuarioYaExiste  # noqa: E402
+from agora.model.commons.errores import NombreDeUsuarioYaExiste
 
 
 def _parsear_args() -> argparse.Namespace:

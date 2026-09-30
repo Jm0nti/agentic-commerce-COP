@@ -8,9 +8,9 @@ import pytest
 
 from agora.adaptadores.persistencia.memoria.repositorio_carritos import RepositorioCarritosEnMemoria
 from agora.aplicacion.pagar_carrito import PagarCarrito
-from agora.dominio.catalogo.modelo import Carrito, ItemCarrito
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.comun.errores import CarritoDesconocido
+from agora.model.catalogo.modelo import Carrito, ItemCarrito
+from agora.model.commons.dinero import Dinero
+from agora.model.commons.errores import CarritoDesconocido
 
 
 class _EjecutarQueAnota:

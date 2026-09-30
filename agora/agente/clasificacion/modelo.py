@@ -29,8 +29,8 @@ from __future__ import annotations
 import json
 from typing import Any, Sequence
 
-from ...dominio.comun.errores import ErrorDeDominio, RespuestaModeloInvalida
-from ...puertos.modelo_lenguaje import Mensaje, ModeloDeLenguaje
+from ...model.commons.errores import ErrorDeDominio, RespuestaModeloInvalida
+from ...model.agente.gateways.modelo_lenguaje import Mensaje, ModeloDeLenguaje
 from ..intencion import ClasificacionDeIntencion, OrigenDeClasificacion, TipoDeIntencion
 
 UMBRAL_CONFIANZA_POR_DEFECTO = 0.6

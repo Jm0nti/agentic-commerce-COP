@@ -16,10 +16,10 @@ import pytest
 from agora.adaptadores.pasarelas.wompi import AdaptadorWompi, ConfiguracionWompi
 from agora.adaptadores.pasarelas.wompi.cliente import ClienteWompi
 from agora.adaptadores.pasarelas.wompi.config import ConfiguracionInvalida
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.comun.errores import ErrorDePasarela, PasarelaNoDisponible
-from agora.dominio.pago.modelo import Ambiente, EstadoCobro, MedioDePagoRef, OrdenDeCobro, Proveedor
-from agora.puertos.pasarela import SolicitudEnrolamiento
+from agora.model.commons.dinero import Dinero
+from agora.model.commons.errores import ErrorDePasarela, PasarelaNoDisponible
+from agora.model.pago.modelo import Ambiente, EstadoCobro, MedioDePagoRef, OrdenDeCobro, Proveedor
+from agora.model.pago.gateways.pasarela import SolicitudEnrolamiento
 
 ACEPTACIONES = {
     "data": {

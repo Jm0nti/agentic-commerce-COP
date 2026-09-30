@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..dominio.comun.errores import EstadoDesconocido
-from ..puertos.repositorios import RegistroDeEstados
+from ..model.commons.errores import EstadoDesconocido
+from ..model.pago.gateways.repositorios import RegistroDeEstados
 
 
 @dataclass(frozen=True)

@@ -11,9 +11,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ....dominio.catalogo.modelo import Carrito, ItemCarrito
-from ....dominio.comun.dinero import Dinero
-from ....dominio.comun.errores import CarritoDesconocido
+from ....model.catalogo.modelo import Carrito, ItemCarrito
+from ....model.commons.dinero import Dinero
+from ....model.commons.errores import CarritoDesconocido
 from .conexion import abrir_conexion
 
 

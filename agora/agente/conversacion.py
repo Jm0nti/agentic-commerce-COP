@@ -80,14 +80,14 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Mapping
 
-from ..dominio.comun.errores import ErrorDeDominio
-from ..puertos.modelo_lenguaje import (
+from ..model.commons.errores import ErrorDeDominio
+from ..model.agente.gateways.modelo_lenguaje import (
     DefinicionHerramienta,
     LlamadaHerramienta,
     Mensaje,
     ModeloDeLenguaje,
 )
-from ..puertos.sistema import Bitacora
+from ..model.commons.gateways.sistema import Bitacora
 from .contexto import ContextoInyectado, ProveedorDeContexto
 from .herramientas import (
     HERRAMIENTAS_POR_NODO,

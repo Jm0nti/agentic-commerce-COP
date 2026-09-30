@@ -23,7 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from ....dominio.pago.modelo import EstadoCobro, OrdenDeCobro
+from ....model.pago.modelo import EstadoCobro, OrdenDeCobro
 
 
 @dataclass(frozen=True)

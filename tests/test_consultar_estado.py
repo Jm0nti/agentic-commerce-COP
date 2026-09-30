@@ -4,7 +4,7 @@ import pytest
 
 from agora.adaptadores.persistencia.memoria import RegistroDeEstadosEnMemoria
 from agora.aplicacion.consultar_estado import ConsultarEstado
-from agora.dominio.comun.errores import EstadoDesconocido
+from agora.model.commons.errores import EstadoDesconocido
 
 
 def test_camino_feliz_devuelve_el_ultimo_estado_fijado():

@@ -22,10 +22,10 @@ import pytest
 
 from agora.adaptadores.persistencia.sqlite.libro_consumo import LibroDeConsumoSQLite
 from agora.adaptadores.sistema.ids import GeneradorIdsUuid
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.mandato.modelo import Mandato
-from agora.dominio.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
-from agora.puertos.repositorios import TopeAgotado
+from agora.model.commons.dinero import Dinero
+from agora.model.mandato.modelo import Mandato
+from agora.model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
+from agora.model.mandato.gateways.repositorios import TopeAgotado
 
 
 @dataclass

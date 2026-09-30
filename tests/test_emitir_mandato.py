@@ -20,16 +20,16 @@ from agora.adaptadores.persistencia.memoria import (
 )
 from agora.adaptadores.sistema import GeneradorIdsUuid, VerificadorEd25519, cargar_o_generar_firmante
 from agora.aplicacion.emitir_mandato import EmitirMandato
-from agora.dominio.catalogo.modelo import Carrito, ItemCarrito
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.comun.errores import (
+from agora.model.catalogo.modelo import Carrito, ItemCarrito
+from agora.model.commons.dinero import Dinero
+from agora.model.commons.errores import (
     PropuestaDesconocida,
     PropuestaInvalida,
     SinMedioDePagoVivo,
     SinMedioVinculadoAlComercio,
 )
-from agora.dominio.mandato.modelo import PropuestaDeMandato
-from agora.dominio.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
+from agora.model.mandato.modelo import PropuestaDeMandato
+from agora.model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
 
 AHORA = datetime(2026, 8, 25, 12, 0, tzinfo=timezone.utc)
 

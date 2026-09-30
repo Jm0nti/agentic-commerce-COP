@@ -12,9 +12,9 @@ import pytest
 from agora.adaptadores.persistencia.sqlite.repositorio_propuestas import (
     RepositorioPropuestasSQLite,
 )
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.comun.errores import PropuestaDesconocida
-from agora.dominio.mandato.modelo import PropuestaDeMandato
+from agora.model.commons.dinero import Dinero
+from agora.model.commons.errores import PropuestaDesconocida
+from agora.model.mandato.modelo import PropuestaDeMandato
 
 
 def _propuesta(**kw) -> PropuestaDeMandato:

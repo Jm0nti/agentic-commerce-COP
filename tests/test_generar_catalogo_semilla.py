@@ -10,9 +10,9 @@ import json
 import pytest
 
 from agora.aplicacion.generar_catalogo_semilla import GenerarCatalogoSemilla
-from agora.dominio.catalogo.modelo import Disponibilidad
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.comun.errores import RespuestaModeloInvalida
+from agora.model.catalogo.modelo import Disponibilidad
+from agora.model.commons.dinero import Dinero
+from agora.model.commons.errores import RespuestaModeloInvalida
 
 
 class _IdsDeterministas:

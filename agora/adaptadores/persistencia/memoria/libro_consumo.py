@@ -25,11 +25,11 @@ from __future__ import annotations
 import threading
 from dataclasses import replace
 
-from ....dominio.comun.dinero import CERO, Dinero
-from ....dominio.mandato.modelo import Consumo, Mandato
-from ....dominio.pago.modelo import Ambiente
-from ....puertos.repositorios import Reserva, TopeAgotado
-from ....puertos.sistema import GeneradorIds, Reloj
+from ....model.commons.dinero import CERO, Dinero
+from ....model.mandato.modelo import Consumo, Mandato
+from ....model.pago.modelo import Ambiente
+from ....model.mandato.gateways.repositorios import Reserva, TopeAgotado
+from ....model.commons.gateways.sistema import GeneradorIds, Reloj
 
 
 class LibroDeConsumoEnMemoria:

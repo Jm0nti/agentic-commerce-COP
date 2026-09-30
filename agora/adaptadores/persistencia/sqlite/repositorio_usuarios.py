@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from ....dominio.usuario.modelo import Usuario
+from ....model.usuario.modelo import Usuario
 from .conexion import abrir_conexion
 
 

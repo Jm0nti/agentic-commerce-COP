@@ -32,9 +32,9 @@ import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from ...dominio.comun.errores import SesionInvalida
-from ...dominio.usuario.modelo import Usuario
-from ...puertos.sistema import Reloj
+from ...model.commons.errores import SesionInvalida
+from ...model.usuario.modelo import Usuario
+from ...model.commons.gateways.sistema import Reloj
 
 COOKIE_SESION = "agora_sesion"
 DURACION_SESION = timedelta(hours=12)

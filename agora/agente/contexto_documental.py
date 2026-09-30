@@ -30,9 +30,9 @@ from __future__ import annotations
 import re
 from typing import Sequence
 
-from ..dominio.comun.errores import ErrorDeDominio
-from ..puertos.modelo_lenguaje import Mensaje
-from ..puertos.recuperacion import BuscadorDocumental, FragmentoRecuperado
+from ..model.commons.errores import ErrorDeDominio
+from ..model.agente.gateways.modelo_lenguaje import Mensaje
+from ..model.agente.gateways.recuperacion import BuscadorDocumental, FragmentoRecuperado
 from .contexto import ContextoInyectado
 
 LIMITE_POR_DEFECTO = 4

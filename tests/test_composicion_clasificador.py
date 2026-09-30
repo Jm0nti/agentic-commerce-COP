@@ -18,7 +18,7 @@ from agora.agente.intencion import OrigenDeClasificacion, TipoDeIntencion
 from agora.composicion.agente import construir_agente, construir_clasificador
 from agora.composicion.configuracion import ConfiguracionInvalida, leer_configuracion
 from agora.composicion.contenedor import construir
-from agora.puertos.modelo_lenguaje import RespuestaModelo
+from agora.model.agente.gateways.modelo_lenguaje import RespuestaModelo
 
 
 class _ModeloQueContestaTexto:

@@ -15,8 +15,12 @@ from openai import APIConnectionError, AuthenticationError
 
 from agora.adaptadores.llm.deepseek import AdaptadorDeepSeek, ConfiguracionDeepSeek
 from agora.adaptadores.llm.deepseek.config import ConfiguracionInvalida
-from agora.dominio.comun.errores import ModeloNoDisponible, RespuestaModeloInvalida
-from agora.puertos.modelo_lenguaje import DefinicionHerramienta, LlamadaHerramienta, Mensaje
+from agora.model.commons.errores import ModeloNoDisponible, RespuestaModeloInvalida
+from agora.model.agente.gateways.modelo_lenguaje import (
+    DefinicionHerramienta,
+    LlamadaHerramienta,
+    Mensaje,
+)
 
 
 @dataclass

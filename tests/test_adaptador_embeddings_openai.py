@@ -14,7 +14,7 @@ from agora.adaptadores.embeddings.proveedor_openai import (
     ConfiguracionEmbeddingsOpenAI,
     ConfiguracionInvalida,
 )
-from agora.dominio.comun.errores import RecuperacionNoDisponible, RespuestaDeEmbeddingsInvalida
+from agora.model.commons.errores import RecuperacionNoDisponible, RespuestaDeEmbeddingsInvalida
 
 
 class _OpenAICaido(OpenAIError):

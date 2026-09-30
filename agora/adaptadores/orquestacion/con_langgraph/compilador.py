@@ -31,7 +31,7 @@ from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from ....puertos.orquestacion import (
+from ....model.agente.gateways.orquestacion import (
     FIN,
     AristaCondicional,
     DefinicionDeGrafo,

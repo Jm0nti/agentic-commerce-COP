@@ -13,9 +13,9 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
-from ....dominio.comun.dinero import Dinero
-from ....dominio.mandato.modelo import Mandato
-from ....dominio.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
+from ....model.commons.dinero import Dinero
+from ....model.mandato.modelo import Mandato
+from ....model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
 
 # Orden fijo de columnas: lo que `mandato_a_fila` produce y lo que
 # `fila_a_mandato` consume tienen que coincidir exactamente con esto y con

@@ -15,7 +15,7 @@ from agora.composicion.agente import construir_agente
 from agora.composicion.configuracion import NOMBRE_DE_TRAZAS, leer_configuracion
 from agora.composicion.contenedor import construir
 from agora.entradas.cli.__main__ import cmd_trazas
-from agora.puertos.modelo_lenguaje import LlamadaHerramienta, RespuestaModelo
+from agora.model.agente.gateways.modelo_lenguaje import LlamadaHerramienta, RespuestaModelo
 
 
 def _entorno(tmp_path, **extra) -> dict:

@@ -33,7 +33,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from ..comun.identidad import TitularId
+from ..commons.identidad import TitularId
 
 
 @dataclass(frozen=True)

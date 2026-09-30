@@ -35,8 +35,8 @@ from agora.agente.pausa import (
     TipoDePausa,
     detectar_pausa,
 )
-from agora.puertos.modelo_lenguaje import LlamadaHerramienta, Mensaje, RespuestaModelo
-from agora.puertos.orquestacion import PausaRequerida
+from agora.model.agente.gateways.modelo_lenguaje import LlamadaHerramienta, Mensaje, RespuestaModelo
+from agora.model.agente.gateways.orquestacion import PausaRequerida
 
 PROPUESTA = {
     "carrito_id": "car_1",

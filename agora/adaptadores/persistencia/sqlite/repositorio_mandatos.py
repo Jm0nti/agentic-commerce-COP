@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ....dominio.comun.errores import MandatoDesconocido, MandatoDeOtroAmbiente
-from ....dominio.mandato.modelo import Mandato
-from ....dominio.pago.modelo import Ambiente
+from ....model.commons.errores import MandatoDesconocido, MandatoDeOtroAmbiente
+from ....model.mandato.modelo import Mandato
+from ....model.pago.modelo import Ambiente
 from .conexion import abrir_conexion
 from .serializacion import COLUMNAS, fila_a_mandato, mandato_a_fila
 

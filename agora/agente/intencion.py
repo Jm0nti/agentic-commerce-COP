@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Protocol, Sequence
 
-from ..puertos.modelo_lenguaje import Mensaje
+from ..model.agente.gateways.modelo_lenguaje import Mensaje
 
 
 class TipoDeIntencion(str, Enum):

@@ -12,7 +12,7 @@ import json
 from agora.agente.conversacion import Conversacion
 from agora.agente.pausa import detectar_pausa
 from agora.entradas.api.sesiones import AlmacenDeSesiones
-from agora.puertos.modelo_lenguaje import Mensaje
+from agora.model.agente.gateways.modelo_lenguaje import Mensaje
 
 
 class _AgenteFalso:

@@ -92,28 +92,26 @@ from ..aplicacion.navegar_catalogo import NavegarCatalogo
 from ..aplicacion.pagar_carrito import PagarCarrito
 from ..aplicacion.rechazar_propuesta import RechazarPropuesta
 from ..aplicacion.revocar_medio import RevocarMedio
-from ..dominio.mandato.modelo import Verificador
-from ..dominio.pago.modelo import Ambiente
-from ..dominio.pago.topes import TopesDuros
-from ..dominio.catalogo.modelo import Producto
-from ..puertos.autenticacion import HasherDeContrasenas
-from ..puertos.busqueda_productos import BuscadorSemanticoDeProductos
-from ..puertos.catalogo import RepositorioCatalogo
-from ..puertos.firma import SelectorDeFirmante
-from ..puertos.modelo_lenguaje import ModeloDeLenguaje
-from ..puertos.pasarela import SelectorDePasarela
-from ..puertos.recuperacion import BuscadorDocumental
-from ..puertos.repositorios import (
+from ..model.mandato.gateways.firma import Verificador
+from ..model.pago.modelo import Ambiente
+from ..model.pago.topes import TopesDuros
+from ..model.catalogo.modelo import Producto
+from ..model.usuario.gateways.autenticacion import HasherDeContrasenas
+from ..model.catalogo.gateways.busqueda_productos import BuscadorSemanticoDeProductos
+from ..model.catalogo.gateways.catalogo import RepositorioCatalogo
+from ..model.mandato.gateways.firma import SelectorDeFirmante
+from ..model.agente.gateways.modelo_lenguaje import ModeloDeLenguaje
+from ..model.pago.gateways.pasarela import SelectorDePasarela
+from ..model.agente.gateways.recuperacion import BuscadorDocumental
+from ..model.mandato.gateways.repositorios import (
     LibroDeConsumo,
-    RegistroDeEstados,
-    RepositorioCarritos,
-    RepositorioLlaves,
     RepositorioMandatos,
-    RepositorioMedios,
     RepositorioPropuestas,
-    RepositorioUsuarios,
 )
-from ..puertos.sistema import Bitacora, GeneradorIds, Reloj
+from ..model.pago.gateways.repositorios import RegistroDeEstados, RepositorioMedios
+from ..model.catalogo.gateways.repositorios import RepositorioCarritos
+from ..model.usuario.gateways.repositorios import RepositorioLlaves, RepositorioUsuarios
+from ..model.commons.gateways.sistema import Bitacora, GeneradorIds, Reloj
 from .configuracion import RAIZ_REPO, ConfiguracionAgora
 
 

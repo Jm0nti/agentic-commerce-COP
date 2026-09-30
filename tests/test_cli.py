@@ -13,7 +13,7 @@ from types import SimpleNamespace
 from agora.aplicacion.navegar_catalogo import ItemPedido
 from agora.composicion.configuracion import leer_configuracion
 from agora.composicion.contenedor import construir
-from agora.dominio.pago.modelo import Ambiente
+from agora.model.pago.modelo import Ambiente
 from agora.entradas.cli.__main__ import (
     _parsear_item,
     cmd_comercios,

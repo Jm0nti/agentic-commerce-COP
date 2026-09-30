@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ....dominio.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
+from ....model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
 from .conexion import abrir_conexion
 
 

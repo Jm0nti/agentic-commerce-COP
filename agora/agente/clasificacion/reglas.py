@@ -29,7 +29,7 @@ import re
 import unicodedata
 from typing import Sequence
 
-from ...puertos.modelo_lenguaje import Mensaje
+from ...model.agente.gateways.modelo_lenguaje import Mensaje
 from ..intencion import ClasificacionDeIntencion, OrigenDeClasificacion, TipoDeIntencion
 
 # Los patrones se aplican sobre el texto normalizado (`normalizar`):

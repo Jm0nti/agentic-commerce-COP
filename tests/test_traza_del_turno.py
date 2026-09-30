@@ -21,7 +21,7 @@ from agora.agente.grafo import AgenteEnGrafo
 from agora.agente.herramientas import CATALOGO_DE_HERRAMIENTAS, construir_herramientas
 from agora.agente.intencion import ClasificacionDeIntencion, OrigenDeClasificacion, TipoDeIntencion
 from agora.agente.traza import EVENTO, MARCA_DE_RECORTE, MAX_CARACTERES_POR_CAMPO
-from agora.puertos.modelo_lenguaje import LlamadaHerramienta, RespuestaModelo
+from agora.model.agente.gateways.modelo_lenguaje import LlamadaHerramienta, RespuestaModelo
 
 
 class _BitacoraEspia:

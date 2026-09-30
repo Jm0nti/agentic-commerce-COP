@@ -40,8 +40,8 @@ from typing import Sequence
 
 import numpy as np
 
-from ....dominio.catalogo.modelo import Producto
-from ....puertos.recuperacion import ProveedorDeEmbeddings
+from ....model.catalogo.modelo import Producto
+from ....model.agente.gateways.recuperacion import ProveedorDeEmbeddings
 
 # Coseno minimo para considerar que un producto tiene algo que ver con la
 # consulta. MEDIDO contra OpenAI real el 19 de septiembre de 2026

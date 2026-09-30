@@ -34,7 +34,7 @@ from agora.agente.herramientas import (
 )
 from agora.agente.intencion import ClasificacionDeIntencion, OrigenDeClasificacion, TipoDeIntencion
 from agora.agente.nodos import RUTA_DE_RESPALDO, RUTAS, Ruta, ruta_para
-from agora.puertos.modelo_lenguaje import Mensaje, RespuestaModelo
+from agora.model.agente.gateways.modelo_lenguaje import Mensaje, RespuestaModelo
 
 
 def _funcion(*_a, **_k):

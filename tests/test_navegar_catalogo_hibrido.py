@@ -22,10 +22,10 @@ from agora.adaptadores.persistencia.memoria import (
 )
 from agora.adaptadores.sistema import GeneradorIdsUuid
 from agora.aplicacion.navegar_catalogo import NavegarCatalogo
-from agora.dominio.catalogo.modelo import Comercio, Disponibilidad, Producto
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.comun.errores import ComercioDesconocido, RecuperacionNoDisponible
-from agora.puertos.busqueda_productos import FiltrosDeProducto
+from agora.model.catalogo.modelo import Comercio, Disponibilidad, Producto
+from agora.model.commons.dinero import Dinero
+from agora.model.commons.errores import ComercioDesconocido, RecuperacionNoDisponible
+from agora.model.catalogo.gateways.busqueda_productos import FiltrosDeProducto
 
 COMERCIO = Comercio(comercio_id="com_1", nombre="BellezaSur", categoria="belleza")
 

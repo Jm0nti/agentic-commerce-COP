@@ -27,9 +27,9 @@ from agora.adaptadores.pasarelas.simulada import APROBADO, AdaptadorSimulado
 from agora.adaptadores.persistencia.memoria import LibroDeConsumoEnMemoria
 from agora.adaptadores.sistema.ids import GeneradorIdsUuid
 from agora.aplicacion.conciliar_evento import ConciliarEvento, ResultadoConciliacion
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.mandato.modelo import Mandato
-from agora.dominio.pago.modelo import Ambiente, MedioDePagoRef, OrdenDeCobro, Proveedor
+from agora.model.commons.dinero import Dinero
+from agora.model.mandato.modelo import Mandato
+from agora.model.pago.modelo import Ambiente, MedioDePagoRef, OrdenDeCobro, Proveedor
 from agora.entradas.webhooks.wompi import crear_app
 
 HOY = datetime(2026, 8, 25, 12, 0, tzinfo=timezone.utc)

@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 
 from agora.adaptadores.persistencia.memoria import RepositorioCarritosEnMemoria
-from agora.dominio.catalogo.modelo import Carrito, ItemCarrito
-from agora.dominio.comun.dinero import Dinero
-from agora.dominio.comun.errores import CarritoDesconocido
+from agora.model.catalogo.modelo import Carrito, ItemCarrito
+from agora.model.commons.dinero import Dinero
+from agora.model.commons.errores import CarritoDesconocido
 
 
 def _carrito(carrito_id: str = "car_1") -> Carrito:
