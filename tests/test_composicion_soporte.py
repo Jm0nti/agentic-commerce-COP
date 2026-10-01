@@ -13,14 +13,14 @@ from types import SimpleNamespace
 import pytest
 
 from agora.driven_adapters.recuperacion_langchain import BuscadorDocumentalLangChain
-from agora.composicion.agente import construir_agente, construir_contextos
-from agora.composicion.configuracion import (
+from agora.app_service.config.agente import construir_agente, construir_contextos
+from agora.app_service.config.configuracion import (
     SOPORTE_DOCUMENTOS_POR_DEFECTO,
     ConfiguracionInvalida,
     leer_configuracion,
 )
-from agora.composicion.contenedor import construir
-from agora.entradas.cli.__main__ import cmd_chat
+from agora.app_service.config.contenedor import construir
+from agora.entry_points.cli.cli import cmd_chat
 from agora.model.agente.gateways.modelo_lenguaje import RespuestaModelo
 from agora.model.agente.gateways.recuperacion import FragmentoRecuperado
 
@@ -149,7 +149,7 @@ def test_chat_mostrar_intencion_imprime_las_fuentes_del_contexto(tmp_path, monke
     pendientes = ["¿qué es un mandato?", "salir"]
     monkeypatch.setattr("builtins.input", lambda _prompt="": pendientes.pop(0))
 
-    assert cmd_chat(SimpleNamespace(mostrar_intencion=True), contenedor) == 0
+    assert cmd_chat(SimpleNamespace(mostrar_intencion=True), construir_agente(contenedor)) == 0
 
     salida = capsys.readouterr().out
     assert "[intencion: soporte | reglas" in salida

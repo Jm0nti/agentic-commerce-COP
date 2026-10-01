@@ -34,22 +34,22 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..usecase.agente.clasificacion import (
+from ...usecase.agente.clasificacion import (
     ClasificadorConModelo,
     ClasificadorEnCadena,
     ClasificadorPorReglas,
 )
-from ..model.agente.contexto import ProveedorDeContexto
-from ..usecase.agente.contexto_documental import ContextoDocumental
-from ..usecase.agente.conversacion import Agente
-from ..usecase.agente.grafo import AgenteEnGrafo
-from ..usecase.agente.herramientas import construir_herramientas
-from ..model.agente.intencion import ClasificadorDeIntencion
-from ..usecase.navegar_catalogo.navegar_catalogo_use_case import ItemPedido
-from ..model.catalogo.modelo import Comercio, Producto
-from ..model.catalogo.gateways.busqueda_productos import FiltrosDeProducto
-from ..model.agente.gateways.modelo_lenguaje import ModeloDeLenguaje
-from ..model.agente.gateways.orquestacion import CompiladorDeGrafos
+from ...model.agente.contexto import ProveedorDeContexto
+from ...usecase.agente.contexto_documental import ContextoDocumental
+from ...usecase.agente.conversacion import Agente
+from ...usecase.agente.grafo import AgenteEnGrafo
+from ...usecase.agente.herramientas import construir_herramientas
+from ...model.agente.intencion import ClasificadorDeIntencion
+from ...usecase.navegar_catalogo.navegar_catalogo_use_case import ItemPedido
+from ...model.catalogo.modelo import Comercio, Producto
+from ...model.catalogo.gateways.busqueda_productos import FiltrosDeProducto
+from ...model.agente.gateways.modelo_lenguaje import ModeloDeLenguaje
+from ...model.agente.gateways.orquestacion import CompiladorDeGrafos
 from .configuracion import MODOS_ORQUESTACION, ConfiguracionInvalida
 from .contenedor import Contenedor
 
@@ -123,7 +123,7 @@ def construir_agente(contenedor: Contenedor) -> Agente | AgenteEnGrafo | None:
             },
             "nota": "Propuesta SIN AUTORIZAR. La persona la autoriza ella misma, "
             "fuera de esta charla, corriendo en su propia terminal: "
-            f"'python -m agora.entradas.cli firmar {propuesta.propuesta_id} "
+            f"'python -m agora cli firmar {propuesta.propuesta_id} "
             "<su_titular_id>' (su titular_id es el que uso al enrolar su medio "
             "de pago). Ese comando le muestra el mandato_id ya firmado -- recien "
             "con ese mandato_id se puede llamar a pagar().",
@@ -156,7 +156,7 @@ def construir_agente(contenedor: Contenedor) -> Agente | AgenteEnGrafo | None:
             resultado["nota"] = (
                 "Pago SIN CONFIRMAR: quedo esperando confirmacion humana. La "
                 "persona la resuelve ELLA MISMA, en su propia terminal, corriendo: "
-                f"'python -m agora.entradas.cli retomar {intencion.intencion_id} "
+                f"'python -m agora cli retomar {intencion.intencion_id} "
                 f"{mandato_id} {carrito_id}'. Con AGORA_PERSISTENCIA=sqlite, en "
                 "cuanto lo corra podes volver a llamar a consultar_estado y ya "
                 "va a reflejar el resultado -- no hace falta que ella misma te "
@@ -221,7 +221,7 @@ def _importar_compilador_langgraph() -> type[CompiladorDeGrafos]:
     `langgraph` instalado (un venv que todavia no corrio
     `pip install -r requirements.txt` levanta igual), y una prueba puede
     simular "langgraph no esta" sin desinstalar nada."""
-    from ..driven_adapters.orquestacion_langgraph import CompiladorLangGraph
+    from ...driven_adapters.orquestacion_langgraph import CompiladorLangGraph
 
     return CompiladorLangGraph
 

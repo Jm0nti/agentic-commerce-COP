@@ -11,10 +11,10 @@ from __future__ import annotations
 import json
 from dataclasses import replace
 
-from agora.composicion.agente import construir_agente
-from agora.composicion.configuracion import NOMBRE_DE_TRAZAS, leer_configuracion
-from agora.composicion.contenedor import construir
-from agora.entradas.cli.__main__ import cmd_trazas
+from agora.app_service.config.agente import construir_agente
+from agora.app_service.config.configuracion import NOMBRE_DE_TRAZAS, leer_configuracion
+from agora.app_service.config.contenedor import construir
+from agora.entry_points.cli.cli import cmd_trazas
 from agora.model.agente.gateways.modelo_lenguaje import LlamadaHerramienta, RespuestaModelo
 
 

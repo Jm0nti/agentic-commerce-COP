@@ -7,11 +7,11 @@ Composition root de este punto de entrada especifico: lee `os.environ`, arma
 el `Contenedor` con `agora.composicion.contenedor.construir`, arma el
 `Agente` con `agora.composicion.agente.construir_agente`, y le pasa los dos
 a `agora.entradas.api.app.crear_app`. Vive fuera de `agora/`, igual que
-`scripts/servir_webhook_wompi.py` -- `entradas/api/app.py` se queda como
+`python -m agora webhook` -- `entradas/api/app.py` se queda como
 una factoria pura precisamente para que este sea el unico lugar que lee
 variables de entorno y llama a `uvicorn.run`.
 
-    python scripts/servir_api.py
+    python -m agora api
 
 Necesita `DEEPSEEK_API_KEY` (`docs/variables-de-entorno.md`) para que
 `POST /sesiones` funcione -- sin ella el servidor igual levanta (`/salud`
@@ -31,36 +31,25 @@ configuracion.py`):
 
     AGORA_API_HOST   default 0.0.0.0
     AGORA_API_PORT   default 8002 -- distinto del 8001 de
-                     `scripts/servir_webhook_wompi.py` por si ambos
+                     `python -m agora webhook` por si ambos
                      conviven durante una demo.
 """
 
 from __future__ import annotations
 
 import os
-import sys
-from pathlib import Path
 
-_REPO = Path(__file__).resolve().parents[1]  # solo para sys.path
-if str(_REPO) not in sys.path:
-    # Para poder correr `python scripts/servir_api.py` directo, sin
-    # depender de que el paquete este instalado o de que se invoque con
-    # `python -m` (mismo patron que `scripts/servir_webhook_wompi.py`).
-    sys.path.insert(0, str(_REPO))
+import uvicorn
 
-import uvicorn  # noqa: E402
-
-from agora.composicion.agente import construir_agente  # noqa: E402
-from agora.composicion.configuracion import RAIZ_REPO, leer_configuracion  # noqa: E402
-from agora.composicion.contenedor import construir  # noqa: E402
-from agora.entradas.api.app import crear_app  # noqa: E402
-from agora.entradas.api.sondeo_pagos import SondeoDePagosPendientes  # noqa: E402
-from utilidades.env import cargar_env_desde_archivo  # noqa: E402
+from agora.app_service.config.agente import construir_agente
+from agora.app_service.config.configuracion import desde_el_entorno
+from agora.app_service.config.contenedor import construir
+from agora.entry_points.api_rest.app import crear_app
+from agora.entry_points.api_rest.sondeo_pagos import SondeoDePagosPendientes
 
 
-def main() -> int:
-    cargar_env_desde_archivo(RAIZ_REPO / ".env")
-    config = leer_configuracion(os.environ)
+def main(argv: list[str] | None = None) -> int:
+    config = desde_el_entorno()
     contenedor = construir(config)
     agente = construir_agente(contenedor)
 
@@ -94,6 +83,3 @@ def main() -> int:
     uvicorn.run(app, host=host, port=port)
     return 0
 
-
-if __name__ == "__main__":
-    raise SystemExit(main())

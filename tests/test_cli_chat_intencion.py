@@ -7,9 +7,10 @@ from __future__ import annotations
 from dataclasses import replace
 from types import SimpleNamespace
 
-from agora.composicion.configuracion import leer_configuracion
-from agora.composicion.contenedor import construir
-from agora.entradas.cli.__main__ import cmd_chat
+from agora.app_service.config.agente import construir_agente
+from agora.app_service.config.configuracion import leer_configuracion
+from agora.app_service.config.contenedor import construir
+from agora.entry_points.cli.cli import cmd_chat
 from agora.model.agente.gateways.modelo_lenguaje import RespuestaModelo
 
 
@@ -37,7 +38,7 @@ def _guion(monkeypatch, *lineas):
 def test_con_la_bandera_imprime_la_intencion_de_cada_turno(tmp_path, monkeypatch, capsys):
     _guion(monkeypatch, "¿que tiendas hay?", "¿cual es el estado de mi pago?")
 
-    assert cmd_chat(SimpleNamespace(mostrar_intencion=True), _contenedor(tmp_path)) == 0
+    assert cmd_chat(SimpleNamespace(mostrar_intencion=True), construir_agente(_contenedor(tmp_path))) == 0
 
     salida = capsys.readouterr().out
     assert "[intencion: catalogo | reglas | confianza 1.00" in salida
@@ -48,6 +49,6 @@ def test_con_la_bandera_imprime_la_intencion_de_cada_turno(tmp_path, monkeypatch
 def test_sin_la_bandera_no_imprime_nada_extra(tmp_path, monkeypatch, capsys):
     _guion(monkeypatch, "¿que tiendas hay?")
 
-    assert cmd_chat(SimpleNamespace(mostrar_intencion=False), _contenedor(tmp_path)) == 0
+    assert cmd_chat(SimpleNamespace(mostrar_intencion=False), construir_agente(_contenedor(tmp_path))) == 0
 
     assert "[intencion:" not in capsys.readouterr().out

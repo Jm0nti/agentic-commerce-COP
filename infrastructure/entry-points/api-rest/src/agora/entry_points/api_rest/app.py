@@ -74,8 +74,12 @@ from ...usecase.agente.conversacion import Agente, LimiteDeTurnosExcedido
 from ...usecase.agente.pausa import DecisionHumana, TipoDePausa
 from ...usecase.iniciar_sesion.iniciar_sesion_use_case import IniciarSesionUseCase
 from ...usecase.emitir_mandato.emitir_mandato_use_case import EmitirMandatoUseCase
-from ...usecase.confirmar_enrolamiento.confirmar_enrolamiento_use_case import ConfirmarEnrolamientoUseCase
-from ...usecase.consultar_enrolamiento.consultar_enrolamiento_use_case import ConsultarEnrolamientoUseCase
+from ...usecase.confirmar_enrolamiento.confirmar_enrolamiento_use_case import (
+    ConfirmarEnrolamientoUseCase,
+)
+from ...usecase.consultar_enrolamiento.consultar_enrolamiento_use_case import (
+    ConsultarEnrolamientoUseCase,
+)
 from ...usecase.iniciar_enrolamiento.iniciar_enrolamiento_use_case import IniciarEnrolamientoUseCase
 from ...usecase.listar_medios_vivos.listar_medios_vivos_use_case import ListarMediosVivosUseCase
 from ...usecase.navegar_catalogo.navegar_catalogo_use_case import NavegarCatalogoUseCase

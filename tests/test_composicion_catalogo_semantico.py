@@ -13,9 +13,9 @@ from dataclasses import replace
 
 import pytest
 
-from agora.composicion.agente import construir_agente
-from agora.composicion.configuracion import leer_configuracion
-from agora.composicion.contenedor import construir
+from agora.app_service.config.agente import construir_agente
+from agora.app_service.config.configuracion import leer_configuracion
+from agora.app_service.config.contenedor import construir
 from agora.model.catalogo.gateways.busqueda_productos import FiltrosDeProducto
 from agora.model.agente.gateways.modelo_lenguaje import RespuestaModelo
 

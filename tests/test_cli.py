@@ -11,10 +11,10 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from agora.usecase.navegar_catalogo.navegar_catalogo_use_case import ItemPedido
-from agora.composicion.configuracion import leer_configuracion
-from agora.composicion.contenedor import construir
+from agora.app_service.config.configuracion import leer_configuracion
+from agora.app_service.config.contenedor import construir
 from agora.model.pago.modelo import Ambiente
-from agora.entradas.cli.__main__ import (
+from agora.entry_points.cli.cli import (
     _parsear_item,
     cmd_comercios,
     cmd_emitir,

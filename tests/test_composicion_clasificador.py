@@ -15,9 +15,9 @@ from agora.usecase.agente.clasificacion import (
     ClasificadorPorReglas,
 )
 from agora.model.agente.intencion import OrigenDeClasificacion, TipoDeIntencion
-from agora.composicion.agente import construir_agente, construir_clasificador
-from agora.composicion.configuracion import ConfiguracionInvalida, leer_configuracion
-from agora.composicion.contenedor import construir
+from agora.app_service.config.agente import construir_agente, construir_clasificador
+from agora.app_service.config.configuracion import ConfiguracionInvalida, leer_configuracion
+from agora.app_service.config.contenedor import construir
 from agora.model.agente.gateways.modelo_lenguaje import RespuestaModelo
 
 

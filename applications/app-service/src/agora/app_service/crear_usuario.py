@@ -10,10 +10,10 @@ contenedor.py:construir`) y le delega TODO el trabajo a `contenedor.
 registrar_usuario` (`aplicacion/autenticacion.py:RegistrarUsuarioUseCase`): hashea
 la contrasena, genera un par de llaves ed25519 nuevo, y guarda las dos
 cosas (tabla `usuario`, tabla `llave_firma`) segun `AGORA_PERSISTENCIA` --
-mismo patron de composition root que `scripts/servir_api.py`.
+mismo patron de composition root que `python -m agora api`.
 
-    python scripts/crear_usuario.py --nombre-usuario juan --contrasena ****
-    python scripts/crear_usuario.py --nombre-usuario juan --contrasena **** --titular tit_juan
+    python -m agora crear-usuario --nombre-usuario juan --contrasena ****
+    python -m agora crear-usuario --nombre-usuario juan --contrasena **** --titular tit_juan
 
 Sin `--titular`, se genera uno nuevo (prefijo `tit_`, igual que cualquier
 otro `TitularId` -- `dominio/comun/identidad.py`). Con `--titular`, se usa
@@ -24,33 +24,20 @@ ya tiene medios de pago o mandatos de antes de que existiera el login
 IMPORTANTE: correrlo con `AGORA_PERSISTENCIA=sqlite` (o con la variable ya
 puesta en el `.env`) -- con `memoria` (el default sin `.env`) el usuario y
 su llave desaparecen en cuanto el proceso de este script termina, y
-`scripts/servir_api.py`/`entradas/cli/` nunca los verian.
+`python -m agora api`/`entradas/cli/` nunca los verian.
 """
 
 from __future__ import annotations
 
 import argparse
 import getpass
-import os
-import sys
-from pathlib import Path
 
-from dotenv import load_dotenv
-
-_REPO = Path(__file__).resolve().parents[1]  # solo para sys.path
-if str(_REPO) not in sys.path:
-    sys.path.insert(0, str(_REPO))
-
-from agora.composicion.configuracion import (  # noqa: E402
-    RAIZ_REPO,
-    ConfiguracionInvalida,
-    leer_configuracion,
-)
-from agora.composicion.contenedor import construir  # noqa: E402
+from agora.app_service.config.configuracion import ConfiguracionInvalida, desde_el_entorno
+from agora.app_service.config.contenedor import construir
 from agora.model.commons.errores import NombreDeUsuarioYaExiste
 
 
-def _parsear_args() -> argparse.Namespace:
+def _parsear_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         prog="crear_usuario", description="Crea un usuario nuevo con su propia llave de firma",
     )
@@ -63,14 +50,13 @@ def _parsear_args() -> argparse.Namespace:
         "--titular", default=None,
         help="titular_id a usar (default: se genera uno nuevo, prefijo 'tit_')",
     )
-    return p.parse_args()
+    return p.parse_args(argv)
 
 
-def main() -> int:
-    args = _parsear_args()
-    load_dotenv(RAIZ_REPO / ".env")
+def main(argv: list[str] | None = None) -> int:
+    args = _parsear_args(argv)
     try:
-        config = leer_configuracion(os.environ)
+        config = desde_el_entorno()
     except ConfiguracionInvalida as exc:
         print(f"[x] configuracion invalida: {exc}")
         return 1
@@ -91,10 +77,8 @@ def main() -> int:
     print(f"  titular_id   {usuario.titular_id}")
     print(
         "\n  Ya puede iniciar sesion en la web, y usar la CLI pasando este "
-        f"titular_id:\n\n    python -m agora.entradas.cli fuentes {usuario.titular_id}"
+        f"titular_id:\n\n    python -m agora cli fuentes {usuario.titular_id}"
     )
     return 0
 
 
-if __name__ == "__main__":
-    sys.exit(main())

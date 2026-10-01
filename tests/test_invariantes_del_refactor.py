@@ -28,10 +28,10 @@ from agora.driven_adapters.catalogo_semilla.repositorio import (
 )
 from agora.driven_adapters.persistencia_sqlite.serializacion import fila_a_mandato, mandato_a_fila
 from agora.driven_adapters.firma_ed25519.firma_ed25519 import VerificadorEd25519
-from agora.composicion import configuracion
+from agora.app_service.config import configuracion
 from agora.model.commons.errores import ErrorDeDominio
 from agora.model.pago.modelo import Ambiente
-from agora.entradas.api.app import RAIZ_ESTATICO
+from agora.entry_points.api_rest.app import RAIZ_ESTATICO
 
 # -- R2: mandato dorado ------------------------------------------------------ #
 # Firmado una vez (30 sep 2026) con una llave de prueba fija y guardado tal como
@@ -119,6 +119,8 @@ def test_los_errores_que_ve_el_agente_no_cambian() -> None:
     for raiz in map(Path, agora.__path__):
         for archivo in raiz.rglob("*.py"):
             partes = ("agora", *archivo.relative_to(raiz).with_suffix("").parts)
+            if partes[-1] == "__main__":  # `python -m agora`: correrlo seria arrancar la app
+                continue
             importlib.import_module(".".join(partes[:-1] if partes[-1] == "__init__" else partes))
 
     encontrados = {

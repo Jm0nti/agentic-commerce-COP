@@ -11,7 +11,7 @@ import json
 
 from agora.usecase.agente.conversacion import Conversacion
 from agora.usecase.agente.pausa import detectar_pausa
-from agora.entradas.api.sesiones import AlmacenDeSesiones
+from agora.entry_points.api_rest.sesiones import AlmacenDeSesiones
 from agora.model.agente.gateways.modelo_lenguaje import Mensaje
 
 

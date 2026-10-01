@@ -75,7 +75,7 @@ las de Wompi):
         se le inyecto y de que archivos, y cuanto tardo.
         Archivo aparte de `recibos.jsonl` a proposito: ese es la evidencia
         del experimento de dinero y no se mezcla con transcripciones. Se lee
-        con `python -m agora.entradas.cli trazas --seguir`.
+        con `python -m agora cli trazas --seguir`.
         Contiene lo que escribio la persona: tratarlo como transcripcion.
 
     AGORA_ORQUESTACION  grafo | directo   (default: grafo)
@@ -111,15 +111,18 @@ las de Wompi):
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping
 
-from ..driven_adapters.pasarela_wompi.config import ConfiguracionWompi
-from ..driven_adapters.pasarela_wompi.config import (
+from dotenv import load_dotenv
+
+from ...driven_adapters.pasarela_wompi.config import ConfiguracionWompi
+from ...driven_adapters.pasarela_wompi.config import (
     ConfiguracionInvalida as ConfiguracionWompiInvalida,
 )
-from ..model.pago.modelo import Ambiente
+from ...model.pago.modelo import Ambiente
 
 
 
@@ -380,3 +383,12 @@ def leer_configuracion(entorno: Mapping[str, str]) -> ConfiguracionAgora:
         embeddings_modelo=embeddings_modelo,
         soporte_documentos_path=soporte_documentos_path,
     )
+
+
+def desde_el_entorno() -> ConfiguracionAgora:
+    """La configuracion de un arranque real: el `.env` de la raiz del repo
+    (sin pisar lo que ya este exportado en la sesion) y despues `os.environ`.
+    Es lo unico de este modulo que toca el entorno: `leer_configuracion`
+    sigue recibiendo el mapping por parametro, para las pruebas."""
+    load_dotenv(RAIZ_REPO / ".env")
+    return leer_configuracion(os.environ)

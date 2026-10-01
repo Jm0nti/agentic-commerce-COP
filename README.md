@@ -120,9 +120,9 @@ Deberían quedar todas en verde.
 ### 4. Explorar el catálogo simulado
 
 ```bash
-python -m agora.entradas.cli comercios
-python -m agora.entradas.cli productos <comercio_id>
-python -m agora.entradas.cli producto <producto_id>
+python -m agora cli comercios
+python -m agora cli productos <comercio_id>
+python -m agora cli producto <producto_id>
 ```
 
 ### 5. Autorizar un medio de pago (una sola vez, "Fase A")
@@ -134,8 +134,8 @@ Multi-comercio: `--comercio` es obligatorio — el medio queda vinculado a ESE
 comercio, no a "cualquiera" (ver `docs/flujo-propuesta-mandato.md`, sección 6):
 
 ```bash
-python -m agora.entradas.cli enrolar --telefono 3001234567 --titular tit_demo --comercio <comercio_id>
-python -m agora.entradas.cli fuentes tit_demo
+python -m agora cli enrolar --telefono 3001234567 --titular tit_demo --comercio <comercio_id>
+python -m agora cli fuentes tit_demo
 ```
 
 **También se puede hacer sin la terminal**, desde el navegador: con el
@@ -151,8 +151,8 @@ Cuando la misma persona opera la terminal de punta a punta, un solo comando
 arma el carrito y firma el mandato:
 
 ```bash
-python -m agora.entradas.cli emitir <comercio_id> tit_demo --item <producto_id>:1
-python -m agora.entradas.cli pagar <mandato_id> <carrito_id>
+python -m agora cli emitir <comercio_id> tit_demo --item <producto_id>:1
+python -m agora cli pagar <mandato_id> <carrito_id>
 ```
 
 Si el pago queda "esperando confirmación humana" (es habitual: un mandato
@@ -160,8 +160,8 @@ cortado exacto al carrito dispara una señal de revisión), la terminal muestra
 el comando exacto para resolverlo:
 
 ```bash
-python -m agora.entradas.cli retomar <intencion_id> <mandato_id> <carrito_id>
-python -m agora.entradas.cli estado <intencion_id>
+python -m agora cli retomar <intencion_id> <mandato_id> <carrito_id>
+python -m agora cli estado <intencion_id>
 ```
 
 ### 7. Chatear con el agente de IA
@@ -172,7 +172,7 @@ formas de probarlo:
 **Por terminal:**
 
 ```bash
-python -m agora.entradas.cli chat
+python -m agora cli chat
 ```
 
 El agente puede buscar comercios y productos, armar un carrito y pedirte que
@@ -183,7 +183,7 @@ mismo, en otra terminal. El agente nunca puede firmar nada.
 **Por navegador (recomendado para una demo):**
 
 ```bash
-python scripts/servir_api.py
+python -m agora api
 ```
 
 Y abrir `http://localhost:8002` en el navegador. Es una sola página: se
@@ -204,7 +204,7 @@ mismo tiempo:
 **Terminal 2 — arrancar el receptor:**
 
 ```bash
-python scripts/servir_webhook_wompi.py
+python -m agora webhook
 ```
 
 Confirmá que responde con `curl http://localhost:8001/salud`.

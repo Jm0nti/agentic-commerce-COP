@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from agora.model.commons.errores import EstadoDesconocido
-from agora.entradas.api.sondeo_pagos import SondeoDePagosPendientes
+from agora.entry_points.api_rest.sondeo_pagos import SondeoDePagosPendientes
 
 
 @dataclass

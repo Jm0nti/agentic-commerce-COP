@@ -34,12 +34,12 @@ from dataclasses import replace
 
 from fastapi.testclient import TestClient
 
-from agora.composicion.agente import construir_agente
-from agora.composicion.configuracion import leer_configuracion
-from agora.composicion.contenedor import construir
+from agora.app_service.config.agente import construir_agente
+from agora.app_service.config.configuracion import leer_configuracion
+from agora.app_service.config.contenedor import construir
 from agora.model.catalogo.modelo import Disponibilidad
-from agora.entradas.api.app import crear_app
-from agora.entradas.api.sondeo_pagos import SondeoDePagosPendientes
+from agora.entry_points.api_rest.app import crear_app
+from agora.entry_points.api_rest.sondeo_pagos import SondeoDePagosPendientes
 from agora.model.agente.gateways.modelo_lenguaje import LlamadaHerramienta, RespuestaModelo
 
 
@@ -363,7 +363,7 @@ def test_flujo_sse_codifica_un_evento_de_la_cola_como_server_sent_event():
     eventos."""
     from queue import Queue
 
-    from agora.entradas.api.app import _flujo_sse
+    from agora.entry_points.api_rest.app import _flujo_sse
 
     cola: Queue = Queue()
     cola.put({"tipo": "propuesta_pendiente", "propuesta_id": "prp_1"})

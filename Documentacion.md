@@ -268,7 +268,7 @@ mismo nunca importa `aplicacion/`.
 
 ### CLI (`entradas/cli/`)
 
-`python -m agora.entradas.cli <comando>`:
+`python -m agora cli <comando>`:
 
 | Comando | Qué hace |
 |---|---|

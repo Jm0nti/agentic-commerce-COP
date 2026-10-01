@@ -37,7 +37,7 @@ from agora.model.commons.errores import (
     SinLlaveDeFirma,
 )
 from agora.model.usuario.modelo import Usuario
-from agora.entradas.api.autenticacion import AlmacenDeSesionesWeb
+from agora.entry_points.api_rest.autenticacion import AlmacenDeSesionesWeb
 from agora.model.commons.errores import SesionInvalida
 
 AHORA = datetime(2026, 9, 4, 12, 0, tzinfo=timezone.utc)

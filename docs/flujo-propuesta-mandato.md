@@ -83,7 +83,7 @@ también el único paso que **nunca** ejecuta el agente — ver la sección 5. L
 hace el caso de uso `EmitirMandato` (`agora/aplicacion/emitir_mandato.py`),
 invocado por la persona:
 
-- desde la terminal, con `python -m agora.entradas.cli firmar <propuesta_id> <titular>`
+- desde la terminal, con `python -m agora cli firmar <propuesta_id> <titular>`
   (si el carrito lo armó el chat, en otro proceso) o con
   `emitir <comercio_id> <titular> --item ...` (si la misma persona opera la
   CLI de punta a punta y no hace falta separar "proponer" de "firmar");
@@ -309,11 +309,11 @@ queda documentado como alcance, no como descuido.
 
 ```bash
 # Caso 1: la misma persona arma el carrito y firma, en un solo paso
-python -m agora.entradas.cli emitir <comercio_id> <titular> --item <producto_id>:1
+python -m agora cli emitir <comercio_id> <titular> --item <producto_id>:1
 
 # Caso 2: el agente ya armó una propuesta en el chat (otro proceso);
 # la persona la firma en su propia terminal
-python -m agora.entradas.cli firmar <propuesta_id> <titular>
+python -m agora cli firmar <propuesta_id> <titular>
 ```
 
 **Por navegador** (`entradas/api/`, `chat.html`): cuando el agente arma un

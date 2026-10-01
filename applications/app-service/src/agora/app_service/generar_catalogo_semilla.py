@@ -8,7 +8,7 @@ catalogo/semilla/datos/catalogo.json` -- el archivo que
 `RepositorioCatalogoSemilla` lee en tiempo de ejecucion, sin red.
 
     export DEEPSEEK_API_KEY=sk-...
-    python scripts/generar_catalogo_semilla.py
+    python -m agora generar-catalogo
 
 Por defecto genera un comercio por cada categoria de una lista fija pensada
 para una demo colombiana (tecnologia, moda, hogar, restaurantes, libros).
@@ -32,13 +32,6 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-_REPO = Path(__file__).resolve().parents[1]  # solo para sys.path
-if str(_REPO) not in sys.path:
-    # Para poder correr `python scripts/generar_catalogo_semilla.py` directo,
-    # sin depender de que el paquete este instalado (mismo patron que los
-    # demas scripts/).
-    sys.path.insert(0, str(_REPO))
-
 from agora.driven_adapters.catalogo_semilla import RUTA_POR_DEFECTO
 from agora.driven_adapters.catalogo_semilla import serializacion
 from agora.driven_adapters.llm_deepseek import (
@@ -51,8 +44,9 @@ from agora.usecase.generar_catalogo_semilla.generar_catalogo_semilla_use_case im
     GenerarCatalogoSemillaUseCase,
 )
 from agora.model.commons.errores import ErrorDeModeloDeLenguaje
-from agora.composicion.configuracion import RAIZ_REPO  # noqa: E402
-from utilidades.env import cargar_env_desde_archivo  # noqa: E402
+from dotenv import load_dotenv
+
+from agora.app_service.config.configuracion import RAIZ_REPO
 
 CATEGORIAS_POR_DEFECTO = ("tecnologia", "moda", "hogar", "restaurantes", "libros")
 
@@ -106,7 +100,7 @@ def generar(
 
 
 def main(argv: list[str] | None = None) -> int:
-    cargar_env_desde_archivo(RAIZ_REPO / ".env")
+    load_dotenv(RAIZ_REPO / ".env")
 
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
@@ -176,6 +170,3 @@ def main(argv: list[str] | None = None) -> int:
     )
     return 0
 
-
-if __name__ == "__main__":
-    raise SystemExit(main())

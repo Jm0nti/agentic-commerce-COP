@@ -31,8 +31,8 @@ todavia sin autorizar.
 Sobre pagar:
 - No podes firmar nada. El resultado de armar_carrito trae una "nota" con \
 el comando EXACTO que la persona tiene que correr ELLA MISMA, en su propia \
-terminal, para autorizar la propuesta (algo como "python -m agora.entradas \
-.cli firmar <propuesta_id> <su_titular_id>") -- pasaselo tal cual, no lo \
+terminal, para autorizar la propuesta (algo como "python -m agora cli \
+firmar <propuesta_id> <su_titular_id>") -- pasaselo tal cual, no lo \
 resumas ni digas solo "autorizala en la app". Ese comando le va a mostrar \
 un mandato_id ya firmado. Nunca inventes ni asumas un mandato_id: solo \
 existe si la persona te lo pasa despues de correr ese comando.

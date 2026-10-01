@@ -18,10 +18,10 @@ túnel:
 
 | Proceso | Comando | Puerto | Para qué sirve | ¿Hace falta siempre? |
 |---|---|---|---|---|
-| API + chat web | `python scripts/servir_api.py` | 8002 | Login, chat con el agente, firma/confirmación por popup, alta de medios de pago — todo en una sola pestaña | Sí (o su equivalente por CLI) |
-| Webhook de Wompi | `python scripts/servir_webhook_wompi.py` | 8001 | Recibe la confirmación asíncrona de un cobro (`ConciliarEvento`) | Solo con `AGORA_PASARELA=wompi` |
+| API + chat web | `python -m agora api` | 8002 | Login, chat con el agente, firma/confirmación por popup, alta de medios de pago — todo en una sola pestaña | Sí (o su equivalente por CLI) |
+| Webhook de Wompi | `python -m agora webhook` | 8001 | Recibe la confirmación asíncrona de un cobro (`ConciliarEvento`) | Solo con `AGORA_PASARELA=wompi` |
 | Túnel (ngrok / cloudflared) | `ngrok http --url https://<dominio>.ngrok-free.dev 8001` | — | Le da al puerto 8001 una URL pública para que Wompi le pueda pegar | Solo con `AGORA_PASARELA=wompi` |
-| CLI | `python -m agora.entradas.cli ...` | — | Alternativa a la web: enrolar, emitir, pagar, retomar, chatear, todo desde la terminal | No, es intercambiable con la web |
+| CLI | `python -m agora cli ...` | — | Alternativa a la web: enrolar, emitir, pagar, retomar, chatear, todo desde la terminal | No, es intercambiable con la web |
 
 Con `AGORA_PASARELA=simulada` (el valor por defecto) los cobros se resuelven
 al instante dentro del mismo proceso — **ni el webhook ni el túnel hacen
@@ -105,7 +105,7 @@ medios de pago). Ahora hay una pantalla de login real:
    antemano**, fuera de la app — no hay registro por HTTP:
 
    ```bash
-   python scripts/crear_usuario.py --nombre-usuario juan --contrasena ****
+   python -m agora crear-usuario --nombre-usuario juan --contrasena ****
    ```
 
    Este comando hace dos cosas atómicamente: crea el `Usuario` (nombre de
@@ -200,7 +200,7 @@ de ningún chat abierto, es un acto del titular en cualquier momento:
 mismos tres pasos):
 
 ```bash
-python -m agora.entradas.cli enrolar --telefono 3001234567 --titular tit_demo --comercio <comercio_id>
+python -m agora cli enrolar --telefono 3001234567 --titular tit_demo --comercio <comercio_id>
 ```
 
 Con `AGORA_PASARELA=simulada` (el default) no hay push real: se genera un

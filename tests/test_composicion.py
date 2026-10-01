@@ -14,12 +14,12 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from agora.usecase.navegar_catalogo.navegar_catalogo_use_case import ItemPedido
-from agora.composicion.configuracion import (
+from agora.app_service.config.configuracion import (
     CORREO_POR_DEFECTO,
     ConfiguracionInvalida,
     leer_configuracion,
 )
-from agora.composicion.contenedor import construir
+from agora.app_service.config.contenedor import construir
 from agora.model.commons.dinero import Dinero
 from agora.model.mandato.modelo import Intencion, Mandato
 from agora.model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor

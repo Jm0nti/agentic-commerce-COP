@@ -35,6 +35,8 @@ RAICES: tuple[Path, ...] = tuple(Path(p).resolve() for p in agora.__path__)
 # `test_todo_modulo_tiene_capa` en vez de quedar sin reglas.
 CAPAS: dict[str, str] = {
     "__init__.py": "raiz",
+    # Fase 5: `python -m agora` es el arranque del app-service.
+    "__main__.py": "app_service",
     # Fase 2: `dominio/` y `puertos/` se fusionaron en `domain/model`.
     "model": "model",
     # Fase 3: los casos de uso viven en `domain/usecase`. El agente tambien,
@@ -44,8 +46,9 @@ CAPAS: dict[str, str] = {
     "usecase/agente": "agente",
     # Fase 4: un modulo por tecnologia en `infrastructure/driven-adapters/`.
     "driven_adapters": "driven_adapters",
-    "entradas": "entradas",
-    "composicion": "composicion",
+    # Fase 5: `infrastructure/entry-points/` y `applications/app-service/`.
+    "entry_points": "entry_points",
+    "app_service": "app_service",
 }
 
 # Contra el falso verde: si un movimiento deja una capa vacia, todas sus
@@ -56,20 +59,20 @@ MINIMO_DE_MODULOS_POR_CAPA: dict[str, int] = {
     "usecase": 18,
     "agente": 14,
     "driven_adapters": 52,
-    "entradas": 10,
-    "composicion": 4,
+    "entry_points": 9,
+    "app_service": 11,
 }
 
 # quien -> lo que NO puede importar
 REGLAS: dict[str, tuple[str, ...]] = {
     # El nucleo no sabe que existe el mundo exterior.
     # Entidades y gateways juntos, como en el scaffold de Bancolombia.
-    "model": ("usecase", "driven_adapters", "agente", "entradas", "composicion"),
+    "model": ("usecase", "driven_adapters", "agente", "entry_points", "app_service"),
     # Los casos de uso hablan con interfaces, nunca con implementaciones.
     # `agente` se agrego en la Fase 3: un caso de uso no depende del agente.
-    "usecase": ("driven_adapters", "entradas", "composicion", "agente"),
+    "usecase": ("driven_adapters", "entry_points", "app_service", "agente"),
     # Un adaptador no orquesta.
-    "driven_adapters": ("usecase", "entradas", "composicion"),
+    "driven_adapters": ("usecase", "entry_points", "app_service"),
     # LA FRONTERA. El agente no puede alcanzar una credencial de pago
     # ni aunque quiera.
     #
@@ -80,20 +83,12 @@ REGLAS: dict[str, tuple[str, ...]] = {
     # `agente/` con `from ..aplicacion.ejecutar_intencion import
     # EjecutarIntencionUseCase` pasaba la suite en verde. Ver
     # `test_el_detector_atrapa_al_agente_importando_un_caso_de_uso`.
-    "agente": ("usecase", "driven_adapters", "entradas", "composicion"),
+    "agente": ("usecase", "driven_adapters", "entry_points", "app_service"),
     # Las entradas reciben los adaptadores ya armados desde composicion.
     # `composicion` se agrego en la Fase 1 del refactor a la Clean
     # Architecture de Bancolombia: un entry point recibe casos de uso, no
     # sabe quien los arma.
-    "entradas": ("driven_adapters", "composicion"),
-}
-
-# Archivo -> capas que TODAVIA puede importar aunque REGLAS lo prohiba. Cada
-# entrada es deuda con fecha de vencimiento, no una excepcion de diseno.
-EXCEPCIONES_PROVISORIAS: dict[str, tuple[str, ...]] = {
-    # La CLI arma su propio contenedor (es composition root) hasta que la
-    # Fase 5 mueva el arranque a `app-service`.
-    "entradas/cli/__main__.py": ("composicion",),
+    "entry_points": ("driven_adapters", "app_service"),
 }
 
 # Atributos del `Contenedor` que son repositorios o adaptadores crudos. Un
@@ -229,8 +224,7 @@ def _capa(archivo: Path, raiz: Path | None = None) -> str | None:
 
 def _violaciones_de_dependencia(archivo: Path, raiz: Path | None = None) -> list[str]:
     capa = _capa(archivo, raiz)
-    permitidas = EXCEPCIONES_PROVISORIAS.get(_rel(archivo, raiz), ())
-    prohibidas = tuple(c for c in REGLAS.get(capa, ()) if c not in permitidas)
+    prohibidas = REGLAS.get(capa, ())
     ofensas = []
     for imp in _imports(archivo, raiz):
         objetivo = _capa_de(imp)
@@ -346,21 +340,13 @@ def test_las_entradas_solo_hablan_con_casos_de_uso() -> None:
     repositorios por import."""
     ofensas = []
     for archivo in _modulos():
-        if _capa(archivo) != "entradas":
+        if _capa(archivo) != "entry_points":
             continue
         ofensas += _accesos_a_repositorios(archivo)
         ofensas += [
             f"{archivo.name}: {i}" for i in _imports(archivo) if any(_es_modulo(i, m) for m in REPOSITORIOS_DEL_MODELO)
         ]
     assert not ofensas, "un entry point toca un repositorio:\n  " + "\n  ".join(ofensas)
-
-
-def test_las_excepciones_provisorias_siguen_haciendo_falta() -> None:
-    """Si la CLI deja de importar `composicion`, la excepcion sobra: borrarla,
-    para que no quede una puerta abierta que nadie usa."""
-    for relativo, capas in EXCEPCIONES_PROVISORIAS.items():
-        importadas = {_capa_de(i) for i in _imports(_archivo(relativo))}
-        assert set(capas) <= importadas, f"{relativo} ya no necesita {capas}"
 
 
 def test_el_agente_no_alcanza_ninguna_pasarela() -> None:
@@ -583,7 +569,7 @@ def test_la_traza_no_conoce_ningun_adaptador_de_bitacora() -> None:
     agente."""
     ofensas = [
         i for i in _imports(_archivo("usecase/agente/traza.py"))
-        if _es_modulo(i, "driven_adapters") or _es_modulo(i, "composicion")
+        if _es_modulo(i, "driven_adapters") or _es_modulo(i, "app_service")
     ]
 
     assert not ofensas, "usecase/agente/traza.py conoce un adaptador:\n  " + "\n  ".join(ofensas)
@@ -657,7 +643,7 @@ def test_el_detector_atrapa_al_agente_importando_un_caso_de_uso(tmp_path: Path) 
 
 def test_el_detector_atrapa_al_agente_importando_entradas(tmp_path: Path) -> None:
     raiz, archivo = _agora_de_mentira(
-        tmp_path, "usecase/agente/intruso.py", "from agora.entradas.api.app import crear_app\n",
+        tmp_path, "usecase/agente/intruso.py", "from agora.entry_points.api_rest.app import crear_app\n",
     )
     assert _violaciones_de_dependencia(archivo, raiz)
 
@@ -671,7 +657,7 @@ def test_el_detector_atrapa_al_agente_importando_entradas(tmp_path: Path) -> Non
         "from openai import OpenAI",
     ],
 )
-@pytest.mark.parametrize("capa", ["model", "usecase", "usecase/agente", "entradas", "composicion"])
+@pytest.mark.parametrize("capa", ["model", "usecase", "usecase/agente", "entry_points", "app_service"])
 def test_el_detector_atrapa_librerias_de_llm_fuera_de_adaptadores(
     tmp_path: Path, capa: str, linea: str
 ) -> None:
@@ -800,15 +786,15 @@ def test_el_detector_atrapa_una_regla_que_apunta_a_un_modulo_que_no_existe() -> 
 
 def test_el_detector_atrapa_una_entrada_importando_composicion(tmp_path: Path) -> None:
     raiz, archivo = _agora_de_mentira(
-        tmp_path, "entradas/api/intruso.py", "from ...composicion.contenedor import Contenedor\n",
+        tmp_path, "entry_points/api_rest/intruso.py", "from ...app_service.config.contenedor import Contenedor\n",
     )
     ofensas = _violaciones_de_dependencia(archivo, raiz)
-    assert ofensas and "composicion" in ofensas[0]
+    assert ofensas and "app_service" in ofensas[0]
 
 
 def test_el_detector_atrapa_una_entrada_leyendo_un_repositorio(tmp_path: Path) -> None:
     _, archivo = _agora_de_mentira(
-        tmp_path, "entradas/api/intruso.py", "def f(d):\n    return d.carritos.obtener('x')\n",
+        tmp_path, "entry_points/api_rest/intruso.py", "def f(d):\n    return d.carritos.obtener('x')\n",
     )
     assert _accesos_a_repositorios(archivo)
 
@@ -871,56 +857,67 @@ def test_cada_caso_de_uso_vive_en_su_carpeta_y_termina_en_usecase() -> None:
 
 # -- Fase 4: infrastructure/driven-adapters ------------------------------------ #
 
-# Cada libreria de infraestructura, en el unico modulo que la usa: el
-# equivalente a que cada modulo del scaffold declare sus propias dependencias
-# en su `build.gradle`. Agregar una entrada aca es decidir que ese adaptador
-# (y solo ese) depende de la libreria.
-LIBRERIAS_POR_ADAPTADOR: dict[str, tuple[str, ...]] = {
-    "httpx": ("pasarela_wompi",),
-    "openai": ("llm_deepseek", "embeddings_openai"),
-    "langgraph": ("orquestacion_langgraph",),
-    "langchain_core": ("recuperacion_langchain",),
-    "langchain_text_splitters": ("recuperacion_langchain",),
-    "numpy": ("busqueda_semantica_memoria",),
-    "cryptography": ("firma_ed25519",),
-    "sqlite3": ("persistencia_sqlite",),
+# Cada libreria, en el unico modulo del scaffold que la usa: el equivalente a
+# que cada modulo declare sus propias dependencias en su `build.gradle`.
+# Agregar una entrada aca es decidir que ese modulo (y solo ese) depende de la
+# libreria. Un modulo es "<capa>/<paquete>" en `driven_adapters` y
+# `entry_points`, y "app_service" para todo el app-service.
+LIBRERIAS_POR_MODULO: dict[str, tuple[str, ...]] = {
+    "httpx": ("driven_adapters/pasarela_wompi",),
+    "openai": ("driven_adapters/llm_deepseek", "driven_adapters/embeddings_openai"),
+    "langgraph": ("driven_adapters/orquestacion_langgraph",),
+    "langchain_core": ("driven_adapters/recuperacion_langchain",),
+    "langchain_text_splitters": ("driven_adapters/recuperacion_langchain",),
+    "numpy": ("driven_adapters/busqueda_semantica_memoria",),
+    "cryptography": ("driven_adapters/firma_ed25519",),
+    "sqlite3": ("driven_adapters/persistencia_sqlite",),
+    # Fase 5
+    "fastapi": ("entry_points/api_rest", "entry_points/webhook_wompi"),
+    "pydantic": ("entry_points/api_rest",),
+    "uvicorn": ("app_service",),
+    "dotenv": ("app_service",),
 }
+CAPAS_DE_MODULOS = ("driven_adapters", "entry_points")
 
 
-def _adaptador_de(ruta_o_modulo: str) -> str | None:
-    """'driven_adapters/pasarela_wompi/x.py' o 'agora.driven_adapters.pasarela_wompi.x'
-    -> 'pasarela_wompi'."""
-    if _capa_de(ruta_o_modulo) != "driven_adapters":
+def _modulo_de(ruta_o_modulo: str) -> str | None:
+    """'driven_adapters/pasarela_wompi/x.py' o 'agora.entry_points.cli.cli'
+    -> 'driven_adapters/pasarela_wompi' / 'entry_points/cli'. Todo el
+    app-service es un solo modulo."""
+    capa = _capa_de(ruta_o_modulo)
+    if capa == "app_service":
+        return "app_service"
+    if capa not in CAPAS_DE_MODULOS:
         return None
     partes = re.split(r"[./]", ruta_o_modulo.removeprefix("agora."))
-    return partes[1] if len(partes) > 1 else None
+    return f"{capa}/{partes[1]}" if len(partes) > 1 else None
 
 
-def _cruces_entre_adaptadores(archivo: Path, raiz: Path | None = None) -> list[str]:
-    propio = _adaptador_de(_rel(archivo, raiz))
-    return [i for i in _imports(archivo, raiz) if _adaptador_de(i) not in (None, propio)]
+def _cruces_entre_modulos(archivo: Path, raiz: Path | None = None) -> list[str]:
+    propio = _modulo_de(_rel(archivo, raiz))
+    return [i for i in _imports(archivo, raiz) if _modulo_de(i) not in (None, propio)]
 
 
-def _librerias_fuera_de_su_adaptador(archivo: Path, raiz: Path | None = None) -> list[str]:
-    propio = _adaptador_de(_rel(archivo, raiz))
+def _librerias_fuera_de_su_modulo(archivo: Path, raiz: Path | None = None) -> list[str]:
+    propio = _modulo_de(_rel(archivo, raiz))
     return [
         i for i in _imports(archivo, raiz)
-        if i.split(".")[0] in LIBRERIAS_POR_ADAPTADOR
-        and propio not in LIBRERIAS_POR_ADAPTADOR[i.split(".")[0]]
+        if i.split(".")[0] in LIBRERIAS_POR_MODULO
+        and propio not in LIBRERIAS_POR_MODULO[i.split(".")[0]]
     ]
 
 
-@pytest.mark.parametrize("archivo", [p for p in _modulos() if _capa(p) == "driven_adapters"], ids=_rel)
-def test_un_adaptador_no_conoce_a_otro(archivo: Path) -> None:
-    """Un adaptador implementa un gateway del modelo, nada mas: si necesitara
-    otro adaptador, esa composicion es trabajo de `composicion/` (mas adelante,
-    `app-service`)."""
-    assert not _cruces_entre_adaptadores(archivo)
+@pytest.mark.parametrize("archivo", [p for p in _modulos() if _capa(p) in CAPAS_DE_MODULOS], ids=_rel)
+def test_un_modulo_de_infraestructura_no_conoce_a_otro(archivo: Path) -> None:
+    """Un adaptador implementa un gateway del modelo; un entry point traduce y
+    delega en un caso de uso. Ninguno necesita a otro modulo de
+    infraestructura: si hiciera falta juntarlos, eso lo hace `app-service`."""
+    assert not _cruces_entre_modulos(archivo)
 
 
 @pytest.mark.parametrize("archivo", _modulos(), ids=_rel)
-def test_cada_libreria_vive_en_su_adaptador(archivo: Path) -> None:
-    assert not _librerias_fuera_de_su_adaptador(archivo)
+def test_cada_libreria_vive_en_su_modulo(archivo: Path) -> None:
+    assert not _librerias_fuera_de_su_modulo(archivo)
 
 
 def test_el_detector_atrapa_un_adaptador_importando_otro(tmp_path: Path) -> None:
@@ -929,11 +926,18 @@ def test_el_detector_atrapa_un_adaptador_importando_otro(tmp_path: Path) -> None
         "driven_adapters/pasarela_wompi/intruso.py",
         "from ..persistencia_sqlite.conexion import abrir\n",
     )
-    assert _cruces_entre_adaptadores(archivo, raiz) == ["driven_adapters.persistencia_sqlite.conexion"]
+    assert _cruces_entre_modulos(archivo, raiz) == ["driven_adapters.persistencia_sqlite.conexion"]
 
 
-def test_el_detector_atrapa_una_libreria_en_el_adaptador_equivocado(tmp_path: Path) -> None:
+def test_el_detector_atrapa_un_entry_point_importando_otro(tmp_path: Path) -> None:
+    raiz, archivo = _agora_de_mentira(
+        tmp_path, "entry_points/cli/intruso.py", "from ..api_rest.app import crear_app\n",
+    )
+    assert _cruces_entre_modulos(archivo, raiz) == ["entry_points.api_rest.app"]
+
+
+def test_el_detector_atrapa_una_libreria_en_el_modulo_equivocado(tmp_path: Path) -> None:
     raiz, archivo = _agora_de_mentira(
         tmp_path, "driven_adapters/persistencia_sqlite/intruso.py", "import httpx\n",
     )
-    assert _librerias_fuera_de_su_adaptador(archivo, raiz) == ["httpx"]
+    assert _librerias_fuera_de_su_modulo(archivo, raiz) == ["httpx"]

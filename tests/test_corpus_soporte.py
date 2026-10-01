@@ -10,7 +10,7 @@ import re
 import pytest
 
 from agora.driven_adapters.recuperacion_langchain import cargar_markdown
-from agora.composicion.configuracion import RAIZ_REPO, SOPORTE_DOCUMENTOS_POR_DEFECTO
+from agora.app_service.config.configuracion import RAIZ_REPO, SOPORTE_DOCUMENTOS_POR_DEFECTO
 
 _DOCUMENTOS = cargar_markdown(SOPORTE_DOCUMENTOS_POR_DEFECTO, raiz=RAIZ_REPO)
 

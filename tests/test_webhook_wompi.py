@@ -33,7 +33,7 @@ from agora.usecase.conciliar_evento.conciliar_evento_use_case import (
 from agora.model.commons.dinero import Dinero
 from agora.model.mandato.modelo import Mandato
 from agora.model.pago.modelo import Ambiente, MedioDePagoRef, OrdenDeCobro, Proveedor
-from agora.entradas.webhooks.wompi import crear_app
+from agora.entry_points.webhook_wompi.wompi import crear_app
 
 HOY = datetime(2026, 8, 25, 12, 0, tzinfo=timezone.utc)
 COMERCIO_ID = "com_x"

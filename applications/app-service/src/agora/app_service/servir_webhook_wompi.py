@@ -8,7 +8,7 @@ el `Contenedor` con `agora.composicion.contenedor.construir` y le pasa su
 precisamente para que este sea el unico lugar que lee variables de entorno y
 llama a `uvicorn.run`.
 
-    python scripts/servir_webhook_wompi.py
+    python -m agora webhook
 
 MULTI-COMERCIO (1 de septiembre de 2026)
 -----------------------------------------
@@ -44,27 +44,16 @@ configuracion.py`):
 from __future__ import annotations
 
 import os
-import sys
-from pathlib import Path
 
-_REPO = Path(__file__).resolve().parents[1]  # solo para sys.path
-if str(_REPO) not in sys.path:
-    # Para poder correr `python scripts/servir_webhook_wompi.py` directo,
-    # sin depender de que el paquete este instalado o de que se invoque con
-    # `python -m`.
-    sys.path.insert(0, str(_REPO))
+import uvicorn
 
-import uvicorn  # noqa: E402
-
-from agora.composicion.configuracion import RAIZ_REPO, leer_configuracion  # noqa: E402
-from agora.composicion.contenedor import construir  # noqa: E402
-from agora.entradas.webhooks.wompi import crear_app  # noqa: E402
-from utilidades.env import cargar_env_desde_archivo  # noqa: E402
+from agora.app_service.config.configuracion import desde_el_entorno
+from agora.app_service.config.contenedor import construir
+from agora.entry_points.webhook_wompi.wompi import crear_app
 
 
-def main() -> int:
-    cargar_env_desde_archivo(RAIZ_REPO / ".env")
-    config = leer_configuracion(os.environ)
+def main(argv: list[str] | None = None) -> int:
+    config = desde_el_entorno()
     contenedor = construir(config)
     app = crear_app(contenedor.conciliar_evento)
 
@@ -87,6 +76,3 @@ def main() -> int:
     uvicorn.run(app, host=host, port=port)
     return 0
 
-
-if __name__ == "__main__":
-    raise SystemExit(main())

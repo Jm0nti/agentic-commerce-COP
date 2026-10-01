@@ -1,16 +1,16 @@
-"""`python -m agora.entradas.cli <comando>`.
+"""`python -m agora cli <comando>`.
 
 Fase A -- el titular autoriza, una sola vez
 
-    python -m agora.entradas.cli enrolar --telefono 3001234567 --titular tit_1
-    python -m agora.entradas.cli fuentes tit_1
-    python -m agora.entradas.cli revocar --id-externo simsrc_... --titular tit_1
+    python -m agora cli enrolar --telefono 3001234567 --titular tit_1
+    python -m agora cli fuentes tit_1
+    python -m agora cli revocar --id-externo simsrc_... --titular tit_1
 
 Navegar el catalogo simulado
 
-    python -m agora.entradas.cli comercios
-    python -m agora.entradas.cli productos com_placeholder_tecnox
-    python -m agora.entradas.cli producto prd_...
+    python -m agora cli comercios
+    python -m agora cli productos com_placeholder_tecnox
+    python -m agora cli producto prd_...
 
 Fase B -- armar, firmar y cobrar
 
@@ -21,7 +21,7 @@ arma la propuesta:
      firma en un solo comando, porque no hace falta separar "propongo" de
      "autorizo" cuando los dos pasos los hace la misma persona:
 
-         python -m agora.entradas.cli emitir com_placeholder_tecnox tit_1 \\
+         python -m agora cli emitir com_placeholder_tecnox tit_1 \\
              --item prd_audifonos:1 --item prd_mouse:2
 
   2. El agente arma la propuesta en una charla de `chat` (otro proceso) y
@@ -29,14 +29,14 @@ arma la propuesta:
      -- el `propuesta_id` que hace falta ya se lo mostro el agente
      (`composicion/agente.py:armar_carrito`, etapa 6):
 
-         python -m agora.entradas.cli firmar <propuesta_id> tit_1
+         python -m agora cli firmar <propuesta_id> tit_1
 
 En los dos casos, lo que sigue es igual:
 
-    python -m agora.entradas.cli pagar <mandato_id> <carrito_id>
-    python -m agora.entradas.cli retomar <intencion_id> <mandato_id> <carrito_id>
-    python -m agora.entradas.cli estado <intencion_id>
-    python -m agora.entradas.cli mandatos
+    python -m agora cli pagar <mandato_id> <carrito_id>
+    python -m agora cli retomar <intencion_id> <mandato_id> <carrito_id>
+    python -m agora cli estado <intencion_id>
+    python -m agora cli mandatos
 
 `retomar` hace falta seguido: `EmitirMandatoUseCase` corta el mandato exacto al
 carrito (un solo uso, `monto_max` igual al total), y eso dispara casi
@@ -45,7 +45,7 @@ devuelve `esperando_confirmacion_humana` en vez de aprobar directo.
 
 Chat con el agente (necesita DEEPSEEK_API_KEY)
 
-    python -m agora.entradas.cli chat
+    python -m agora cli chat
 
 El chat solo puede PROPONER (`armar_carrito`) y, ya con un mandato_id en
 mano, PAGAR (`pagar`) -- nunca firmar (`agente/herramientas.py`, la
@@ -70,28 +70,39 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import sys
 import time
+from pathlib import Path
+from typing import Callable, Protocol
 
-from dotenv import load_dotenv
-
-from ...usecase.navegar_catalogo.navegar_catalogo_use_case import ItemPedido
 from ...model.commons.errores import ErrorDeDominio
-from ...model.pago.modelo import MedioDePagoRef, Proveedor
-from ...composicion.agente import construir_agente
-from ...composicion.configuracion import RAIZ_REPO, ConfiguracionInvalida, leer_configuracion
-from ...composicion.contenedor import Contenedor, construir
+from ...model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
+from ...usecase.agente.conversacion import Agente
+from ...usecase.consultar_estado.consultar_estado_use_case import ConsultarEstadoUseCase
+from ...usecase.emitir_mandato.emitir_mandato_use_case import EmitirMandatoUseCase
+from ...usecase.enrolar_medio.enrolar_medio_use_case import EnrolarMedioUseCase
+from ...usecase.listar_mandatos.listar_mandatos_use_case import ListarMandatosUseCase
+from ...usecase.listar_medios_vivos.listar_medios_vivos_use_case import ListarMediosVivosUseCase
+from ...usecase.navegar_catalogo.navegar_catalogo_use_case import ItemPedido, NavegarCatalogoUseCase
+from ...usecase.pagar_carrito.pagar_carrito_use_case import PagarCarritoUseCase
+from ...usecase.revocar_medio.revocar_medio_use_case import RevocarMedioUseCase
 
 
-def _armar_contenedor() -> Contenedor:
-    load_dotenv(RAIZ_REPO / ".env")
-    try:
-        config = leer_configuracion(os.environ)
-    except ConfiguracionInvalida as exc:
-        print(f"[x] configuracion invalida: {exc}")
-        raise SystemExit(1) from None
-    return construir(config)
+class DependenciasDeLaCli(Protocol):
+    """Lo que la CLI puede tocar: casos de uso, el ambiente y la ruta de las
+    trazas (que `trazas` solo lee). Mismo criterio que `DependenciasDeLaApi`
+    en `entry_points/api_rest/app.py`: la arma `app-service`, que es el unico
+    que sabe con que se construye (`python -m agora cli`)."""
+
+    ambiente: Ambiente
+    trazas_path: Path
+    enrolar_medio: EnrolarMedioUseCase
+    listar_medios_vivos: ListarMediosVivosUseCase
+    revocar_medio: RevocarMedioUseCase
+    navegar_catalogo: NavegarCatalogoUseCase
+    emitir_mandato: EmitirMandatoUseCase
+    pagar_carrito: PagarCarritoUseCase
+    consultar_estado: ConsultarEstadoUseCase
+    listar_mandatos: ListarMandatosUseCase
 
 
 def _parsear_item(bruto: str) -> ItemPedido:
@@ -108,7 +119,7 @@ def _parsear_item(bruto: str) -> ItemPedido:
 # --------------------------------------------------------------------------- #
 
 
-def cmd_enrolar(a, contenedor: Contenedor) -> int:
+def cmd_enrolar(a, dependencias: DependenciasDeLaCli) -> int:
     puntos = {"activos": False}
 
     def narrar(etapa: str, detalle: str) -> None:
@@ -122,7 +133,7 @@ def cmd_enrolar(a, contenedor: Contenedor) -> int:
         print(f"  {etapa:10} {detalle}")
 
     try:
-        ref = contenedor.enrolar_medio(a.telefono, a.correo, a.titular, a.comercio, al_avanzar=narrar)
+        ref = dependencias.enrolar_medio(a.telefono, a.correo, a.titular, a.comercio, al_avanzar=narrar)
     except ErrorDeDominio as exc:
         print(f"\n[x] {exc.mensaje}")
         return 1
@@ -134,29 +145,29 @@ def cmd_enrolar(a, contenedor: Contenedor) -> int:
     print(
         "\n  Desde aca se puede firmar un mandato contra este medio sin que "
         f"'{a.titular}' este presente:\n"
-        f"\n    python -m agora.entradas.cli emitir <comercio_id> {a.titular} "
+        f"\n    python -m agora cli emitir <comercio_id> {a.titular} "
         "--item <producto_id>"
     )
     return 0
 
 
-def cmd_fuentes(a, contenedor: Contenedor) -> int:
-    vivos = contenedor.listar_medios_vivos(a.titular)
+def cmd_fuentes(a, dependencias: DependenciasDeLaCli) -> int:
+    vivos = dependencias.listar_medios_vivos(a.titular)
     if not vivos:
-        print(f"Sin medios de pago vivos para '{a.titular}' en '{contenedor.ambiente.value}'.")
+        print(f"Sin medios de pago vivos para '{a.titular}' en '{dependencias.ambiente.value}'.")
         return 0
-    print(f"{len(vivos)} medio(s) vivo(s) para '{a.titular}' ({contenedor.ambiente.value})\n")
+    print(f"{len(vivos)} medio(s) vivo(s) para '{a.titular}' ({dependencias.ambiente.value})\n")
     for ref in vivos:
         print(f"  {ref.proveedor.value:10} {ref.id_externo}")
     return 0
 
 
-def cmd_revocar(a, contenedor: Contenedor) -> int:
+def cmd_revocar(a, dependencias: DependenciasDeLaCli) -> int:
     ref = MedioDePagoRef(
-        proveedor=Proveedor(a.proveedor), ambiente=contenedor.ambiente, id_externo=a.id_externo,
+        proveedor=Proveedor(a.proveedor), ambiente=dependencias.ambiente, id_externo=a.id_externo,
     )
     try:
-        estado = contenedor.revocar_medio(ref, a.titular)
+        estado = dependencias.revocar_medio(ref, a.titular)
     except ErrorDeDominio as exc:
         print(f"[x] {exc.mensaje}")
         return 1
@@ -174,8 +185,8 @@ def cmd_revocar(a, contenedor: Contenedor) -> int:
 # --------------------------------------------------------------------------- #
 
 
-def cmd_comercios(a, contenedor: Contenedor) -> int:
-    comercios = contenedor.navegar_catalogo.buscar_comercios(a.buscar or "")
+def cmd_comercios(a, dependencias: DependenciasDeLaCli) -> int:
+    comercios = dependencias.navegar_catalogo.buscar_comercios(a.buscar or "")
     if not comercios:
         print("Sin comercios.")
         return 0
@@ -184,9 +195,9 @@ def cmd_comercios(a, contenedor: Contenedor) -> int:
     return 0
 
 
-def cmd_productos(a, contenedor: Contenedor) -> int:
+def cmd_productos(a, dependencias: DependenciasDeLaCli) -> int:
     try:
-        productos = contenedor.navegar_catalogo.buscar_productos(a.comercio_id, a.buscar or "")
+        productos = dependencias.navegar_catalogo.buscar_productos(a.comercio_id, a.buscar or "")
     except ErrorDeDominio as exc:
         print(f"[x] {exc.mensaje}")
         return 1
@@ -198,9 +209,9 @@ def cmd_productos(a, contenedor: Contenedor) -> int:
     return 0
 
 
-def cmd_producto(a, contenedor: Contenedor) -> int:
+def cmd_producto(a, dependencias: DependenciasDeLaCli) -> int:
     try:
-        p = contenedor.navegar_catalogo.ver_producto(a.producto_id)
+        p = dependencias.navegar_catalogo.ver_producto(a.producto_id)
     except ErrorDeDominio as exc:
         print(f"[x] {exc.mensaje}")
         return 1
@@ -217,7 +228,7 @@ def cmd_producto(a, contenedor: Contenedor) -> int:
 # --------------------------------------------------------------------------- #
 
 
-def cmd_emitir(a, contenedor: Contenedor) -> int:
+def cmd_emitir(a, dependencias: DependenciasDeLaCli) -> int:
     """Arma el carrito y firma el mandato en un solo comando: quien opera la
     CLI YA es el humano, asi que no hace falta separar "el agente propone"
     de "el humano firma" en dos invocaciones -- esa separacion importa
@@ -225,10 +236,10 @@ def cmd_emitir(a, contenedor: Contenedor) -> int:
     persona escribiendo el comando ella misma."""
     items = [_parsear_item(i) for i in a.item]
     try:
-        carrito, propuesta = contenedor.navegar_catalogo.armar_carrito(
+        carrito, propuesta = dependencias.navegar_catalogo.armar_carrito(
             a.comercio_id, items, justificacion=a.justificacion or "",
         )
-        mandato = contenedor.emitir_mandato(propuesta.propuesta_id, a.titular)
+        mandato = dependencias.emitir_mandato(propuesta.propuesta_id, a.titular)
     except ErrorDeDominio as exc:
         print(f"[x] {exc.mensaje}")
         return 1
@@ -244,26 +255,26 @@ def cmd_emitir(a, contenedor: Contenedor) -> int:
     print(f"  expira       {mandato.expira_en.isoformat(timespec='seconds')}")
     print(
         "\n  Con esto se puede pagar:\n"
-        f"\n    python -m agora.entradas.cli pagar {mandato.mandato_id} {carrito.carrito_id}"
+        f"\n    python -m agora cli pagar {mandato.mandato_id} {carrito.carrito_id}"
     )
     return 0
 
 
-def cmd_firmar(a, contenedor: Contenedor) -> int:
+def cmd_firmar(a, dependencias: DependenciasDeLaCli) -> int:
     """Etapa 6: firma una propuesta que ya armo OTRO proceso -- tipicamente
     el agente, en una charla de `chat` (`armar_carrito` le muestra a la
     persona el `propuesta_id` y este mismo comando ya armado, ver
     `composicion/agente.py`). A diferencia de `cmd_emitir`, no arma un
-    carrito nuevo: `contenedor.emitir_mandato` busca la propuesta y el
+    carrito nuevo: `dependencias.emitir_mandato` busca la propuesta y el
     carrito por id contra `RepositorioPropuestas`/`RepositorioCarritos`, asi
     que el `carrito_id` que resulta es el MISMO que ya tiene quien arranco
     la conversacion -- eso es lo que permite que `pagar()` (la herramienta
     del agente) despues encuentre el mandato correcto sin que la persona
     tenga que pasarle un carrito_id distinto."""
     try:
-        mandato = contenedor.emitir_mandato(a.propuesta_id, a.titular)
-        carrito = contenedor.navegar_catalogo.ver_carrito(
-            contenedor.navegar_catalogo.ver_propuesta(a.propuesta_id).carrito_id
+        mandato = dependencias.emitir_mandato(a.propuesta_id, a.titular)
+        carrito = dependencias.navegar_catalogo.ver_carrito(
+            dependencias.navegar_catalogo.ver_propuesta(a.propuesta_id).carrito_id
         )
     except ErrorDeDominio as exc:
         print(f"[x] {exc.mensaje}")
@@ -277,14 +288,14 @@ def cmd_firmar(a, contenedor: Contenedor) -> int:
     print(
         "\n  Con esto se puede pagar (por CLI, o pasandole el mandato_id al "
         "agente en el chat):\n"
-        f"\n    python -m agora.entradas.cli pagar {mandato.mandato_id} {carrito.carrito_id}"
+        f"\n    python -m agora cli pagar {mandato.mandato_id} {carrito.carrito_id}"
     )
     return 0
 
 
-def cmd_pagar(a, contenedor: Contenedor) -> int:
+def cmd_pagar(a, dependencias: DependenciasDeLaCli) -> int:
     try:
-        recibo = contenedor.pagar_carrito(a.mandato_id, a.carrito_id)
+        recibo = dependencias.pagar_carrito(a.mandato_id, a.carrito_id)
     except ErrorDeDominio as exc:
         print(f"[x] {exc.mensaje}")
         return 1
@@ -300,13 +311,13 @@ def cmd_pagar(a, contenedor: Contenedor) -> int:
     if recibo.esperando_confirmacion:
         print(
             "\n  Queda esperando confirmacion humana:\n"
-            f"\n    python -m agora.entradas.cli retomar {intencion.intencion_id} "
+            f"\n    python -m agora cli retomar {intencion.intencion_id} "
             f"{a.mandato_id} {a.carrito_id}"
         )
     return 0
 
 
-def cmd_retomar(a, contenedor: Contenedor) -> int:
+def cmd_retomar(a, dependencias: DependenciasDeLaCli) -> int:
     """Resuelve una intencion que `pagar` dejo en `esperando_confirmacion_
     humana` -- la senal blanda de `dominio/mandato/politica.py` ("agota el
     mandato de una sola vez", tipico de un mandato cortado exacto al
@@ -315,7 +326,7 @@ def cmd_retomar(a, contenedor: Contenedor) -> int:
     contra el mismo `Intencion` -- no alcanza con el `intencion_id` solo.
     """
     try:
-        recibo = contenedor.pagar_carrito.retomar(
+        recibo = dependencias.pagar_carrito.retomar(
             a.intencion_id, a.mandato_id, a.carrito_id, aprueba=not a.rechazar,
         )
     except ErrorDeDominio as exc:
@@ -327,9 +338,9 @@ def cmd_retomar(a, contenedor: Contenedor) -> int:
     return 0
 
 
-def cmd_estado(a, contenedor: Contenedor) -> int:
+def cmd_estado(a, dependencias: DependenciasDeLaCli) -> int:
     try:
-        estado = contenedor.consultar_estado(a.intencion_id)
+        estado = dependencias.consultar_estado(a.intencion_id)
     except ErrorDeDominio as exc:
         print(f"[x] {exc.mensaje}")
         return 1
@@ -337,8 +348,8 @@ def cmd_estado(a, contenedor: Contenedor) -> int:
     return 0
 
 
-def cmd_mandatos(a, contenedor: Contenedor) -> int:
-    mandatos = contenedor.listar_mandatos()
+def cmd_mandatos(a, dependencias: DependenciasDeLaCli) -> int:
+    mandatos = dependencias.listar_mandatos()
     if not mandatos:
         print("Sin mandatos.")
         return 0
@@ -401,15 +412,15 @@ def _imprimir_traza(cuerpo: dict, ts: str) -> None:
     print(f"  agente>  {cuerpo.get('respuesta')}")
 
 
-def cmd_trazas(a, contenedor: Contenedor) -> int:
+def cmd_trazas(a, dependencias: DependenciasDeLaCli) -> int:
     """Lee la bitacora de trazas. No la produce: el agente la escribe desde
     el proceso que atiende el chat (`servir_api` o `chat`), y esto es una
     ventana sobre ese archivo -- por eso se puede correr en otra terminal,
     en otra maquina con el archivo montado, o despues de que todo termino."""
-    ruta = contenedor.config.trazas_path
+    ruta = dependencias.trazas_path
     if not ruta.exists():
         print(f"[i] todavia no hay trazas en {ruta}")
-        print("    se escriben solas cuando alguien chatea (servir_api, o el comando chat).")
+        print("    se escriben solas cuando alguien chatea (python -m agora api, o el comando chat).")
         return 0
 
     def mostrar(linea: str) -> None:
@@ -443,8 +454,9 @@ def cmd_trazas(a, contenedor: Contenedor) -> int:
             return 0
 
 
-def cmd_chat(a, contenedor: Contenedor) -> int:
-    agente = construir_agente(contenedor)
+def cmd_chat(a, agente: Agente | None) -> int:
+    """`agente` llega ya armado (o `None` sin DEEPSEEK_API_KEY): construirlo
+    es trabajo de `app-service`, no de un entry point."""
     if agente is None:
         print(
             "[x] no hay DEEPSEEK_API_KEY configurada -- sin ella no hay agente "
@@ -576,9 +588,17 @@ def _armar_parser() -> argparse.ArgumentParser:
     return p
 
 
-def main() -> int:
-    a = _armar_parser().parse_args()
-    contenedor = _armar_contenedor()
+def main(
+    argv: list[str] | None,
+    dependencias: DependenciasDeLaCli,
+    crear_agente: Callable[[], Agente | None],
+) -> int:
+    """`python -m agora cli <comando>` llega aca desde `app_service/main.py`.
+    `crear_agente` se llama solo para `chat`: los demas comandos no necesitan
+    un modelo de lenguaje."""
+    a = _armar_parser().parse_args(argv)
+    if a.cmd == "chat":
+        return cmd_chat(a, crear_agente())
 
     comandos = {
         "enrolar": cmd_enrolar,
@@ -593,11 +613,6 @@ def main() -> int:
         "retomar": cmd_retomar,
         "estado": cmd_estado,
         "mandatos": cmd_mandatos,
-        "chat": cmd_chat,
         "trazas": cmd_trazas,
     }
-    return comandos[a.cmd](a, contenedor)
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+    return comandos[a.cmd](a, dependencias)

@@ -39,14 +39,16 @@ vez de fallar en silencio o generar una llave nueva sobre la marcha.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from dataclasses import dataclass
 
-from ..driven_adapters.catalogo_semilla import RepositorioCatalogoSemilla
-from ..driven_adapters.llm_deepseek import AdaptadorDeepSeek, ConfiguracionDeepSeek
-from ..driven_adapters.selector_pasarelas.registro import RegistroDePasarelas
-from ..driven_adapters.pasarela_simulada import AdaptadorSimulado, GuionSimulado
-from ..driven_adapters.pasarela_wompi import AdaptadorWompi
-from ..driven_adapters.persistencia_memoria import (
+from ...driven_adapters.catalogo_semilla import RepositorioCatalogoSemilla
+from ...driven_adapters.llm_deepseek import AdaptadorDeepSeek, ConfiguracionDeepSeek
+from ...driven_adapters.selector_pasarelas.registro import RegistroDePasarelas
+from ...driven_adapters.pasarela_simulada import AdaptadorSimulado, GuionSimulado
+from ...driven_adapters.pasarela_wompi import AdaptadorWompi
+from ...driven_adapters.persistencia_memoria import (
     LibroDeConsumoEnMemoria,
     RegistroDeEstadosEnMemoria,
     RepositorioCarritosEnMemoria,
@@ -56,7 +58,7 @@ from ..driven_adapters.persistencia_memoria import (
     RepositorioPropuestasEnMemoria,
     RepositorioUsuariosEnMemoria,
 )
-from ..driven_adapters.persistencia_sqlite import (
+from ...driven_adapters.persistencia_sqlite import (
     LibroDeConsumoSQLite,
     RegistroDeEstadosSQLite,
     RepositorioCarritosSQLite,
@@ -66,50 +68,54 @@ from ..driven_adapters.persistencia_sqlite import (
     RepositorioPropuestasSQLite,
     RepositorioUsuariosSQLite,
 )
-from ..driven_adapters.bitacora_jsonl.bitacora_jsonl import BitacoraJsonl
-from ..driven_adapters.firma_ed25519.firma_ed25519 import (
+from ...driven_adapters.bitacora_jsonl.bitacora_jsonl import BitacoraJsonl
+from ...driven_adapters.firma_ed25519.firma_ed25519 import (
     GeneradorDeLlavesEd25519,
     VerificadorEd25519,
 )
-from ..driven_adapters.sistema import GeneradorIdsUuid, RelojDelSistema
-from ..driven_adapters.hasher_pbkdf2.hasher_pbkdf2 import HasherPBKDF2
-from ..driven_adapters.firma_ed25519.registro_firmantes import RegistroDeFirmantes
-from ..usecase.iniciar_sesion.iniciar_sesion_use_case import IniciarSesionUseCase
-from ..usecase.registrar_usuario.registrar_usuario_use_case import RegistrarUsuarioUseCase
-from ..usecase.conciliar_evento.conciliar_evento_use_case import ConciliarEventoUseCase
-from ..usecase.consultar_estado.consultar_estado_use_case import ConsultarEstadoUseCase
-from ..usecase.ejecutar_intencion.ejecutar_intencion_use_case import EjecutarIntencionUseCase
-from ..usecase.emitir_mandato.emitir_mandato_use_case import EmitirMandatoUseCase
-from ..usecase.confirmar_enrolamiento.confirmar_enrolamiento_use_case import ConfirmarEnrolamientoUseCase
-from ..usecase.consultar_enrolamiento.consultar_enrolamiento_use_case import ConsultarEnrolamientoUseCase
-from ..usecase.enrolar_medio.enrolar_medio_use_case import EnrolarMedioUseCase
-from ..usecase.iniciar_enrolamiento.iniciar_enrolamiento_use_case import IniciarEnrolamientoUseCase
-from ..usecase.listar_mandatos.listar_mandatos_use_case import ListarMandatosUseCase
-from ..usecase.listar_medios_vivos.listar_medios_vivos_use_case import ListarMediosVivosUseCase
-from ..usecase.navegar_catalogo.navegar_catalogo_use_case import NavegarCatalogoUseCase
-from ..usecase.pagar_carrito.pagar_carrito_use_case import PagarCarritoUseCase
-from ..usecase.rechazar_propuesta.rechazar_propuesta_use_case import RechazarPropuestaUseCase
-from ..usecase.revocar_medio.revocar_medio_use_case import RevocarMedioUseCase
-from ..model.mandato.gateways.firma import Verificador
-from ..model.pago.modelo import Ambiente
-from ..model.pago.topes import TopesDuros
-from ..model.catalogo.modelo import Producto
-from ..model.usuario.gateways.autenticacion import HasherDeContrasenas
-from ..model.catalogo.gateways.busqueda_productos import BuscadorSemanticoDeProductos
-from ..model.catalogo.gateways.catalogo import RepositorioCatalogo
-from ..model.mandato.gateways.firma import SelectorDeFirmante
-from ..model.agente.gateways.modelo_lenguaje import ModeloDeLenguaje
-from ..model.pago.gateways.pasarela import SelectorDePasarela
-from ..model.agente.gateways.recuperacion import BuscadorDocumental
-from ..model.mandato.gateways.repositorios import (
+from ...driven_adapters.sistema import GeneradorIdsUuid, RelojDelSistema
+from ...driven_adapters.hasher_pbkdf2.hasher_pbkdf2 import HasherPBKDF2
+from ...driven_adapters.firma_ed25519.registro_firmantes import RegistroDeFirmantes
+from ...usecase.iniciar_sesion.iniciar_sesion_use_case import IniciarSesionUseCase
+from ...usecase.registrar_usuario.registrar_usuario_use_case import RegistrarUsuarioUseCase
+from ...usecase.conciliar_evento.conciliar_evento_use_case import ConciliarEventoUseCase
+from ...usecase.consultar_estado.consultar_estado_use_case import ConsultarEstadoUseCase
+from ...usecase.ejecutar_intencion.ejecutar_intencion_use_case import EjecutarIntencionUseCase
+from ...usecase.emitir_mandato.emitir_mandato_use_case import EmitirMandatoUseCase
+from ...usecase.confirmar_enrolamiento.confirmar_enrolamiento_use_case import (
+    ConfirmarEnrolamientoUseCase,
+)
+from ...usecase.consultar_enrolamiento.consultar_enrolamiento_use_case import (
+    ConsultarEnrolamientoUseCase,
+)
+from ...usecase.enrolar_medio.enrolar_medio_use_case import EnrolarMedioUseCase
+from ...usecase.iniciar_enrolamiento.iniciar_enrolamiento_use_case import IniciarEnrolamientoUseCase
+from ...usecase.listar_mandatos.listar_mandatos_use_case import ListarMandatosUseCase
+from ...usecase.listar_medios_vivos.listar_medios_vivos_use_case import ListarMediosVivosUseCase
+from ...usecase.navegar_catalogo.navegar_catalogo_use_case import NavegarCatalogoUseCase
+from ...usecase.pagar_carrito.pagar_carrito_use_case import PagarCarritoUseCase
+from ...usecase.rechazar_propuesta.rechazar_propuesta_use_case import RechazarPropuestaUseCase
+from ...usecase.revocar_medio.revocar_medio_use_case import RevocarMedioUseCase
+from ...model.mandato.gateways.firma import Verificador
+from ...model.pago.modelo import Ambiente
+from ...model.pago.topes import TopesDuros
+from ...model.catalogo.modelo import Producto
+from ...model.usuario.gateways.autenticacion import HasherDeContrasenas
+from ...model.catalogo.gateways.busqueda_productos import BuscadorSemanticoDeProductos
+from ...model.catalogo.gateways.catalogo import RepositorioCatalogo
+from ...model.mandato.gateways.firma import SelectorDeFirmante
+from ...model.agente.gateways.modelo_lenguaje import ModeloDeLenguaje
+from ...model.pago.gateways.pasarela import SelectorDePasarela
+from ...model.agente.gateways.recuperacion import BuscadorDocumental
+from ...model.mandato.gateways.repositorios import (
     LibroDeConsumo,
     RepositorioMandatos,
     RepositorioPropuestas,
 )
-from ..model.pago.gateways.repositorios import RegistroDeEstados, RepositorioMedios
-from ..model.catalogo.gateways.repositorios import RepositorioCarritos
-from ..model.usuario.gateways.repositorios import RepositorioLlaves, RepositorioUsuarios
-from ..model.commons.gateways.sistema import Bitacora, GeneradorIds, Reloj
+from ...model.pago.gateways.repositorios import RegistroDeEstados, RepositorioMedios
+from ...model.catalogo.gateways.repositorios import RepositorioCarritos
+from ...model.usuario.gateways.repositorios import RepositorioLlaves, RepositorioUsuarios
+from ...model.commons.gateways.sistema import Bitacora, GeneradorIds, Reloj
 from .configuracion import RAIZ_REPO, ConfiguracionAgora
 
 
@@ -206,6 +212,11 @@ class Contenedor:
         `MedioDePagoRef`, mostrarlo): se lo pasan como valor, sin recibir la
         configuracion entera."""
         return self.config.ambiente
+
+    @property
+    def trazas_path(self) -> Path:
+        """Para `cli trazas`, que solo lee ese archivo."""
+        return self.config.trazas_path
 
 
 def construir(
@@ -438,8 +449,8 @@ def _construir_buscador_semantico_de_productos(
     se guarda la lista, pero se embebe recien en la primera busqueda."""
     if not config.openai_llave_api:
         return None
-    from ..driven_adapters.busqueda_semantica_memoria import BuscadorSemanticoEnMemoria
-    from ..driven_adapters.embeddings_openai import (
+    from ...driven_adapters.busqueda_semantica_memoria import BuscadorSemanticoEnMemoria
+    from ...driven_adapters.embeddings_openai import (
         AdaptadorEmbeddingsOpenAI,
         ConfiguracionEmbeddingsOpenAI,
     )
@@ -466,11 +477,11 @@ def _construir_buscador_documental(config: ConfiguracionAgora) -> BuscadorDocume
     que no esta usando."""
     if not config.openai_llave_api:
         return None
-    from ..driven_adapters.embeddings_openai import (
+    from ...driven_adapters.embeddings_openai import (
         AdaptadorEmbeddingsOpenAI,
         ConfiguracionEmbeddingsOpenAI,
     )
-    from ..driven_adapters.recuperacion_langchain import (
+    from ...driven_adapters.recuperacion_langchain import (
         BuscadorDocumentalLangChain,
         cargar_markdown,
     )

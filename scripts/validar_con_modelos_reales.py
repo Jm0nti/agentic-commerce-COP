@@ -30,7 +30,7 @@ LO QUE ESTE SCRIPT NO MIDE
 Si el modelo real entiende el aviso de reanudacion de la etapa 5 y llama a
 `pagar()` con los ids correctos. Eso necesita una charla completa con firma
 desde el popup -- la receta esta en `docs/arquitectura-agentes/
-etapa-5-pausa-humana.md`, y se mira con `python -m agora.entradas.cli trazas
+etapa-5-pausa-humana.md`, y se mira con `python -m agora cli trazas
 --seguir`.
 """
 
@@ -43,16 +43,16 @@ import sys
 from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "applications" / "app-service" / "src"))
 
 from dotenv import load_dotenv  # noqa: E402
 
 from agora.driven_adapters.busqueda_semantica_memoria import PARECIDO_MINIMO_POR_DEFECTO
 from agora.usecase.agente.contexto_documental import PUNTAJE_MINIMO_POR_DEFECTO, armar_consulta
 from agora.model.agente.intencion import TipoDeIntencion
-from agora.composicion.agente import construir_clasificador  # noqa: E402
-from agora.composicion.configuracion import ConfiguracionInvalida, leer_configuracion  # noqa: E402
-from agora.composicion.contenedor import construir  # noqa: E402
+from agora.app_service.config.agente import construir_clasificador
+from agora.app_service.config.configuracion import ConfiguracionInvalida, leer_configuracion
+from agora.app_service.config.contenedor import construir
 
 # --------------------------------------------------------------------------- #
 # 1. Clasificador de intencion: un conjunto etiquetado a mano
@@ -402,7 +402,7 @@ def main() -> int:
         "  entiende que la persona firmo y llama a pagar() con los ids\n"
         "  correctos. Necesita una charla completa con firma desde el popup:\n\n"
         "    terminal 1:  python scripts/servir_api.py\n"
-        "    terminal 2:  python -m agora.entradas.cli trazas --seguir\n"
+        "    terminal 2:  python -m agora cli trazas --seguir\n"
         "    navegador:   comprar algo y firmar en el popup\n\n"
         "  En la traza tiene que verse el turno con \"pausa\": "
         '{"tipo": "firma_de_propuesta"...}\n'

@@ -7,10 +7,11 @@ Tomada el 30 sep 2026 sobre `dev@5b7f30b` más los cambios de la Fase 0. Python 
 - **Fase 2: 1.189 pruebas en verde.** Todas las nuevas están en `test_fronteras.py`: la regla "el modelo solo conoce la biblioteca estándar" corre sobre los 24 módulos de `domain/model`, y las reglas parametrizadas pasan de 21 archivos de `dominio/` + `puertos/` a 24 de `model/`. Módulos por capa: model 24, aplicacion 14, agente 16, adaptadores 61, entradas 10, composicion 4.
 - **Fase 3: 1.205 pruebas en verde.** Las 16 nuevas están en `test_fronteras.py`: la convención de carpetas de casos de uso, el detector de un caso de uso que importa al agente y las reglas parametrizadas sobre los archivos nuevos. Módulos por capa: model 26, usecase 18, agente 14 (en `usecase/agente`), adaptadores 61, entradas 10, composicion 4.
 - **Fase 4: 1.353 pruebas en verde.** Las nuevas están en `test_fronteras.py`: "cada librería vive en su adaptador" corre sobre todos los módulos y "un adaptador no conoce a otro" sobre los 52 de `driven_adapters`. Salen 4 casos de la lista de módulos de la migración a agentes, que eran `__init__.py` vacíos de familias que ya no existen. Módulos por capa: model 26, usecase 18, agente 14, driven_adapters 52 (15 módulos), entradas 10, composicion 4.
+- **Fase 5: 1.386 pruebas en verde.** Las nuevas están en `test_fronteras.py`, donde las reglas de módulos ahora cubren también los entry points y el app-service. Sale 1 caso, la prueba de `EXCEPCIONES_PROVISORIAS`, porque la excepción de la CLI ya no existe. Módulos por capa: model 26, usecase 18, agente 14, driven_adapters 52, entry_points 9, app_service 11.
 - Módulos por capa (Fase 0) (`agora/`): dominio 10, puertos 11, aplicacion 11, agente 16, adaptadores 61, entradas 10, composicion 4. Son los mínimos de `MINIMO_DE_MODULOS_POR_CAPA`.
 - Criterio de cada fase: **ningún archivo de esta tabla baja su número**. Si una prueba se mueve de archivo, se suma en el destino. El total nunca baja.
 
-Conteo vigente (Fase 4):
+Conteo vigente (Fase 5):
 
 | Archivo | Pruebas |
 |---|---:|
@@ -51,7 +52,7 @@ Conteo vigente (Fase 4):
 | `tests/test_emitir_mandato.py` | 6 |
 | `tests/test_enrolar_medio.py` | 10 |
 | `tests/test_firma_ed25519.py` | 3 |
-| `tests/test_fronteras.py` | 674 |
+| `tests/test_fronteras.py` | 707 |
 | `tests/test_generar_catalogo_semilla.py` | 11 |
 | `tests/test_invariantes_del_refactor.py` | 4 |
 | `tests/test_libro_consumo_memoria.py` | 10 |

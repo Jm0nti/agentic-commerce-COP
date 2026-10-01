@@ -13,10 +13,10 @@ import pytest
 from agora.usecase.agente.conversacion import Agente
 from agora.usecase.agente.grafo import AgenteEnGrafo
 from agora.model.agente.intencion import TipoDeIntencion
-from agora.composicion import agente as composicion_agente
-from agora.composicion.agente import construir_agente, envolver_en_grafo
-from agora.composicion.configuracion import ConfiguracionInvalida, leer_configuracion
-from agora.composicion.contenedor import construir
+from agora.app_service.config import agente as composicion_agente
+from agora.app_service.config.agente import construir_agente, envolver_en_grafo
+from agora.app_service.config.configuracion import ConfiguracionInvalida, leer_configuracion
+from agora.app_service.config.contenedor import construir
 from agora.model.agente.gateways.modelo_lenguaje import RespuestaModelo
 
 

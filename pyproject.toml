@@ -1,8 +1,9 @@
 # Fuente unica de dependencias (roadmap Clean Architecture, Fase 0.5).
 # `requirements.txt` solo apunta aca, para que `pip install -r requirements.txt`
 # siga funcionando como dicen el README y los mensajes de error.
-# Tambien es el marcador con el que `agora/composicion/configuracion.py`
-# encuentra la raiz del repositorio: no mover ni renombrar.
+# Tambien es el marcador con el que `agora/__init__.py` y
+# `app_service/config/configuracion.py` encuentran la raiz del repositorio:
+# no mover ni renombrar.
 
 [build-system]
 requires = ["setuptools>=61"]
@@ -18,7 +19,7 @@ dependencies = [
     "httpx>=0.27",
     "uvicorn>=0.30",
     "cryptography>=42.0",
-    "python-dotenv>=1.0",
+    "python-dotenv>=1.0",  # app-service: el .env
     "openai",
     "numpy",
     # Migracion a agentes, etapa 2 (docs/arquitectura-agentes/etapa-2-...):
@@ -33,10 +34,13 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
 
+# El paquete `agora` vive en el app-service; el resto de los modulos del
+# scaffold se le enchufan al importarlo (ver su `__init__.py`).
 [tool.setuptools.packages.find]
-include = ["agora*", "utilidades*"]
+where = ["applications/app-service/src"]
+include = ["agora*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# `pytest` a secas (no solo `python -m pytest`) encuentra `agora` sin instalar.
-pythonpath = ["."]
+# `pytest` encuentra `agora` sin instalar.
+pythonpath = ["applications/app-service/src"]

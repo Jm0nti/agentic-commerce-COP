@@ -473,6 +473,26 @@ con los nombres de Bancolombia y se verifica.
 
 ### Fase 5: `entry-points` y `app-service` (1,5 a 2 días)
 
+> **✅ Hecha (30 sep 2026).** Queda en 1.386 pruebas. Verificado así:
+> - Flujo de punta a punta en simulado con el arranque nuevo (`crear-usuario`, `cli comercios/productos/enrolar/emitir/pagar/retomar/mandatos/trazas`).
+> - `api` y `webhook` levantados de verdad: `GET /salud`, `GET /` (el chat) y `GET /docs` del webhook responden 200.
+> - `pip install -e .` probado desde fuera del repo.
+>
+> **Qué cambió:**
+> - **Un solo arranque:** `python -m agora <perfil>` con los perfiles `api`, `webhook`, `cli <comando>`, `crear-usuario` y `generar-catalogo` (`app_service/main.py`). Los cuatro scripts de arranque se movieron enteros a `app_service/`. En `scripts/` solo queda `validar_con_modelos_reales.py`, que es un experimento.
+> - **Comandos nuevos:** `cmds.txt`, `README.md`, `Documentacion.md` y `docs/` (salvo `historico/`) ya usan `python -m agora …`. **También cambiaron el prompt del agente y la nota de `pagar`:** ahora le dan a la persona `python -m agora cli firmar|retomar …`. Es el único cambio que ve el modelo.
+> - **El paquete `agora` vive en `applications/app-service/src/agora/`** y en la raíz ya no queda la carpeta `agora/`. Su `__init__.py` encuentra solo los módulos (`domain/*`, `infrastructure/*/*`, `applications/*`). Consecuencia: para correr `python -m agora` hay que tener el proyecto instalado (`pip install -r requirements.txt`, que hace `pip install -e .`). Pytest no lo necesita porque lo resuelve con `pythonpath` en `pyproject.toml`.
+> - **Entry points:** `infrastructure/entry-points/{api-rest, webhook-wompi, cli}`; `chat.html` se movió con `api-rest`. La CLI dejó de armar su propio contenedor: recibe un `DependenciasDeLaCli` (Protocol) y una función que construye el agente, y `cmd_chat` recibe el agente ya armado. Ya no hace falta ninguna excepción provisoria en `test_fronteras.py`.
+> - **`composicion/` pasó a `app_service/config/`.** `utilidades/env.py` se borró: el `.env` se carga en un solo lugar (`desde_el_entorno()`, con python-dotenv).
+> - **Reglas nuevas:**
+>   - Un entry point no importa a otro ni al app-service.
+>   - `LIBRERIAS_POR_MODULO` suma fastapi (api-rest, webhook-wompi), pydantic (api-rest), uvicorn y dotenv (app-service).
+>   - Lo comprobé con imports prohibidos reales: la suite falla con ellos y vuelve a verde sin ellos.
+>
+> **Qué no se hizo:**
+> - **El `Contenedor` sigue teniendo los repositorios** (5.4). Los usan `config/` para cablear y las pruebas para preparar datos. Ningún entry point recibe el tipo, y la regla sobre el AST impide tocarlos desde `entry-points`.
+> - **Las pruebas `test_composicion*` siguen en `tests/`:** reorganizar las pruebas en subcarpetas (D7) se hace de una vez en la Fase 6, no por partes.
+
 1. `entradas/{api,webhooks,cli}` → `entry-points/{api-rest,webhook-wompi,cli}`.
    `estatico/chat.html` se mueve con `api-rest`.
 2. `composicion/{contenedor,configuracion,agente}.py` + `utilidades/env.py` →
