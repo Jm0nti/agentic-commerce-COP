@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from agora.adaptadores.persistencia.sqlite.repositorio_propuestas import (
+from agora.driven_adapters.persistencia_sqlite.repositorio_propuestas import (
     RepositorioPropuestasSQLite,
 )
 from agora.model.commons.dinero import Dinero

@@ -12,13 +12,17 @@ from datetime import datetime, timezone
 
 import pytest
 
-from agora.adaptadores.persistencia.memoria import (
+from agora.driven_adapters.persistencia_memoria import (
     RepositorioCarritosEnMemoria,
     RepositorioMandatosEnMemoria,
     RepositorioMediosEnMemoria,
     RepositorioPropuestasEnMemoria,
 )
-from agora.adaptadores.sistema import GeneradorIdsUuid, VerificadorEd25519, cargar_o_generar_firmante
+from agora.driven_adapters.sistema import GeneradorIdsUuid
+from agora.driven_adapters.firma_ed25519.firma_ed25519 import (
+    VerificadorEd25519,
+    cargar_o_generar_firmante,
+)
 from agora.usecase.emitir_mandato.emitir_mandato_use_case import EmitirMandatoUseCase
 from agora.model.catalogo.modelo import Carrito, ItemCarrito
 from agora.model.commons.dinero import Dinero

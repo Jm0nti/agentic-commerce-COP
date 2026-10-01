@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import pytest
 
-from agora.adaptadores.pasarelas.registro import RegistroDePasarelas
-from agora.adaptadores.persistencia.memoria import RepositorioMediosEnMemoria
+from agora.driven_adapters.selector_pasarelas.registro import RegistroDePasarelas
+from agora.driven_adapters.persistencia_memoria import RepositorioMediosEnMemoria
 from agora.usecase.enrolar_medio.enrolar_medio_use_case import EnrolarMedioUseCase
 from agora.model.commons.errores import MedioNoAprobado
 from agora.model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor

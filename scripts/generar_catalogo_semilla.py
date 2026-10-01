@@ -39,14 +39,14 @@ if str(_REPO) not in sys.path:
     # demas scripts/).
     sys.path.insert(0, str(_REPO))
 
-from agora.adaptadores.catalogo.semilla import RUTA_POR_DEFECTO  # noqa: E402
-from agora.adaptadores.catalogo.semilla import serializacion  # noqa: E402
-from agora.adaptadores.llm.deepseek import (  # noqa: E402
+from agora.driven_adapters.catalogo_semilla import RUTA_POR_DEFECTO
+from agora.driven_adapters.catalogo_semilla import serializacion
+from agora.driven_adapters.llm_deepseek import (
     AdaptadorDeepSeek,
     ConfiguracionDeepSeek,
     ConfiguracionInvalida,
 )
-from agora.adaptadores.sistema.ids import GeneradorIdsUuid  # noqa: E402
+from agora.driven_adapters.sistema.ids import GeneradorIdsUuid
 from agora.usecase.generar_catalogo_semilla.generar_catalogo_semilla_use_case import (
     GenerarCatalogoSemillaUseCase,
 )

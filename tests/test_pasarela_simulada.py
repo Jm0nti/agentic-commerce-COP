@@ -13,14 +13,14 @@ from __future__ import annotations
 
 import pytest
 
-from agora.adaptadores.pasarelas.simulada import (
+from agora.driven_adapters.pasarela_simulada import (
     APROBADO,
     DECLINADO_ANTIFRAUDE,
     AdaptadorSimulado,
     Desenlace,
     GuionSimulado,
 )
-from agora.adaptadores.sistema.ids import GeneradorIdsUuid
+from agora.driven_adapters.sistema.ids import GeneradorIdsUuid
 from agora.model.commons.dinero import Dinero
 from agora.model.commons.errores import ErrorDePasarela
 from agora.model.pago.modelo import Ambiente, EstadoCobro, MedioDePagoRef, OrdenDeCobro, Proveedor

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from agora.adaptadores.persistencia.memoria import RepositorioCarritosEnMemoria
+from agora.driven_adapters.persistencia_memoria import RepositorioCarritosEnMemoria
 from agora.model.catalogo.modelo import Carrito, ItemCarrito
 from agora.model.commons.dinero import Dinero
 from agora.model.commons.errores import CarritoDesconocido

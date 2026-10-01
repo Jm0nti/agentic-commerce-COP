@@ -12,6 +12,7 @@ una propiedad del sistema.
 from __future__ import annotations
 
 import ast
+import re
 import functools
 import sys
 from pathlib import Path
@@ -41,7 +42,8 @@ CAPAS: dict[str, str] = {
     # caso de uso), asi que gana el prefijo mas largo.
     "usecase": "usecase",
     "usecase/agente": "agente",
-    "adaptadores": "adaptadores",
+    # Fase 4: un modulo por tecnologia en `infrastructure/driven-adapters/`.
+    "driven_adapters": "driven_adapters",
     "entradas": "entradas",
     "composicion": "composicion",
 }
@@ -53,7 +55,7 @@ MINIMO_DE_MODULOS_POR_CAPA: dict[str, int] = {
     "model": 26,
     "usecase": 18,
     "agente": 14,
-    "adaptadores": 61,
+    "driven_adapters": 52,
     "entradas": 10,
     "composicion": 4,
 }
@@ -62,12 +64,12 @@ MINIMO_DE_MODULOS_POR_CAPA: dict[str, int] = {
 REGLAS: dict[str, tuple[str, ...]] = {
     # El nucleo no sabe que existe el mundo exterior.
     # Entidades y gateways juntos, como en el scaffold de Bancolombia.
-    "model": ("usecase", "adaptadores", "agente", "entradas", "composicion"),
+    "model": ("usecase", "driven_adapters", "agente", "entradas", "composicion"),
     # Los casos de uso hablan con interfaces, nunca con implementaciones.
     # `agente` se agrego en la Fase 3: un caso de uso no depende del agente.
-    "usecase": ("adaptadores", "entradas", "composicion", "agente"),
+    "usecase": ("driven_adapters", "entradas", "composicion", "agente"),
     # Un adaptador no orquesta.
-    "adaptadores": ("usecase", "entradas", "composicion"),
+    "driven_adapters": ("usecase", "entradas", "composicion"),
     # LA FRONTERA. El agente no puede alcanzar una credencial de pago
     # ni aunque quiera.
     #
@@ -78,12 +80,12 @@ REGLAS: dict[str, tuple[str, ...]] = {
     # `agente/` con `from ..aplicacion.ejecutar_intencion import
     # EjecutarIntencionUseCase` pasaba la suite en verde. Ver
     # `test_el_detector_atrapa_al_agente_importando_un_caso_de_uso`.
-    "agente": ("usecase", "adaptadores", "entradas", "composicion"),
+    "agente": ("usecase", "driven_adapters", "entradas", "composicion"),
     # Las entradas reciben los adaptadores ya armados desde composicion.
     # `composicion` se agrego en la Fase 1 del refactor a la Clean
     # Architecture de Bancolombia: un entry point recibe casos de uso, no
     # sabe quien los arma.
-    "entradas": ("adaptadores", "composicion"),
+    "entradas": ("driven_adapters", "composicion"),
 }
 
 # Archivo -> capas que TODAVIA puede importar aunque REGLAS lo prohiba. Cada
@@ -119,7 +121,7 @@ PROHIBIDOS_POR_CAPA: dict[str, tuple[str, ...]] = {
 # (`langchain_core`, `langchain_community`, `langgraph_checkpoint`...), no
 # por nombre exacto: el ecosistema reparte cada libreria en muchos paquetes.
 LIBRERIAS_DE_LLM = ("langchain", "langgraph", "openai", "anthropic", "llama_index")
-CAPAS_QUE_PUEDEN_IMPORTAR_LLM = ("adaptadores",)
+CAPAS_QUE_PUEDEN_IMPORTAR_LLM = ("driven_adapters",)
 
 # Los archivos que agrego la etapa 1 de la migracion. `_modulos()` ya los
 # recorre solo (rglob); esta lista existe para que, si un refactor mueve o
@@ -136,26 +138,22 @@ MODULOS_DE_LA_MIGRACION_A_AGENTES = (
     "model/agente/contexto.py",
     "usecase/agente/contexto_documental.py",
     "model/agente/gateways/recuperacion.py",
-    "adaptadores/embeddings/__init__.py",
-    "adaptadores/embeddings/proveedor_openai/__init__.py",
-    "adaptadores/embeddings/proveedor_openai/adaptador.py",
-    "adaptadores/embeddings/proveedor_openai/config.py",
-    "adaptadores/recuperacion/__init__.py",
-    "adaptadores/recuperacion/langchain_en_memoria/__init__.py",
-    "adaptadores/recuperacion/langchain_en_memoria/buscador.py",
-    "adaptadores/recuperacion/langchain_en_memoria/documentos.py",
+    "driven_adapters/embeddings_openai/__init__.py",
+    "driven_adapters/embeddings_openai/adaptador.py",
+    "driven_adapters/embeddings_openai/config.py",
+    "driven_adapters/recuperacion_langchain/__init__.py",
+    "driven_adapters/recuperacion_langchain/buscador.py",
+    "driven_adapters/recuperacion_langchain/documentos.py",
     # etapa 3
     "usecase/agente/grafo.py",
     "model/agente/gateways/orquestacion.py",
-    "adaptadores/orquestacion/__init__.py",
-    "adaptadores/orquestacion/con_langgraph/__init__.py",
-    "adaptadores/orquestacion/con_langgraph/compilador.py",
+    "driven_adapters/orquestacion_langgraph/__init__.py",
+    "driven_adapters/orquestacion_langgraph/compilador.py",
     # etapa 4
     "usecase/agente/agentes.py",
     "model/catalogo/gateways/busqueda_productos.py",
-    "adaptadores/busqueda_productos/__init__.py",
-    "adaptadores/busqueda_productos/semantico_en_memoria/__init__.py",
-    "adaptadores/busqueda_productos/semantico_en_memoria/buscador.py",
+    "driven_adapters/busqueda_semantica_memoria/__init__.py",
+    "driven_adapters/busqueda_semantica_memoria/buscador.py",
     # trazabilidad del agente
     "usecase/agente/traza.py",
     # etapa 5
@@ -255,7 +253,7 @@ def _violaciones_de_libreria_de_llm(archivo: Path, raiz: Path | None = None) -> 
             ofensas.append(
                 f"{_rel(archivo, raiz)} (capa '{capa}') importa '{imp}'. "
                 "Una libreria de LLM/orquestacion entra detras de un puerto, con su "
-                "adaptador en adaptadores/ -- nunca directo en esta capa."
+                "adaptador en infrastructure/driven-adapters/ -- nunca directo en esta capa."
             )
     return ofensas
 
@@ -324,7 +322,7 @@ PUERTOS_VEDADOS_AL_AGENTE = (
 
 
 def _alcanza_pagos(importado: str) -> bool:
-    return _capa_de(importado) in ("usecase", "adaptadores") or any(
+    return _capa_de(importado) in ("usecase", "driven_adapters") or any(
         _es_modulo(importado, p) for p in PUERTOS_VEDADOS_AL_AGENTE
     )
 
@@ -440,9 +438,9 @@ def test_el_indice_documental_nunca_se_mezcla_con_el_catalogo() -> None:
     documental no alcanza nada del catalogo, y el catalogo no alcanza nada
     de la recuperacion documental."""
     ofensas = []
-    for archivo in _modulos_bajo("adaptadores/recuperacion/") + _modulos_bajo("adaptadores/embeddings/"):
+    for archivo in _modulos_bajo("driven_adapters/recuperacion_langchain/") + _modulos_bajo("driven_adapters/embeddings_openai/"):
         ofensas += [f"{archivo.name}: {i}" for i in _imports(archivo) if "catalogo" in i.split(".")]
-    for archivo in _modulos_bajo("adaptadores/catalogo/") + [_archivo("model/catalogo/gateways/catalogo.py")]:
+    for archivo in _modulos_bajo("driven_adapters/catalogo_semilla/") + [_archivo("model/catalogo/gateways/catalogo.py")]:
         ofensas += [
             f"{archivo.name}: {i}"
             for i in _imports(archivo)
@@ -456,15 +454,15 @@ def test_embeddings_y_vector_store_solo_se_conocen_por_el_puerto() -> None:
     LangChain no sabe que existe OpenAI: cambiar uno no toca al otro
     (decision 2 del documento, "embeddings detras de su propio puerto")."""
     ofensas = []
-    for archivo in _modulos_bajo("adaptadores/embeddings/"):
+    for archivo in _modulos_bajo("driven_adapters/embeddings_openai/"):
         ofensas += [
             f"{archivo.name}: {i}" for i in _imports(archivo)
-            if i.split(".")[0].startswith("langchain") or _es_modulo(i, "adaptadores.recuperacion")
+            if i.split(".")[0].startswith("langchain") or _es_modulo(i, "driven_adapters.recuperacion_langchain")
         ]
-    for archivo in _modulos_bajo("adaptadores/recuperacion/"):
+    for archivo in _modulos_bajo("driven_adapters/recuperacion_langchain/"):
         ofensas += [
             f"{archivo.name}: {i}" for i in _imports(archivo)
-            if i.split(".")[0] == "openai" or _es_modulo(i, "adaptadores.embeddings")
+            if i.split(".")[0] == "openai" or _es_modulo(i, "driven_adapters.embeddings_openai")
         ]
     assert not ofensas, "Adaptadores de la etapa 2 acoplados:\n  " + "\n  ".join(ofensas)
 
@@ -483,7 +481,7 @@ def test_langgraph_vive_en_un_solo_modulo_de_agora() -> None:
         if any(i.split(".")[0] == "langgraph" for i in _imports(archivo))
     )
 
-    assert con_langgraph == ["adaptadores/orquestacion/con_langgraph/compilador.py"]
+    assert con_langgraph == ["driven_adapters/orquestacion_langgraph/compilador.py"]
 
 
 def test_el_puerto_de_orquestacion_no_conoce_ninguna_libreria_de_grafos() -> None:
@@ -505,7 +503,7 @@ def test_el_grafo_del_agente_solo_conoce_el_puerto() -> None:
 
     assert any(_es_modulo(i, "model.agente.gateways.orquestacion") for i in importados)
     assert not [i for i in importados if i.split(".")[0] == "langgraph"]
-    assert not [i for i in importados if _es_modulo(i, "adaptadores")]
+    assert not [i for i in importados if _es_modulo(i, "driven_adapters")]
 
 
 # -- etapa 4: agentes especializados y retrieval hibrido ---------------------- #
@@ -517,11 +515,11 @@ def test_el_indice_de_productos_no_alcanza_el_repositorio_del_catalogo() -> None
     productos por su cuenta -- y entonces una regla dura (disponibilidad,
     precio) dejaria de ser el unico camino hacia un producto."""
     ofensas = []
-    for archivo in _modulos_bajo("adaptadores/busqueda_productos/"):
+    for archivo in _modulos_bajo("driven_adapters/busqueda_semantica_memoria/"):
         ofensas += [
             f"{archivo.name}: {i}"
             for i in _imports(archivo)
-            if _es_modulo(i, "adaptadores.catalogo") or _es_modulo(i, "model.catalogo.gateways.catalogo")
+            if _es_modulo(i, "driven_adapters.catalogo_semilla") or _es_modulo(i, "model.catalogo.gateways.catalogo")
         ]
     assert not ofensas, (
         "el buscador semantico de productos alcanza el catalogo:\n  " + "\n  ".join(ofensas)
@@ -533,17 +531,17 @@ def test_el_indice_de_productos_y_el_documental_no_se_conocen() -> None:
     es `puertos/recuperacion.py:ProveedorDeEmbeddings`, que es el puerto de
     "texto -> vector" de la decision 2 y no sabe que se esta indexando."""
     ofensas = []
-    for archivo in _modulos_bajo("adaptadores/busqueda_productos/"):
+    for archivo in _modulos_bajo("driven_adapters/busqueda_semantica_memoria/"):
         ofensas += [
             f"{archivo.name}: {i}"
             for i in _imports(archivo)
-            if _es_modulo(i, "adaptadores.recuperacion") or _es_modulo(i, "adaptadores.embeddings")
+            if _es_modulo(i, "driven_adapters.recuperacion_langchain") or _es_modulo(i, "driven_adapters.embeddings_openai")
         ]
-    for archivo in _modulos_bajo("adaptadores/recuperacion/"):
+    for archivo in _modulos_bajo("driven_adapters/recuperacion_langchain/"):
         ofensas += [
             f"{archivo.name}: {i}"
             for i in _imports(archivo)
-            if _es_modulo(i, "adaptadores.busqueda_productos")
+            if _es_modulo(i, "driven_adapters.busqueda_semantica_memoria")
             or _es_modulo(i, "model.catalogo.gateways.busqueda_productos")
         ]
     assert not ofensas, "los dos indices se cruzan:\n  " + "\n  ".join(ofensas)
@@ -585,7 +583,7 @@ def test_la_traza_no_conoce_ningun_adaptador_de_bitacora() -> None:
     agente."""
     ofensas = [
         i for i in _imports(_archivo("usecase/agente/traza.py"))
-        if _es_modulo(i, "adaptadores") or _es_modulo(i, "composicion")
+        if _es_modulo(i, "driven_adapters") or _es_modulo(i, "composicion")
     ]
 
     assert not ofensas, "usecase/agente/traza.py conoce un adaptador:\n  " + "\n  ".join(ofensas)
@@ -683,7 +681,7 @@ def test_el_detector_atrapa_librerias_de_llm_fuera_de_adaptadores(
 
 def test_el_detector_deja_pasar_librerias_de_llm_en_adaptadores(tmp_path: Path) -> None:
     raiz, archivo = _agora_de_mentira(
-        tmp_path, "adaptadores/orquestacion/grafo.py", "from langgraph.graph import StateGraph\n",
+        tmp_path, "driven_adapters/orquestacion_langgraph/grafo.py", "from langgraph.graph import StateGraph\n",
     )
     assert _violaciones_de_libreria_de_llm(archivo, raiz) == []
 
@@ -709,10 +707,10 @@ def test_el_detector_atrapa_al_grafo_del_agente_importando_su_adaptador(
     raiz, archivo = _agora_de_mentira(
         tmp_path,
         "usecase/agente/grafo.py",
-        "from ...adaptadores.orquestacion.con_langgraph import CompiladorLangGraph\n",
+        "from ...driven_adapters.orquestacion_langgraph import CompiladorLangGraph\n",
     )
     ofensas = _violaciones_de_dependencia(archivo, raiz)
-    assert ofensas and "adaptadores" in ofensas[0]
+    assert ofensas and "driven_adapters" in ofensas[0]
 
 
 def test_el_detector_atrapa_al_buscador_de_productos_yendo_al_catalogo(
@@ -723,13 +721,13 @@ def test_el_detector_atrapa_al_buscador_de_productos_yendo_al_catalogo(
     de recibir los candidatos ya filtrados."""
     raiz, _ = _agora_de_mentira(
         tmp_path,
-        "adaptadores/busqueda_productos/semantico_en_memoria/intruso.py",
-        "from ....model.catalogo.gateways.catalogo import RepositorioCatalogo\n",
+        "driven_adapters/busqueda_semantica_memoria/intruso.py",
+        "from ...model.catalogo.gateways.catalogo import RepositorioCatalogo\n",
     )
-    archivo = raiz / "adaptadores/busqueda_productos/semantico_en_memoria/intruso.py"
+    archivo = raiz / "driven_adapters/busqueda_semantica_memoria/intruso.py"
     ofensas = [
         i for i in _imports(archivo, raiz)
-        if _es_modulo(i, "adaptadores.catalogo") or _es_modulo(i, "model.catalogo.gateways.catalogo")
+        if _es_modulo(i, "driven_adapters.catalogo_semilla") or _es_modulo(i, "model.catalogo.gateways.catalogo")
     ]
     assert ofensas
 
@@ -763,7 +761,7 @@ def test_el_detector_atrapa_a_los_agentes_importando_un_caso_de_uso(
 
 def test_el_detector_atrapa_importaciones_dinamicas(tmp_path: Path) -> None:
     _, archivo = _agora_de_mentira(
-        tmp_path, "usecase/agente/intruso.py", 'p = __import__("agora.adaptadores.pasarelas.wompi")\n',
+        tmp_path, "usecase/agente/intruso.py", 'p = __import__("agora.driven_adapters.pasarela_wompi")\n',
     )
     assert _importaciones_dinamicas(archivo)
 
@@ -775,7 +773,7 @@ def test_el_detector_atrapa_importaciones_dinamicas(tmp_path: Path) -> None:
         "agora.model.mandato.gateways.firma",
         "model.pago.gateways.repositorios",
         "agora.model.usuario.gateways.autenticacion",
-        "adaptadores.pasarelas.wompi",
+        "driven_adapters.pasarela_wompi",
         "agora.usecase.ejecutar_intencion.ejecutar_intencion_use_case",
     ],
 )
@@ -869,3 +867,73 @@ def test_cada_caso_de_uso_vive_en_su_carpeta_y_termina_en_usecase() -> None:
         if len(casos) != 1:
             ofensas.append(f"{_rel(archivo)}: {len(casos)} clases *UseCase (tiene que haber 1)")
     assert not ofensas, "\n  ".join(["casos de uso fuera de la convencion:", *ofensas])
+
+
+# -- Fase 4: infrastructure/driven-adapters ------------------------------------ #
+
+# Cada libreria de infraestructura, en el unico modulo que la usa: el
+# equivalente a que cada modulo del scaffold declare sus propias dependencias
+# en su `build.gradle`. Agregar una entrada aca es decidir que ese adaptador
+# (y solo ese) depende de la libreria.
+LIBRERIAS_POR_ADAPTADOR: dict[str, tuple[str, ...]] = {
+    "httpx": ("pasarela_wompi",),
+    "openai": ("llm_deepseek", "embeddings_openai"),
+    "langgraph": ("orquestacion_langgraph",),
+    "langchain_core": ("recuperacion_langchain",),
+    "langchain_text_splitters": ("recuperacion_langchain",),
+    "numpy": ("busqueda_semantica_memoria",),
+    "cryptography": ("firma_ed25519",),
+    "sqlite3": ("persistencia_sqlite",),
+}
+
+
+def _adaptador_de(ruta_o_modulo: str) -> str | None:
+    """'driven_adapters/pasarela_wompi/x.py' o 'agora.driven_adapters.pasarela_wompi.x'
+    -> 'pasarela_wompi'."""
+    if _capa_de(ruta_o_modulo) != "driven_adapters":
+        return None
+    partes = re.split(r"[./]", ruta_o_modulo.removeprefix("agora."))
+    return partes[1] if len(partes) > 1 else None
+
+
+def _cruces_entre_adaptadores(archivo: Path, raiz: Path | None = None) -> list[str]:
+    propio = _adaptador_de(_rel(archivo, raiz))
+    return [i for i in _imports(archivo, raiz) if _adaptador_de(i) not in (None, propio)]
+
+
+def _librerias_fuera_de_su_adaptador(archivo: Path, raiz: Path | None = None) -> list[str]:
+    propio = _adaptador_de(_rel(archivo, raiz))
+    return [
+        i for i in _imports(archivo, raiz)
+        if i.split(".")[0] in LIBRERIAS_POR_ADAPTADOR
+        and propio not in LIBRERIAS_POR_ADAPTADOR[i.split(".")[0]]
+    ]
+
+
+@pytest.mark.parametrize("archivo", [p for p in _modulos() if _capa(p) == "driven_adapters"], ids=_rel)
+def test_un_adaptador_no_conoce_a_otro(archivo: Path) -> None:
+    """Un adaptador implementa un gateway del modelo, nada mas: si necesitara
+    otro adaptador, esa composicion es trabajo de `composicion/` (mas adelante,
+    `app-service`)."""
+    assert not _cruces_entre_adaptadores(archivo)
+
+
+@pytest.mark.parametrize("archivo", _modulos(), ids=_rel)
+def test_cada_libreria_vive_en_su_adaptador(archivo: Path) -> None:
+    assert not _librerias_fuera_de_su_adaptador(archivo)
+
+
+def test_el_detector_atrapa_un_adaptador_importando_otro(tmp_path: Path) -> None:
+    raiz, archivo = _agora_de_mentira(
+        tmp_path,
+        "driven_adapters/pasarela_wompi/intruso.py",
+        "from ..persistencia_sqlite.conexion import abrir\n",
+    )
+    assert _cruces_entre_adaptadores(archivo, raiz) == ["driven_adapters.persistencia_sqlite.conexion"]
+
+
+def test_el_detector_atrapa_una_libreria_en_el_adaptador_equivocado(tmp_path: Path) -> None:
+    raiz, archivo = _agora_de_mentira(
+        tmp_path, "driven_adapters/persistencia_sqlite/intruso.py", "import httpx\n",
+    )
+    assert _librerias_fuera_de_su_adaptador(archivo, raiz) == ["httpx"]

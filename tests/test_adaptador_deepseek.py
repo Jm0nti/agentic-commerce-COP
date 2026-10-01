@@ -13,8 +13,8 @@ import httpx
 import pytest
 from openai import APIConnectionError, AuthenticationError
 
-from agora.adaptadores.llm.deepseek import AdaptadorDeepSeek, ConfiguracionDeepSeek
-from agora.adaptadores.llm.deepseek.config import ConfiguracionInvalida
+from agora.driven_adapters.llm_deepseek import AdaptadorDeepSeek, ConfiguracionDeepSeek
+from agora.driven_adapters.llm_deepseek.config import ConfiguracionInvalida
 from agora.model.commons.errores import ModeloNoDisponible, RespuestaModeloInvalida
 from agora.model.agente.gateways.modelo_lenguaje import (
     DefinicionHerramienta,

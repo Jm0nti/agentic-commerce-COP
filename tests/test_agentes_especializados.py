@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import pytest
 
-from agora.adaptadores.orquestacion.con_langgraph import CompiladorLangGraph
+from agora.driven_adapters.orquestacion_langgraph import CompiladorLangGraph
 from agora.usecase.agente.agentes import (
     NOMBRE_DEL_RESPALDO,
     AgenteEspecializado,

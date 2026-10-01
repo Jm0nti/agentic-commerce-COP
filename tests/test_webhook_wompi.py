@@ -22,10 +22,10 @@ from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 
-from agora.adaptadores.pasarelas.registro import RegistroDePasarelas
-from agora.adaptadores.pasarelas.simulada import APROBADO, AdaptadorSimulado
-from agora.adaptadores.persistencia.memoria import LibroDeConsumoEnMemoria
-from agora.adaptadores.sistema.ids import GeneradorIdsUuid
+from agora.driven_adapters.selector_pasarelas.registro import RegistroDePasarelas
+from agora.driven_adapters.pasarela_simulada import APROBADO, AdaptadorSimulado
+from agora.driven_adapters.persistencia_memoria import LibroDeConsumoEnMemoria
+from agora.driven_adapters.sistema.ids import GeneradorIdsUuid
 from agora.usecase.conciliar_evento.conciliar_evento_use_case import (
     ConciliarEventoUseCase,
     ResultadoConciliacion,

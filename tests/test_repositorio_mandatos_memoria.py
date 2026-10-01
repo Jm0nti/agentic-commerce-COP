@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from agora.adaptadores.persistencia.memoria.repositorio_mandatos import (
+from agora.driven_adapters.persistencia_memoria.repositorio_mandatos import (
     RepositorioMandatosEnMemoria,
 )
 from agora.model.commons.dinero import Dinero

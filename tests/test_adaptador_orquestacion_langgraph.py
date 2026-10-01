@@ -19,7 +19,7 @@ from dataclasses import dataclass, field, replace
 
 import pytest
 
-from agora.adaptadores.orquestacion.con_langgraph import CompiladorLangGraph
+from agora.driven_adapters.orquestacion_langgraph import CompiladorLangGraph
 from agora.model.agente.gateways.orquestacion import FIN, AristaCondicional, DefinicionDeGrafo
 
 

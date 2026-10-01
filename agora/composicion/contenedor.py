@@ -41,12 +41,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..adaptadores.catalogo.semilla import RepositorioCatalogoSemilla
-from ..adaptadores.llm.deepseek import AdaptadorDeepSeek, ConfiguracionDeepSeek
-from ..adaptadores.pasarelas.registro import RegistroDePasarelas
-from ..adaptadores.pasarelas.simulada import AdaptadorSimulado, GuionSimulado
-from ..adaptadores.pasarelas.wompi import AdaptadorWompi
-from ..adaptadores.persistencia.memoria import (
+from ..driven_adapters.catalogo_semilla import RepositorioCatalogoSemilla
+from ..driven_adapters.llm_deepseek import AdaptadorDeepSeek, ConfiguracionDeepSeek
+from ..driven_adapters.selector_pasarelas.registro import RegistroDePasarelas
+from ..driven_adapters.pasarela_simulada import AdaptadorSimulado, GuionSimulado
+from ..driven_adapters.pasarela_wompi import AdaptadorWompi
+from ..driven_adapters.persistencia_memoria import (
     LibroDeConsumoEnMemoria,
     RegistroDeEstadosEnMemoria,
     RepositorioCarritosEnMemoria,
@@ -56,7 +56,7 @@ from ..adaptadores.persistencia.memoria import (
     RepositorioPropuestasEnMemoria,
     RepositorioUsuariosEnMemoria,
 )
-from ..adaptadores.persistencia.sqlite import (
+from ..driven_adapters.persistencia_sqlite import (
     LibroDeConsumoSQLite,
     RegistroDeEstadosSQLite,
     RepositorioCarritosSQLite,
@@ -66,15 +66,14 @@ from ..adaptadores.persistencia.sqlite import (
     RepositorioPropuestasSQLite,
     RepositorioUsuariosSQLite,
 )
-from ..adaptadores.sistema import (
-    BitacoraJsonl,
+from ..driven_adapters.bitacora_jsonl.bitacora_jsonl import BitacoraJsonl
+from ..driven_adapters.firma_ed25519.firma_ed25519 import (
     GeneradorDeLlavesEd25519,
-    GeneradorIdsUuid,
-    HasherPBKDF2,
-    RegistroDeFirmantes,
-    RelojDelSistema,
     VerificadorEd25519,
 )
+from ..driven_adapters.sistema import GeneradorIdsUuid, RelojDelSistema
+from ..driven_adapters.hasher_pbkdf2.hasher_pbkdf2 import HasherPBKDF2
+from ..driven_adapters.firma_ed25519.registro_firmantes import RegistroDeFirmantes
 from ..usecase.iniciar_sesion.iniciar_sesion_use_case import IniciarSesionUseCase
 from ..usecase.registrar_usuario.registrar_usuario_use_case import RegistrarUsuarioUseCase
 from ..usecase.conciliar_evento.conciliar_evento_use_case import ConciliarEventoUseCase
@@ -439,10 +438,8 @@ def _construir_buscador_semantico_de_productos(
     se guarda la lista, pero se embebe recien en la primera busqueda."""
     if not config.openai_llave_api:
         return None
-    from ..adaptadores.busqueda_productos.semantico_en_memoria import (
-        BuscadorSemanticoEnMemoria,
-    )
-    from ..adaptadores.embeddings.proveedor_openai import (
+    from ..driven_adapters.busqueda_semantica_memoria import BuscadorSemanticoEnMemoria
+    from ..driven_adapters.embeddings_openai import (
         AdaptadorEmbeddingsOpenAI,
         ConfiguracionEmbeddingsOpenAI,
     )
@@ -469,11 +466,11 @@ def _construir_buscador_documental(config: ConfiguracionAgora) -> BuscadorDocume
     que no esta usando."""
     if not config.openai_llave_api:
         return None
-    from ..adaptadores.embeddings.proveedor_openai import (
+    from ..driven_adapters.embeddings_openai import (
         AdaptadorEmbeddingsOpenAI,
         ConfiguracionEmbeddingsOpenAI,
     )
-    from ..adaptadores.recuperacion.langchain_en_memoria import (
+    from ..driven_adapters.recuperacion_langchain import (
         BuscadorDocumentalLangChain,
         cargar_markdown,
     )

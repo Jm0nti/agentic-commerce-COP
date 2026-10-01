@@ -221,7 +221,7 @@ def _importar_compilador_langgraph() -> type[CompiladorDeGrafos]:
     `langgraph` instalado (un venv que todavia no corrio
     `pip install -r requirements.txt` levanta igual), y una prueba puede
     simular "langgraph no esta" sin desinstalar nada."""
-    from ..adaptadores.orquestacion.con_langgraph import CompiladorLangGraph
+    from ..driven_adapters.orquestacion_langgraph import CompiladorLangGraph
 
     return CompiladorLangGraph
 

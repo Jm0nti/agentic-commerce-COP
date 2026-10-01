@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from agora.adaptadores.persistencia.memoria import RegistroDeEstadosEnMemoria
+from agora.driven_adapters.persistencia_memoria import RegistroDeEstadosEnMemoria
 from agora.usecase.consultar_estado.consultar_estado_use_case import ConsultarEstadoUseCase
 from agora.model.commons.errores import EstadoDesconocido
 

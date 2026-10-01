@@ -12,7 +12,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from agora.adaptadores.recuperacion.langchain_en_memoria import BuscadorDocumentalLangChain
+from agora.driven_adapters.recuperacion_langchain import BuscadorDocumentalLangChain
 from agora.composicion.agente import construir_agente, construir_contextos
 from agora.composicion.configuracion import (
     SOPORTE_DOCUMENTOS_POR_DEFECTO,

@@ -9,9 +9,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from agora.adaptadores.persistencia.sqlite.repositorio_mandatos import (
-    RepositorioMandatosSQLite,
-)
+from agora.driven_adapters.persistencia_sqlite.repositorio_mandatos import RepositorioMandatosSQLite
 from agora.model.commons.dinero import Dinero
 from agora.model.commons.errores import MandatoDesconocido, MandatoDeOtroAmbiente
 from agora.model.mandato.modelo import Mandato

@@ -47,9 +47,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from dotenv import load_dotenv  # noqa: E402
 
-from agora.adaptadores.busqueda_productos.semantico_en_memoria import (  # noqa: E402
-    PARECIDO_MINIMO_POR_DEFECTO,
-)
+from agora.driven_adapters.busqueda_semantica_memoria import PARECIDO_MINIMO_POR_DEFECTO
 from agora.usecase.agente.contexto_documental import PUNTAJE_MINIMO_POR_DEFECTO, armar_consulta
 from agora.model.agente.intencion import TipoDeIntencion
 from agora.composicion.agente import construir_clasificador  # noqa: E402

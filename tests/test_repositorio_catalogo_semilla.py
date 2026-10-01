@@ -10,8 +10,8 @@ import json
 
 import pytest
 
-from agora.adaptadores.catalogo.semilla import RepositorioCatalogoSemilla
-from agora.adaptadores.catalogo.semilla import serializacion
+from agora.driven_adapters.catalogo_semilla import RepositorioCatalogoSemilla
+from agora.driven_adapters.catalogo_semilla import serializacion
 from agora.model.catalogo.modelo import Comercio, Disponibilidad, Producto
 from agora.model.commons.dinero import Dinero
 from agora.model.commons.errores import ComercioDesconocido, ProductoDesconocido

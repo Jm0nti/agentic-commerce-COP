@@ -20,10 +20,13 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from agora.adaptadores.pasarelas.registro import RegistroDePasarelas
-from agora.adaptadores.pasarelas.simulada import APROBADO, DECLINADO, AdaptadorSimulado
-from agora.adaptadores.persistencia.memoria import LibroDeConsumoEnMemoria, RegistroDeEstadosEnMemoria
-from agora.adaptadores.sistema.ids import GeneradorIdsUuid
+from agora.driven_adapters.selector_pasarelas.registro import RegistroDePasarelas
+from agora.driven_adapters.pasarela_simulada import APROBADO, DECLINADO, AdaptadorSimulado
+from agora.driven_adapters.persistencia_memoria import (
+    LibroDeConsumoEnMemoria,
+    RegistroDeEstadosEnMemoria,
+)
+from agora.driven_adapters.sistema.ids import GeneradorIdsUuid
 from agora.usecase.conciliar_evento.conciliar_evento_use_case import ConciliarEventoUseCase
 from agora.model.commons.dinero import Dinero
 from agora.model.commons.errores import ErrorDePasarela

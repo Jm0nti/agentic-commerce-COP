@@ -17,16 +17,18 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from agora.adaptadores.persistencia.memoria import (
+from agora.driven_adapters.persistencia_memoria import (
     RepositorioLlavesEnMemoria,
     RepositorioUsuariosEnMemoria,
 )
-from agora.adaptadores.persistencia.sqlite import (
+from agora.driven_adapters.persistencia_sqlite import (
     RepositorioLlavesSQLite,
     RepositorioUsuariosSQLite,
 )
-from agora.adaptadores.sistema import GeneradorIdsUuid, HasherPBKDF2, RegistroDeFirmantes
-from agora.adaptadores.sistema.firma_ed25519 import generar_par_ed25519
+from agora.driven_adapters.sistema import GeneradorIdsUuid
+from agora.driven_adapters.hasher_pbkdf2.hasher_pbkdf2 import HasherPBKDF2
+from agora.driven_adapters.firma_ed25519.registro_firmantes import RegistroDeFirmantes
+from agora.driven_adapters.firma_ed25519.firma_ed25519 import generar_par_ed25519
 from agora.usecase.iniciar_sesion.iniciar_sesion_use_case import IniciarSesionUseCase
 from agora.usecase.registrar_usuario.registrar_usuario_use_case import RegistrarUsuarioUseCase
 from agora.model.commons.errores import (

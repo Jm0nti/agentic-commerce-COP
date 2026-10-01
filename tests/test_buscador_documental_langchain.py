@@ -9,7 +9,7 @@ import unicodedata
 
 import pytest
 
-from agora.adaptadores.recuperacion.langchain_en_memoria import BuscadorDocumentalLangChain
+from agora.driven_adapters.recuperacion_langchain import BuscadorDocumentalLangChain
 from agora.model.commons.errores import RecuperacionNoDisponible
 from agora.model.agente.gateways.recuperacion import DocumentoFuente
 

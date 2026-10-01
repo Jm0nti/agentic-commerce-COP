@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from agora.adaptadores.persistencia.memoria import RepositorioPropuestasEnMemoria
+from agora.driven_adapters.persistencia_memoria import RepositorioPropuestasEnMemoria
 from agora.model.commons.dinero import Dinero
 from agora.model.commons.errores import PropuestaDesconocida
 from agora.model.mandato.modelo import PropuestaDeMandato

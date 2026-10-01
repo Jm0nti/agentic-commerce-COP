@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import pytest
 from openai import OpenAIError
 
-from agora.adaptadores.embeddings.proveedor_openai import (
+from agora.driven_adapters.embeddings_openai import (
     AdaptadorEmbeddingsOpenAI,
     ConfiguracionEmbeddingsOpenAI,
     ConfiguracionInvalida,

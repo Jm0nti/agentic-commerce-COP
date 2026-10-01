@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from agora.adaptadores.persistencia.memoria import RepositorioPropuestasEnMemoria
+from agora.driven_adapters.persistencia_memoria import RepositorioPropuestasEnMemoria
 from agora.usecase.rechazar_propuesta.rechazar_propuesta_use_case import RechazarPropuestaUseCase
 from agora.model.commons.dinero import Dinero
 from agora.model.commons.errores import PropuestaDesconocida

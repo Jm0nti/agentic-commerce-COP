@@ -13,9 +13,9 @@ import json
 import httpx
 import pytest
 
-from agora.adaptadores.pasarelas.wompi import AdaptadorWompi, ConfiguracionWompi
-from agora.adaptadores.pasarelas.wompi.cliente import ClienteWompi
-from agora.adaptadores.pasarelas.wompi.config import ConfiguracionInvalida
+from agora.driven_adapters.pasarela_wompi import AdaptadorWompi, ConfiguracionWompi
+from agora.driven_adapters.pasarela_wompi.cliente import ClienteWompi
+from agora.driven_adapters.pasarela_wompi.config import ConfiguracionInvalida
 from agora.model.commons.dinero import Dinero
 from agora.model.commons.errores import ErrorDePasarela, PasarelaNoDisponible
 from agora.model.pago.modelo import Ambiente, EstadoCobro, MedioDePagoRef, OrdenDeCobro, Proveedor

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from agora.adaptadores.busqueda_productos.semantico_en_memoria import (
+from agora.driven_adapters.busqueda_semantica_memoria import (
     PARECIDO_MINIMO_POR_DEFECTO,
     BuscadorSemanticoEnMemoria,
     texto_de,

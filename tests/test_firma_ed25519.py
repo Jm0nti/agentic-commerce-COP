@@ -6,7 +6,10 @@ disco", que el mismo mandato firmado hoy siga verificando manana."""
 
 from __future__ import annotations
 
-from agora.adaptadores.sistema import VerificadorEd25519, cargar_o_generar_firmante
+from agora.driven_adapters.firma_ed25519.firma_ed25519 import (
+    VerificadorEd25519,
+    cargar_o_generar_firmante,
+)
 
 
 def test_firma_generada_valida_contra_el_verificador(tmp_path):

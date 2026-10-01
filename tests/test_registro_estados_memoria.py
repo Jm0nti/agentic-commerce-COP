@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agora.adaptadores.persistencia.memoria import RegistroDeEstadosEnMemoria
+from agora.driven_adapters.persistencia_memoria import RegistroDeEstadosEnMemoria
 
 
 def test_obtener_sin_nada_fijado_es_none():

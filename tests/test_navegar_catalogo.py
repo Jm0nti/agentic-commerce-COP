@@ -6,11 +6,11 @@ from __future__ import annotations
 
 import pytest
 
-from agora.adaptadores.persistencia.memoria import (
+from agora.driven_adapters.persistencia_memoria import (
     RepositorioCarritosEnMemoria,
     RepositorioPropuestasEnMemoria,
 )
-from agora.adaptadores.sistema import GeneradorIdsUuid
+from agora.driven_adapters.sistema import GeneradorIdsUuid
 from agora.usecase.navegar_catalogo.navegar_catalogo_use_case import ItemPedido, NavegarCatalogoUseCase
 from agora.model.catalogo.modelo import Comercio, Disponibilidad, Producto
 from agora.model.commons.dinero import Dinero

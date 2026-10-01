@@ -115,8 +115,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping
 
-from ..adaptadores.pasarelas.wompi.config import ConfiguracionWompi
-from ..adaptadores.pasarelas.wompi.config import ConfiguracionInvalida as ConfiguracionWompiInvalida
+from ..driven_adapters.pasarela_wompi.config import ConfiguracionWompi
+from ..driven_adapters.pasarela_wompi.config import (
+    ConfiguracionInvalida as ConfiguracionWompiInvalida,
+)
 from ..model.pago.modelo import Ambiente
 
 

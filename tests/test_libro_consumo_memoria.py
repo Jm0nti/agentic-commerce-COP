@@ -16,8 +16,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-from agora.adaptadores.persistencia.memoria.libro_consumo import LibroDeConsumoEnMemoria
-from agora.adaptadores.sistema.ids import GeneradorIdsUuid
+from agora.driven_adapters.persistencia_memoria.libro_consumo import LibroDeConsumoEnMemoria
+from agora.driven_adapters.sistema.ids import GeneradorIdsUuid
 from agora.model.commons.dinero import Dinero
 from agora.model.mandato.modelo import Mandato
 from agora.model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor

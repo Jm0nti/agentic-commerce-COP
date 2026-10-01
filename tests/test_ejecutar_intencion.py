@@ -17,14 +17,15 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from agora.adaptadores.pasarelas.registro import RegistroDePasarelas
-from agora.adaptadores.pasarelas.simulada import AdaptadorSimulado
-from agora.adaptadores.persistencia.memoria import (
+from agora.driven_adapters.selector_pasarelas.registro import RegistroDePasarelas
+from agora.driven_adapters.pasarela_simulada import AdaptadorSimulado
+from agora.driven_adapters.persistencia_memoria import (
     LibroDeConsumoEnMemoria,
     RegistroDeEstadosEnMemoria,
     RepositorioMandatosEnMemoria,
 )
-from agora.adaptadores.sistema import GeneradorIdsUuid, VerificadorEd25519
+from agora.driven_adapters.sistema import GeneradorIdsUuid
+from agora.driven_adapters.firma_ed25519.firma_ed25519 import VerificadorEd25519
 from agora.usecase.ejecutar_intencion.ejecutar_intencion_use_case import EjecutarIntencionUseCase
 from agora.model.commons.dinero import Dinero
 from agora.model.mandato.modelo import Intencion, Mandato

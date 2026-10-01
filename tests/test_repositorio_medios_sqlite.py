@@ -15,10 +15,8 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from agora.adaptadores.persistencia.sqlite.conexion import abrir_conexion
-from agora.adaptadores.persistencia.sqlite.repositorio_medios import (
-    RepositorioMediosSQLite,
-)
+from agora.driven_adapters.persistencia_sqlite.conexion import abrir_conexion
+from agora.driven_adapters.persistencia_sqlite.repositorio_medios import RepositorioMediosSQLite
 from agora.model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
 
 

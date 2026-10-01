@@ -451,6 +451,15 @@ con los nombres de Bancolombia y se verifica.
 
 ### Fase 4: `infrastructure/driven-adapters` (1 día)
 
+> **✅ Hecha (30 sep 2026).** Queda en 1.353 pruebas, con el flujo de CLI de punta a punta en simulado, los 5 scripts arrancando sin errores y `pip install -e .` probado desde fuera del repo (el catálogo semilla se encuentra).
+> - **15 módulos** en `infrastructure/driven-adapters/<modulo>/src/agora/driven_adapters/<paquete>/`: `pasarela-wompi`, `pasarela-simulada`, `selector-pasarelas`, `persistencia-sqlite`, `persistencia-memoria`, `catalogo-semilla` (se lleva su `datos/catalogo.json`), `llm-deepseek`, `embeddings-openai`, `recuperacion-langchain`, `busqueda-semantica-memoria`, `orquestacion-langgraph`, `firma-ed25519` (con `registro_firmantes.py`), `hasher-pbkdf2`, `bitacora-jsonl` y `sistema` (reloj e ids). `driven_adapters` no tiene `__init__.py`: es un paquete de espacio de nombres que reparten los 15 módulos.
+> - **`agora/__init__.py` ya no lleva una lista de módulos:** busca las carpetas `domain/*/src/agora` e `infrastructure/*/*/src/agora`, igual que las genera el scaffold. Agregar un adaptador ya no obliga a tocarlo.
+> - **El `__init__.py` de `adaptadores/sistema`** reexportaba la firma, el hasher y la bitácora. Ahora solo exporta reloj e ids: lo demás vive en su propio módulo y quien lo usa lo importa de ahí (193 imports reescritos con el mismo script).
+> - **Reglas nuevas:**
+>   - Un adaptador no importa a otro.
+>   - `LIBRERIAS_POR_ADAPTADOR` fija qué módulo puede usar cada librería de infraestructura (httpx, openai, langgraph, langchain, numpy, cryptography y sqlite3). Es lo que en el scaffold declara cada `build.gradle`.
+>   - Lo comprobé con imports prohibidos reales: un adaptador importando a otro, y `httpx` fuera de `pasarela-wompi`. La suite falla con ellos y vuelve a verde sin ellos.
+
 1. Un módulo por tecnología (15 módulos, §3.1). `catalogo-semilla` se lleva su
    `datos/catalogo.json`, al que hoy se llega con una ruta relativa al archivo.
 2. Regla: un *driven adapter* importa solo `model` (y sus librerías). No importa

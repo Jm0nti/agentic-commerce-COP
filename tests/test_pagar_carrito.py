@@ -6,7 +6,9 @@ from __future__ import annotations
 
 import pytest
 
-from agora.adaptadores.persistencia.memoria.repositorio_carritos import RepositorioCarritosEnMemoria
+from agora.driven_adapters.persistencia_memoria.repositorio_carritos import (
+    RepositorioCarritosEnMemoria,
+)
 from agora.usecase.pagar_carrito.pagar_carrito_use_case import PagarCarritoUseCase
 from agora.model.catalogo.modelo import Carrito, ItemCarrito
 from agora.model.commons.dinero import Dinero

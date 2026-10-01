@@ -8,7 +8,7 @@ que hace falta para que `consultar_estado` (dentro del chat) vea lo que
 
 from __future__ import annotations
 
-from agora.adaptadores.persistencia.sqlite.registro_estados import RegistroDeEstadosSQLite
+from agora.driven_adapters.persistencia_sqlite.registro_estados import RegistroDeEstadosSQLite
 
 
 def test_obtener_sin_nada_fijado_es_none(tmp_path):

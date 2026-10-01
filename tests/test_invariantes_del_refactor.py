@@ -23,9 +23,11 @@ import importlib
 from pathlib import Path
 
 import agora
-from agora.adaptadores.catalogo.semilla.repositorio import RUTA_POR_DEFECTO as CATALOGO_POR_DEFECTO
-from agora.adaptadores.persistencia.sqlite.serializacion import fila_a_mandato, mandato_a_fila
-from agora.adaptadores.sistema.firma_ed25519 import VerificadorEd25519
+from agora.driven_adapters.catalogo_semilla.repositorio import (
+    RUTA_POR_DEFECTO as CATALOGO_POR_DEFECTO,
+)
+from agora.driven_adapters.persistencia_sqlite.serializacion import fila_a_mandato, mandato_a_fila
+from agora.driven_adapters.firma_ed25519.firma_ed25519 import VerificadorEd25519
 from agora.composicion import configuracion
 from agora.model.commons.errores import ErrorDeDominio
 from agora.model.pago.modelo import Ambiente

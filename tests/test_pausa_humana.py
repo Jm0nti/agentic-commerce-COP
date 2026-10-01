@@ -19,7 +19,7 @@ import json
 
 import pytest
 
-from agora.adaptadores.orquestacion.con_langgraph import CompiladorLangGraph
+from agora.driven_adapters.orquestacion_langgraph import CompiladorLangGraph
 from agora.usecase.agente.conversacion import Agente
 from agora.usecase.agente.grafo import (
     NODO_ESPERA_HUMANA,

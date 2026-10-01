@@ -22,7 +22,7 @@ import json
 
 import pytest
 
-from agora.adaptadores.orquestacion.con_langgraph import CompiladorLangGraph
+from agora.driven_adapters.orquestacion_langgraph import CompiladorLangGraph
 from agora.model.agente.contexto import ContextoInyectado
 from agora.usecase.agente.conversacion import Agente, LimiteDeTurnosExcedido
 from agora.usecase.agente.grafo import AgenteEnGrafo
