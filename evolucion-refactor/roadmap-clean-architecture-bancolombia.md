@@ -508,6 +508,16 @@ con los nombres de Bancolombia y se verifica.
 
 ### Fase 6: Cierre estructural, el `validateStructure` de `agora` (0,5 a 1 día)
 
+> **✅ Hecha (30 sep 2026).** Queda en 1.387 pruebas.
+> - **Puentes:** no hay ninguno que borrar. Las Fases 2 a 5 reescribieron los imports de una vez, y en el repo ya no queda ninguna carpeta `dominio/`, `puertos/`, `aplicacion/`, `agente/` (fuera de `usecase/`), `adaptadores/`, `entradas/`, `composicion/` ni `utilidades/`.
+> - **`tests/arquitectura/test_fronteras.py` es el `validateStructure`:** su docstring enumera las seis reglas de la Fase 6.2 y la prueba que sostiene cada una. Única regla nueva: un *driven adapter* no puede importar al agente. Cada regla tiene su detector, que prueba que atrapa la violación.
+> - **Pruebas en carpetas espejo (D7):** `tests/arquitectura` (fronteras e invariantes), `model`, `usecase`, `usecase/agente`, `driven_adapters`, `entry_points` y `app_service`. A cada archivo lo ubica el módulo que prueba: el de capa más externa entre los que importa (los `test_composicion*` van a `app_service`). Ningún archivo perdió pruebas.
+> - **No se hizo:**
+>   - **`import-linter` (D8, opcional):** duplicaría reglas que `test_fronteras.py` ya verifica, y no sabe expresar la capa "agente" dentro de `usecase` (el prefijo más largo).
+>   - **El script de verificación:** `python -m pytest -q` ya corre la suite y las reglas en un paso.
+>
+>   Cualquiera de los dos se agrega si un revisor de arquitectura lo pide.
+
 1. Borrar los puentes de D6 y comprobar que nada los importaba.
 2. Versión final de `test_fronteras.py`:
    - `model` → solo `model` y la biblioteca estándar

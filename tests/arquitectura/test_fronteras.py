@@ -7,6 +7,27 @@ de pago. Si esa separacion depende de que nadie se equivoque escribiendo un
 Esta prueba lee el AST de cada modulo y falla el build cuando alguien cruza una
 frontera. Es barata, es exacta, y es lo que convierte una decision de diseno en
 una propiedad del sistema.
+
+ES EL `validateStructure` DE ESTE PROYECTO
+------------------------------------------
+La Clean Architecture de Bancolombia (`evolucion-refactor/`), regla por regla:
+
+  model            -> solo model y la biblioteca estandar
+                      (`test_el_modelo_solo_conoce_el_modelo_y_la_biblioteca_estandar`)
+  usecase          -> model; nunca el agente
+                      (REGLAS + `test_cada_caso_de_uso_vive_en_su_carpeta_y_termina_en_usecase`)
+  usecase/agente   -> model y el propio agente: ningun otro caso de uso, ningun
+                      gateway de pago/firma/llaves, nada por nombre en un string
+                      (REGLAS + `test_el_agente_no_alcanza_ninguna_pasarela` y vecinas)
+  driven_adapters  -> model, sin cruzarse entre ellos, cada libreria en su modulo
+                      (`test_un_modulo_de_infraestructura_no_conoce_a_otro`,
+                      `test_cada_libreria_vive_en_su_modulo`)
+  entry_points     -> usecase y model, sin cruzarse, sin app-service ni repositorios
+                      (REGLAS + `test_las_entradas_solo_hablan_con_casos_de_uso`)
+  app_service      -> todo
+
+Cada regla tiene su `test_el_detector_atrapa_*`: una prueba de fronteras que
+nunca falla puede estar bien... o no estar mirando nada.
 """
 
 from __future__ import annotations
@@ -71,8 +92,8 @@ REGLAS: dict[str, tuple[str, ...]] = {
     # Los casos de uso hablan con interfaces, nunca con implementaciones.
     # `agente` se agrego en la Fase 3: un caso de uso no depende del agente.
     "usecase": ("driven_adapters", "entry_points", "app_service", "agente"),
-    # Un adaptador no orquesta.
-    "driven_adapters": ("usecase", "entry_points", "app_service"),
+    # Un adaptador no orquesta (y no conoce al agente: Fase 6).
+    "driven_adapters": ("usecase", "agente", "entry_points", "app_service"),
     # LA FRONTERA. El agente no puede alcanzar una credencial de pago
     # ni aunque quiera.
     #
@@ -84,10 +105,8 @@ REGLAS: dict[str, tuple[str, ...]] = {
     # EjecutarIntencionUseCase` pasaba la suite en verde. Ver
     # `test_el_detector_atrapa_al_agente_importando_un_caso_de_uso`.
     "agente": ("usecase", "driven_adapters", "entry_points", "app_service"),
-    # Las entradas reciben los adaptadores ya armados desde composicion.
-    # `composicion` se agrego en la Fase 1 del refactor a la Clean
-    # Architecture de Bancolombia: un entry point recibe casos de uso, no
-    # sabe quien los arma.
+    # Un entry point recibe casos de uso ya armados; no sabe quien los arma
+    # (`app_service`, Fases 1 y 5) ni con que adaptadores.
     "entry_points": ("driven_adapters", "app_service"),
 }
 
@@ -941,3 +960,13 @@ def test_el_detector_atrapa_una_libreria_en_el_modulo_equivocado(tmp_path: Path)
         tmp_path, "driven_adapters/persistencia_sqlite/intruso.py", "import httpx\n",
     )
     assert _librerias_fuera_de_su_modulo(archivo, raiz) == ["httpx"]
+
+
+def test_el_detector_atrapa_un_adaptador_importando_al_agente(tmp_path: Path) -> None:
+    raiz, archivo = _agora_de_mentira(
+        tmp_path,
+        "driven_adapters/llm_deepseek/intruso.py",
+        "from ...usecase.agente.conversacion import Agente\n",
+    )
+    ofensas = _violaciones_de_dependencia(archivo, raiz)
+    assert ofensas and "agente" in ofensas[0]
