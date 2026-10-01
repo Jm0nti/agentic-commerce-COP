@@ -38,7 +38,7 @@ En los dos casos, lo que sigue es igual:
     python -m agora.entradas.cli estado <intencion_id>
     python -m agora.entradas.cli mandatos
 
-`retomar` hace falta seguido: `EmitirMandato` corta el mandato exacto al
+`retomar` hace falta seguido: `EmitirMandatoUseCase` corta el mandato exacto al
 carrito (un solo uso, `monto_max` igual al total), y eso dispara casi
 siempre las senales blandas de `dominio/mandato/politica.py` -- `pagar`
 devuelve `esperando_confirmacion_humana` en vez de aprobar directo.
@@ -76,7 +76,7 @@ import time
 
 from dotenv import load_dotenv
 
-from ...aplicacion.navegar_catalogo import ItemPedido
+from ...usecase.navegar_catalogo.navegar_catalogo_use_case import ItemPedido
 from ...model.commons.errores import ErrorDeDominio
 from ...model.pago.modelo import MedioDePagoRef, Proveedor
 from ...composicion.agente import construir_agente
@@ -310,8 +310,8 @@ def cmd_retomar(a, contenedor: Contenedor) -> int:
     """Resuelve una intencion que `pagar` dejo en `esperando_confirmacion_
     humana` -- la senal blanda de `dominio/mandato/politica.py` ("agota el
     mandato de una sola vez", tipico de un mandato cortado exacto al
-    carrito por `EmitirMandato`). Pide de nuevo `mandato_id`/`carrito_id`
-    porque `EjecutarIntencion.retomar` vuelve a evaluar la politica completa
+    carrito por `EmitirMandatoUseCase`). Pide de nuevo `mandato_id`/`carrito_id`
+    porque `EjecutarIntencionUseCase.retomar` vuelve a evaluar la politica completa
     contra el mismo `Intencion` -- no alcanza con el `intencion_id` solo.
     """
     try:

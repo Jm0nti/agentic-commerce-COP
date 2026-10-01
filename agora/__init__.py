@@ -11,7 +11,7 @@ aca, en `agora/`.
 from pathlib import Path as _Path
 
 # Modulos del scaffold ya migrados. Cada fase agrega el suyo.
-_MODULOS = ("domain/model",)
+_MODULOS = ("domain/model", "domain/usecase")
 
 # ponytail: los modulos se enchufan a `agora.__path__` a mano. Techo: solo
 # funciona desde el arbol del repo (o una instalacion editable), no desde un

@@ -262,7 +262,7 @@ def test_flujo_completo_por_http_arma_firma_paga_y_confirma(tmp_path):
     assert len(evento_propuesta["items"]) == 1
     propuesta_id = evento_propuesta["propuesta_id"]
 
-    # 4. La persona firma desde el popup -- nunca el agente. `EmitirMandato`
+    # 4. La persona firma desde el popup -- nunca el agente. `EmitirMandatoUseCase`
     #    corta el mandato exacto al carrito, asi que el turno que sigue
     #    (disparado por `sesiones.continuar`) casi siempre llama a `pagar()`
     #    y esa cae en la senal blanda `esperando_confirmacion_humana`.
@@ -437,7 +437,7 @@ def test_enrolar_por_http_de_punta_a_punta_con_la_pasarela_simulada(tmp_path):
 
 def test_revocar_medio_por_http_lo_saca_de_la_lista(tmp_path):
     """`POST /medios/{id_externo}/revocar` -- el boton "Eliminar" del popup
-    de medios en `chat.html`. Mismo `RevocarMedio` que ya usaba
+    de medios en `chat.html`. Mismo `RevocarMedioUseCase` que ya usaba
     `entradas/cli/__main__.py:cmd_revocar`, ahora tambien alcanzable por
     HTTP con el titular saliendo de la cookie de sesion."""
     contenedor = construir(leer_configuracion(_config(tmp_path)))
@@ -467,7 +467,7 @@ def test_revocar_medio_por_http_lo_saca_de_la_lista(tmp_path):
 
 
 def test_revocar_medio_de_otro_titular_responde_400_y_no_lo_apaga(tmp_path):
-    """`RevocarMedio` verifica que la referencia sea `vivos()` del titular
+    """`RevocarMedioUseCase` verifica que la referencia sea `vivos()` del titular
     autenticado antes de pedirle la revocacion a la pasarela -- revocar a
     ciegas podria apagar la fuente equivocada (docstring de `aplicacion/
     revocar_medio.py`). Esta prueba lo ejercita por HTTP: el medio sigue
@@ -594,7 +594,7 @@ def test_sondeo_resuelve_por_http_un_pago_que_el_webhook_confirma_despues(tmp_pa
     assert app.state.sesiones.pendientes() == {intencion_id: sesion_id}
 
     # 2. El webhook resuelve el estado -- desde ESTE test se simula
-    #    escribiendo directo en el mismo registro que `ConciliarEvento`
+    #    escribiendo directo en el mismo registro que `ConciliarEventoUseCase`
     #    escribiria desde el otro proceso, sin pasar por HTTP ni por la
     #    validacion de checksum (eso ya lo cubre `test_webhook_wompi.py`).
     contenedor.estados.fijar(intencion_id, "aprobado", "APPROVED")

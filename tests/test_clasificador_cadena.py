@@ -5,8 +5,12 @@ from __future__ import annotations
 
 import pytest
 
-from agora.agente.clasificacion import ClasificadorEnCadena
-from agora.agente.intencion import ClasificacionDeIntencion, OrigenDeClasificacion, TipoDeIntencion
+from agora.usecase.agente.clasificacion import ClasificadorEnCadena
+from agora.model.agente.intencion import (
+    ClasificacionDeIntencion,
+    OrigenDeClasificacion,
+    TipoDeIntencion,
+)
 
 
 class _Fijo:

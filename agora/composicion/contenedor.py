@@ -1,4 +1,4 @@
-"""El composition root: el unico sitio que arma `EjecutarIntencion` con
+"""El composition root: el unico sitio que arma `EjecutarIntencionUseCase` con
 adaptadores de verdad.
 
 Todo lo demas de `agora/` recibe sus dependencias por constructor y no sabe
@@ -24,12 +24,12 @@ wompi.md`.
 MULTI-USUARIO (4 de septiembre de 2026)
 ------------------------------------------
 Antes se armaba UNA sola llave de firma por proceso (`cargar_o_generar_
-firmante`, sobre un archivo en disco) y `EmitirMandato` la recibia fija por
+firmante`, sobre un archivo en disco) y `EmitirMandatoUseCase` la recibia fija por
 constructor -- cualquier titular firmaba con esa misma llave. Ahora se arma
 un `SelectorDeFirmante` (`RegistroDeFirmantes`) que resuelve la llave de
 CADA titular contra `RepositorioLlaves`, guardada junto con su `Usuario`
 (`RepositorioUsuarios`) en el momento en que `scripts/crear_usuario.py` lo
-crea (`aplicacion/autenticacion.py:RegistrarUsuario`). No hay ruta HTTP de
+crea (`aplicacion/autenticacion.py:RegistrarUsuarioUseCase`). No hay ruta HTTP de
 auto-registro: `entradas/api/app.py` solo expone `/auth/iniciar-sesion` y
 `/auth/cerrar-sesion` sobre usuarios que ya existen. La CLI (`entradas/
 cli/`) sigue sin pedir login -- alcanza con pasar un `titular_id` que ya
@@ -75,23 +75,22 @@ from ..adaptadores.sistema import (
     RelojDelSistema,
     VerificadorEd25519,
 )
-from ..aplicacion.autenticacion import IniciarSesion, RegistrarUsuario
-from ..aplicacion.conciliar_evento import ConciliarEvento
-from ..aplicacion.consultar_estado import ConsultarEstado
-from ..aplicacion.ejecutar_intencion import EjecutarIntencion
-from ..aplicacion.emitir_mandato import EmitirMandato
-from ..aplicacion.enrolar_medio import (
-    ConfirmarEnrolamiento,
-    ConsultarEnrolamiento,
-    EnrolarMedio,
-    IniciarEnrolamiento,
-)
-from ..aplicacion.listar_mandatos import ListarMandatos
-from ..aplicacion.listar_medios import ListarMediosVivos
-from ..aplicacion.navegar_catalogo import NavegarCatalogo
-from ..aplicacion.pagar_carrito import PagarCarrito
-from ..aplicacion.rechazar_propuesta import RechazarPropuesta
-from ..aplicacion.revocar_medio import RevocarMedio
+from ..usecase.iniciar_sesion.iniciar_sesion_use_case import IniciarSesionUseCase
+from ..usecase.registrar_usuario.registrar_usuario_use_case import RegistrarUsuarioUseCase
+from ..usecase.conciliar_evento.conciliar_evento_use_case import ConciliarEventoUseCase
+from ..usecase.consultar_estado.consultar_estado_use_case import ConsultarEstadoUseCase
+from ..usecase.ejecutar_intencion.ejecutar_intencion_use_case import EjecutarIntencionUseCase
+from ..usecase.emitir_mandato.emitir_mandato_use_case import EmitirMandatoUseCase
+from ..usecase.confirmar_enrolamiento.confirmar_enrolamiento_use_case import ConfirmarEnrolamientoUseCase
+from ..usecase.consultar_enrolamiento.consultar_enrolamiento_use_case import ConsultarEnrolamientoUseCase
+from ..usecase.enrolar_medio.enrolar_medio_use_case import EnrolarMedioUseCase
+from ..usecase.iniciar_enrolamiento.iniciar_enrolamiento_use_case import IniciarEnrolamientoUseCase
+from ..usecase.listar_mandatos.listar_mandatos_use_case import ListarMandatosUseCase
+from ..usecase.listar_medios_vivos.listar_medios_vivos_use_case import ListarMediosVivosUseCase
+from ..usecase.navegar_catalogo.navegar_catalogo_use_case import NavegarCatalogoUseCase
+from ..usecase.pagar_carrito.pagar_carrito_use_case import PagarCarritoUseCase
+from ..usecase.rechazar_propuesta.rechazar_propuesta_use_case import RechazarPropuestaUseCase
+from ..usecase.revocar_medio.revocar_medio_use_case import RevocarMedioUseCase
 from ..model.mandato.gateways.firma import Verificador
 from ..model.pago.modelo import Ambiente
 from ..model.pago.topes import TopesDuros
@@ -132,8 +131,8 @@ class Contenedor:
     """
 
     config: ConfiguracionAgora
-    ejecutar_intencion: EjecutarIntencion
-    conciliar_evento: ConciliarEvento
+    ejecutar_intencion: EjecutarIntencionUseCase
+    conciliar_evento: ConciliarEventoUseCase
     mandatos: RepositorioMandatos
     medios: RepositorioMedios
     consumo: LibroDeConsumo
@@ -163,29 +162,29 @@ class Contenedor:
     usuarios: RepositorioUsuarios
     llaves: RepositorioLlaves
     selector_firmante: SelectorDeFirmante
-    registrar_usuario: RegistrarUsuario
-    iniciar_sesion: IniciarSesion
-    navegar_catalogo: NavegarCatalogo
-    emitir_mandato: EmitirMandato
+    registrar_usuario: RegistrarUsuarioUseCase
+    iniciar_sesion: IniciarSesionUseCase
+    navegar_catalogo: NavegarCatalogoUseCase
+    emitir_mandato: EmitirMandatoUseCase
     # Etapa 10: el contrapunto de `emitir_mandato` cuando el humano rechaza
     # la propuesta en vez de firmarla -- ver el docstring de
     # `aplicacion/rechazar_propuesta.py`.
-    rechazar_propuesta: RechazarPropuesta
-    enrolar_medio: EnrolarMedio
-    # -- etapa 8 (web): los mismos tres pasos que EnrolarMedio compone,
+    rechazar_propuesta: RechazarPropuestaUseCase
+    enrolar_medio: EnrolarMedioUseCase
+    # -- etapa 8 (web): los mismos tres pasos que EnrolarMedioUseCase compone,
     # sueltos para que entradas/api/ pueda sondear el push de Nequi sin
     # bloquear una peticion HTTP hasta 5 minutos (ver el docstring de
     # aplicacion/enrolar_medio.py).
-    iniciar_enrolamiento: IniciarEnrolamiento
-    consultar_enrolamiento: ConsultarEnrolamiento
-    confirmar_enrolamiento: ConfirmarEnrolamiento
-    revocar_medio: RevocarMedio
-    consultar_estado: ConsultarEstado
+    iniciar_enrolamiento: IniciarEnrolamientoUseCase
+    consultar_enrolamiento: ConsultarEnrolamientoUseCase
+    confirmar_enrolamiento: ConfirmarEnrolamientoUseCase
+    revocar_medio: RevocarMedioUseCase
+    consultar_estado: ConsultarEstadoUseCase
     # -- Fase 1 del refactor a la Clean Architecture de Bancolombia: lo que
     # `entradas/` antes leia directo de los repositorios de arriba.
-    pagar_carrito: PagarCarrito
-    listar_medios_vivos: ListarMediosVivos
-    listar_mandatos: ListarMandatos
+    pagar_carrito: PagarCarritoUseCase
+    listar_medios_vivos: ListarMediosVivosUseCase
+    listar_mandatos: ListarMandatosUseCase
     # `None` cuando no hay DEEPSEEK_API_KEY -- ver `ConfiguracionAgora.
     # deepseek_llave_api`. El resto del contenedor (mandatos, cobros,
     # catalogo, enrolamiento) no depende de que esto exista.
@@ -280,7 +279,7 @@ def construir(
         estados = RegistroDeEstadosSQLite(config.sqlite_path)
     else:
         estados = RegistroDeEstadosEnMemoria()
-    ejecutar_intencion = EjecutarIntencion(
+    ejecutar_intencion = EjecutarIntencionUseCase(
         mandatos=mandatos,
         consumo=consumo,
         selector_pasarela=selector_pasarela,
@@ -293,7 +292,7 @@ def construir(
         datos_pagador=config.datos_pagador,
         estados=estados,
     )
-    conciliar_evento = ConciliarEvento(
+    conciliar_evento = ConciliarEventoUseCase(
         consumo=consumo, selector_pasarela=selector_pasarela, bitacora=bitacora, estados=estados,
     )
     catalogo = RepositorioCatalogoSemilla()
@@ -325,38 +324,38 @@ def construir(
     selector_firmante = RegistroDeFirmantes(llaves)
     hasher = HasherPBKDF2()
     generador_llaves = GeneradorDeLlavesEd25519()
-    registrar_usuario = RegistrarUsuario(
+    registrar_usuario = RegistrarUsuarioUseCase(
         usuarios=usuarios, llaves=llaves, hasher=hasher,
         generador_llaves=generador_llaves, ids=ids, reloj=reloj,
     )
-    iniciar_sesion = IniciarSesion(usuarios=usuarios, hasher=hasher)
+    iniciar_sesion = IniciarSesionUseCase(usuarios=usuarios, hasher=hasher)
 
     buscador_semantico_productos = _construir_buscador_semantico_de_productos(config, catalogo)
-    navegar_catalogo = NavegarCatalogo(
+    navegar_catalogo = NavegarCatalogoUseCase(
         catalogo=catalogo, carritos=carritos, ids=ids, propuestas=propuestas,
         semantico=buscador_semantico_productos,
     )
-    emitir_mandato = EmitirMandato(
+    emitir_mandato = EmitirMandatoUseCase(
         carritos=carritos, propuestas=propuestas, medios=medios, mandatos=mandatos,
         selector_firmante=selector_firmante, ids=ids, reloj=reloj, bitacora=bitacora,
         ambiente=config.ambiente,
     )
-    rechazar_propuesta = RechazarPropuesta(propuestas=propuestas, bitacora=bitacora)
-    enrolar_medio = EnrolarMedio(
+    rechazar_propuesta = RechazarPropuestaUseCase(propuestas=propuestas, bitacora=bitacora)
+    enrolar_medio = EnrolarMedioUseCase(
         selector_pasarela=selector_pasarela, medios=medios, bitacora=bitacora, ambiente=config.ambiente,
     )
     # Mismas dependencias que enrolar_medio, pero sueltas -- entradas/api/
     # las necesita para sondear el push de Nequi desde el navegador sin
     # bloquear una peticion HTTP (ver el docstring de aplicacion/
     # enrolar_medio.py).
-    iniciar_enrolamiento = IniciarEnrolamiento(selector_pasarela, config.ambiente)
-    consultar_enrolamiento = ConsultarEnrolamiento(selector_pasarela)
-    confirmar_enrolamiento = ConfirmarEnrolamiento(selector_pasarela, medios, bitacora)
-    revocar_medio = RevocarMedio(selector_pasarela=selector_pasarela, medios=medios, bitacora=bitacora)
-    consultar_estado = ConsultarEstado(estados=estados)
-    pagar_carrito = PagarCarrito(ejecutar=ejecutar_intencion, carritos=carritos, ids=ids)
-    listar_medios_vivos = ListarMediosVivos(medios=medios, ambiente=config.ambiente)
-    listar_mandatos = ListarMandatos(mandatos=mandatos, consumo=consumo, ambiente=config.ambiente)
+    iniciar_enrolamiento = IniciarEnrolamientoUseCase(selector_pasarela, config.ambiente)
+    consultar_enrolamiento = ConsultarEnrolamientoUseCase(selector_pasarela)
+    confirmar_enrolamiento = ConfirmarEnrolamientoUseCase(selector_pasarela, medios, bitacora)
+    revocar_medio = RevocarMedioUseCase(selector_pasarela=selector_pasarela, medios=medios, bitacora=bitacora)
+    consultar_estado = ConsultarEstadoUseCase(estados=estados)
+    pagar_carrito = PagarCarritoUseCase(ejecutar=ejecutar_intencion, carritos=carritos, ids=ids)
+    listar_medios_vivos = ListarMediosVivosUseCase(medios=medios, ambiente=config.ambiente)
+    listar_mandatos = ListarMandatosUseCase(mandatos=mandatos, consumo=consumo, ambiente=config.ambiente)
 
     modelo_lenguaje: ModeloDeLenguaje | None = None
     if config.deepseek_llave_api:

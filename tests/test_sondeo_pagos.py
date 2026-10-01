@@ -38,7 +38,7 @@ class _SesionesFalsas:
 
 def _consultar_con(estados: dict[str, str]):
     """`estados` mapea intencion_id -> estado a devolver. Una intencion sin
-    entrada levanta `EstadoDesconocido`, como haria `ConsultarEstado` real
+    entrada levanta `EstadoDesconocido`, como haria `ConsultarEstadoUseCase` real
     contra un registro que nunca oyo hablar de ese id."""
 
     def consultar(intencion_id: str) -> _EstadoFalso:

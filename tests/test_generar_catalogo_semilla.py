@@ -1,4 +1,4 @@
-"""`GenerarCatalogoSemilla`: valida lo que un `ModeloDeLenguaje` contesta
+"""`GenerarCatalogoSemillaUseCase`: valida lo que un `ModeloDeLenguaje` contesta
 antes de convertirlo en `Comercio`/`Producto`. Ningun caso aqui toca DeepSeek
 de verdad -- el doble solo devuelve el texto que cada prueba necesita.
 """
@@ -9,7 +9,9 @@ import json
 
 import pytest
 
-from agora.aplicacion.generar_catalogo_semilla import GenerarCatalogoSemilla
+from agora.usecase.generar_catalogo_semilla.generar_catalogo_semilla_use_case import (
+    GenerarCatalogoSemillaUseCase,
+)
 from agora.model.catalogo.modelo import Disponibilidad
 from agora.model.commons.dinero import Dinero
 from agora.model.commons.errores import RespuestaModeloInvalida
@@ -47,9 +49,9 @@ _RESPUESTA_VALIDA = json.dumps({
 })
 
 
-def _armar(texto: str) -> tuple[GenerarCatalogoSemilla, _ModeloQueDevuelve]:
+def _armar(texto: str) -> tuple[GenerarCatalogoSemillaUseCase, _ModeloQueDevuelve]:
     modelo = _ModeloQueDevuelve(texto)
-    generar = GenerarCatalogoSemilla(modelo, _IdsDeterministas())
+    generar = GenerarCatalogoSemillaUseCase(modelo, _IdsDeterministas())
     return generar, modelo
 
 

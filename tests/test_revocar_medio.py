@@ -1,4 +1,4 @@
-"""`RevocarMedio`: el boton de panico. Primero verifica que el medio
+"""`RevocarMedioUseCase`: el boton de panico. Primero verifica que el medio
 pertenezca al titular en este ambiente (revocar a ciegas puede apagar la
 fuente equivocada), despues resuelve el comercio que lo creo
 (`RepositorioMedios.comercio_de`) y le pide a la pasarela de ESE comercio
@@ -10,7 +10,7 @@ import pytest
 
 from agora.adaptadores.pasarelas.registro import RegistroDePasarelas
 from agora.adaptadores.persistencia.memoria import RepositorioMediosEnMemoria
-from agora.aplicacion.revocar_medio import RevocarMedio
+from agora.usecase.revocar_medio.revocar_medio_use_case import RevocarMedioUseCase
 from agora.model.commons.errores import MedioNoRegistrado
 from agora.model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
 from agora.model.pago.gateways.pasarela import EstadoMedio
@@ -44,7 +44,7 @@ def test_camino_feliz_revoca_y_marca_el_estado():
     medios = RepositorioMediosEnMemoria()
     medios.guardar(REF, "tit_1", COMERCIO_ID)
     pasarela = _PasarelaFalsa()
-    revocar = RevocarMedio(
+    revocar = RevocarMedioUseCase(
         selector_pasarela=RegistroDePasarelas({}, por_defecto=pasarela),
         medios=medios, bitacora=_BitacoraEnLista(),
     )
@@ -61,7 +61,7 @@ def test_camino_feliz_revoca_y_marca_el_estado():
 def test_un_desenlace_solo_local_tambien_desactiva_y_propaga_el_aviso():
     """Cuando la pasarela no puede anular de verdad (Nequi por Wompi, ver
     `AdaptadorWompi.revocar_medio`) devuelve `estado="VOIDED_LOCAL"` con un
-    aviso en `detalle` en vez de levantar. `RevocarMedio` tiene que: (a)
+    aviso en `detalle` en vez de levantar. `RevocarMedioUseCase` tiene que: (a)
     desactivar el medio igual (cualquier estado != AVAILABLE alcanza), y
     (b) NO tirar ese aviso a la basura -- quien llama (CLI/API) lo necesita
     para avisarle al titular que todavia tiene que cancelarlo el mismo."""
@@ -77,7 +77,7 @@ def test_un_desenlace_solo_local_tambien_desactiva_y_propaga_el_aviso():
     medios = RepositorioMediosEnMemoria()
     medios.guardar(REF, "tit_1", COMERCIO_ID)
     bitacora = _BitacoraEnLista()
-    revocar = RevocarMedio(
+    revocar = RevocarMedioUseCase(
         selector_pasarela=RegistroDePasarelas({}, por_defecto=_PasarelaQueNoPuedeAnular()),
         medios=medios, bitacora=bitacora,
     )
@@ -96,7 +96,7 @@ def test_medio_que_no_pertenece_al_titular_levanta_sin_llamar_a_la_pasarela():
     medios = RepositorioMediosEnMemoria()
     medios.guardar(REF, "tit_otro", COMERCIO_ID)
     pasarela = _PasarelaFalsa()
-    revocar = RevocarMedio(
+    revocar = RevocarMedioUseCase(
         selector_pasarela=RegistroDePasarelas({}, por_defecto=pasarela),
         medios=medios, bitacora=_BitacoraEnLista(),
     )

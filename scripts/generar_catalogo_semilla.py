@@ -47,7 +47,9 @@ from agora.adaptadores.llm.deepseek import (  # noqa: E402
     ConfiguracionInvalida,
 )
 from agora.adaptadores.sistema.ids import GeneradorIdsUuid  # noqa: E402
-from agora.aplicacion.generar_catalogo_semilla import GenerarCatalogoSemilla  # noqa: E402
+from agora.usecase.generar_catalogo_semilla.generar_catalogo_semilla_use_case import (
+    GenerarCatalogoSemillaUseCase,
+)
 from agora.model.commons.errores import ErrorDeModeloDeLenguaje
 from agora.composicion.configuracion import RAIZ_REPO  # noqa: E402
 from utilidades.env import cargar_env_desde_archivo  # noqa: E402
@@ -81,7 +83,7 @@ def _respaldar_si_existe(ruta: Path) -> Path | None:
 
 
 def generar(
-    generar_uno: GenerarCatalogoSemilla,
+    generar_uno: GenerarCatalogoSemillaUseCase,
     categorias: list[str],
     por_categoria: int,
     productos: int,
@@ -137,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
 
     modelo = AdaptadorDeepSeek(config)
     ids = GeneradorIdsUuid()
-    generar_uno = GenerarCatalogoSemilla(modelo, ids)
+    generar_uno = GenerarCatalogoSemillaUseCase(modelo, ids)
 
     try:
         comercios_nuevos, productos_nuevos = generar(

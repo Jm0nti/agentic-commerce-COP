@@ -17,14 +17,14 @@ POR QUE ESTAS FUNCIONES DE UNION VIVEN ACA Y NO EN `agente/`
 frontera que `test_fronteras.py` verifica (`docs/arquitectura-v2.md`,
 seccion 2: `agente/` solo importa `dominio/` -tipos- y `puertos/`).
 `composicion/` si puede -- es el unico paquete al que se le permite importar
-todo. Cada funcion de aca cierra sobre un caso de uso real (`NavegarCatalogo`,
-`EjecutarIntencion`, `ConsultarEstado`) y devuelve solo dicts/listas de
+todo. Cada funcion de aca cierra sobre un caso de uso real (`NavegarCatalogoUseCase`,
+`EjecutarIntencionUseCase`, `ConsultarEstadoUseCase`) y devuelve solo dicts/listas de
 dicts, para que `agente/conversacion.py` nunca tenga que saber serializar un
 `Producto` o una `Intencion` -- eso es trabajo de traduccion, no de
 orquestacion de turnos.
 
 `pagar()` no recibe `titular_id`: `mandato_id` y `carrito_id` ya identifican
-todo lo que hace falta para cobrar (`EjecutarIntencion.obtener` resuelve el
+todo lo que hace falta para cobrar (`EjecutarIntencionUseCase.obtener` resuelve el
 mandato por su cuenta), asi que agregar un tercer parametro que nadie usa
 seria la abstraccion especulativa que `arquitectura-v2.md` (seccion 9) pide
 evitar.
@@ -34,18 +34,18 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..agente.clasificacion import (
+from ..usecase.agente.clasificacion import (
     ClasificadorConModelo,
     ClasificadorEnCadena,
     ClasificadorPorReglas,
 )
-from ..agente.contexto import ProveedorDeContexto
-from ..agente.contexto_documental import ContextoDocumental
-from ..agente.conversacion import Agente
-from ..agente.grafo import AgenteEnGrafo
-from ..agente.herramientas import construir_herramientas
-from ..agente.intencion import ClasificadorDeIntencion
-from ..aplicacion.navegar_catalogo import ItemPedido
+from ..model.agente.contexto import ProveedorDeContexto
+from ..usecase.agente.contexto_documental import ContextoDocumental
+from ..usecase.agente.conversacion import Agente
+from ..usecase.agente.grafo import AgenteEnGrafo
+from ..usecase.agente.herramientas import construir_herramientas
+from ..model.agente.intencion import ClasificadorDeIntencion
+from ..usecase.navegar_catalogo.navegar_catalogo_use_case import ItemPedido
 from ..model.catalogo.modelo import Comercio, Producto
 from ..model.catalogo.gateways.busqueda_productos import FiltrosDeProducto
 from ..model.agente.gateways.modelo_lenguaje import ModeloDeLenguaje

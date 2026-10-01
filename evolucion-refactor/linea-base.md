@@ -5,10 +5,11 @@ Tomada el 30 sep 2026 sobre `dev@5b7f30b` más los cambios de la Fase 0. Python 
 - **Fase 0: 1.140 pruebas en verde**: las 1.117 originales, 19 nuevas en `test_fronteras.py` y 4 en `test_invariantes_del_refactor.py`.
 - **Fase 1: 1.156 pruebas en verde.** Suman 13 en `test_fronteras.py` (las reglas nuevas, más las parametrizadas sobre los 3 casos de uso nuevos) y 3 en `test_pagar_carrito.py`. `aplicacion` pasa a tener 14 módulos.
 - **Fase 2: 1.189 pruebas en verde.** Todas las nuevas están en `test_fronteras.py`: la regla "el modelo solo conoce la biblioteca estándar" corre sobre los 24 módulos de `domain/model`, y las reglas parametrizadas pasan de 21 archivos de `dominio/` + `puertos/` a 24 de `model/`. Módulos por capa: model 24, aplicacion 14, agente 16, adaptadores 61, entradas 10, composicion 4.
+- **Fase 3: 1.205 pruebas en verde.** Las 16 nuevas están en `test_fronteras.py`: la convención de carpetas de casos de uso, el detector de un caso de uso que importa al agente y las reglas parametrizadas sobre los archivos nuevos. Módulos por capa: model 26, usecase 18, agente 14 (en `usecase/agente`), adaptadores 61, entradas 10, composicion 4.
 - Módulos por capa (Fase 0) (`agora/`): dominio 10, puertos 11, aplicacion 11, agente 16, adaptadores 61, entradas 10, composicion 4. Son los mínimos de `MINIMO_DE_MODULOS_POR_CAPA`.
 - Criterio de cada fase: **ningún archivo de esta tabla baja su número**. Si una prueba se mueve de archivo, se suma en el destino. El total nunca baja.
 
-Conteo vigente (Fase 2):
+Conteo vigente (Fase 3):
 
 | Archivo | Pruebas |
 |---|---:|
@@ -49,7 +50,7 @@ Conteo vigente (Fase 2):
 | `tests/test_emitir_mandato.py` | 6 |
 | `tests/test_enrolar_medio.py` | 10 |
 | `tests/test_firma_ed25519.py` | 3 |
-| `tests/test_fronteras.py` | 510 |
+| `tests/test_fronteras.py` | 526 |
 | `tests/test_generar_catalogo_semilla.py` | 11 |
 | `tests/test_invariantes_del_refactor.py` | 4 |
 | `tests/test_libro_consumo_memoria.py` | 10 |

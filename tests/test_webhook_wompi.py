@@ -1,11 +1,11 @@
-"""`entradas/webhooks/wompi.py`: HTTP -> `ConciliarEvento` -> HTTP.
+"""`entradas/webhooks/wompi.py`: HTTP -> `ConciliarEventoUseCase` -> HTTP.
 
-Dos grupos de pruebas. El primero usa un `ConciliarEvento` de mentiras (una
+Dos grupos de pruebas. El primero usa un `ConciliarEventoUseCase` de mentiras (una
 funcion que devuelve un `ResultadoConciliacion` fijo) para verificar solo el
 cableado HTTP: que status 200 sale siempre, que el cuerpo, las cabeceras y
 el `comercio_id` de la URL le llegan intactos a `conciliar_evento`, que la
 respuesta refleja lo que devolvio. El segundo usa las piezas de verdad
-(`AdaptadorSimulado` + `LibroDeConsumoEnMemoria` + `ConciliarEvento` real)
+(`AdaptadorSimulado` + `LibroDeConsumoEnMemoria` + `ConciliarEventoUseCase` real)
 para confirmar que `crear_app` las conecta correctamente de punta a punta --
 no solo que la ruta responde 200 en abstracto.
 
@@ -26,7 +26,10 @@ from agora.adaptadores.pasarelas.registro import RegistroDePasarelas
 from agora.adaptadores.pasarelas.simulada import APROBADO, AdaptadorSimulado
 from agora.adaptadores.persistencia.memoria import LibroDeConsumoEnMemoria
 from agora.adaptadores.sistema.ids import GeneradorIdsUuid
-from agora.aplicacion.conciliar_evento import ConciliarEvento, ResultadoConciliacion
+from agora.usecase.conciliar_evento.conciliar_evento_use_case import (
+    ConciliarEventoUseCase,
+    ResultadoConciliacion,
+)
 from agora.model.commons.dinero import Dinero
 from agora.model.mandato.modelo import Mandato
 from agora.model.pago.modelo import Ambiente, MedioDePagoRef, OrdenDeCobro, Proveedor
@@ -45,7 +48,7 @@ class _RelojFijo:
 
 
 class _ConciliarEventoFijo:
-    """No es un doble de `ConciliarEvento` reimplementando la traduccion --
+    """No es un doble de `ConciliarEventoUseCase` reimplementando la traduccion --
     solo devuelve lo que se le configuro y anota con que lo llamaron, para
     que las pruebas de cableado puedan revisarlo."""
 
@@ -93,7 +96,7 @@ def test_evento_procesado_responde_200_y_refleja_el_resultado():
 
 
 def test_evento_no_procesado_tambien_responde_200():
-    """El corazon del modulo: nada que `ConciliarEvento` considere 'no hay
+    """El corazon del modulo: nada que `ConciliarEventoUseCase` considere 'no hay
     nada que hacer' se convierte en un status distinto de 200. Reintentar no
     arregla un checksum invalido ni una reserva que ya no existe."""
     conciliar = _ConciliarEventoFijo(
@@ -149,7 +152,7 @@ def test_de_punta_a_punta_con_adaptador_simulado_real():
         def anotar(self, evento, cuerpo) -> None:
             pass
 
-    conciliar = ConciliarEvento(consumo, RegistroDePasarelas({}, por_defecto=pasarela), _BitacoraQueIgnora())
+    conciliar = ConciliarEventoUseCase(consumo, RegistroDePasarelas({}, por_defecto=pasarela), _BitacoraQueIgnora())
     app = crear_app(conciliar)
     cliente = TestClient(app)
 
@@ -159,6 +162,6 @@ def test_de_punta_a_punta_con_adaptador_simulado_real():
     assert respuesta.status_code == 200
     assert respuesta.json()["procesado"] is True
     # La reserva ya no esta pendiente: `crear_app` de verdad llamo a la
-    # `ConciliarEvento` real, que de verdad confirmo contra `consumo`.
+    # `ConciliarEventoUseCase` real, que de verdad confirmo contra `consumo`.
     assert consumo.reserva_pendiente_de("int_1") is None
     assert consumo.consumo_de(mandato.mandato_id).usos == 1

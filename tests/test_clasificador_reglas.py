@@ -14,8 +14,8 @@ from __future__ import annotations
 
 import pytest
 
-from agora.agente.clasificacion.reglas import ClasificadorPorReglas, normalizar
-from agora.agente.intencion import OrigenDeClasificacion, TipoDeIntencion
+from agora.usecase.agente.clasificacion.reglas import ClasificadorPorReglas, normalizar
+from agora.model.agente.intencion import OrigenDeClasificacion, TipoDeIntencion
 
 AVISO_FIRMA = (
     "(la persona firmo la propuesta prp_1a2b3c4d5e6f desde el popup. El mandato quedo "

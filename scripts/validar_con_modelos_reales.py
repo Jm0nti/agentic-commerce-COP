@@ -50,11 +50,8 @@ from dotenv import load_dotenv  # noqa: E402
 from agora.adaptadores.busqueda_productos.semantico_en_memoria import (  # noqa: E402
     PARECIDO_MINIMO_POR_DEFECTO,
 )
-from agora.agente.contexto_documental import (  # noqa: E402
-    PUNTAJE_MINIMO_POR_DEFECTO,
-    armar_consulta,
-)
-from agora.agente.intencion import TipoDeIntencion  # noqa: E402
+from agora.usecase.agente.contexto_documental import PUNTAJE_MINIMO_POR_DEFECTO, armar_consulta
+from agora.model.agente.intencion import TipoDeIntencion
 from agora.composicion.agente import construir_clasificador  # noqa: E402
 from agora.composicion.configuracion import ConfiguracionInvalida, leer_configuracion  # noqa: E402
 from agora.composicion.contenedor import construir  # noqa: E402

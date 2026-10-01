@@ -1,4 +1,4 @@
-"""`RechazarPropuesta`: el contrapunto de `EmitirMandato` cuando el humano
+"""`RechazarPropuestaUseCase`: el contrapunto de `EmitirMandatoUseCase` cuando el humano
 no firma. Mismo estilo que `test_emitir_mandato.py` -- una propuesta y un
 `_BitacoraEnLista` de prueba, sin sqlite ni HTTP de por medio."""
 
@@ -7,7 +7,7 @@ from __future__ import annotations
 import pytest
 
 from agora.adaptadores.persistencia.memoria import RepositorioPropuestasEnMemoria
-from agora.aplicacion.rechazar_propuesta import RechazarPropuesta
+from agora.usecase.rechazar_propuesta.rechazar_propuesta_use_case import RechazarPropuestaUseCase
 from agora.model.commons.dinero import Dinero
 from agora.model.commons.errores import PropuestaDesconocida
 from agora.model.mandato.modelo import PropuestaDeMandato
@@ -34,7 +34,7 @@ def _armar():
     propuestas = RepositorioPropuestasEnMemoria()
     propuestas.guardar(_propuesta())
     bitacora = _BitacoraEnLista()
-    return RechazarPropuesta(propuestas=propuestas, bitacora=bitacora), bitacora
+    return RechazarPropuestaUseCase(propuestas=propuestas, bitacora=bitacora), bitacora
 
 
 def test_rechazar_anota_en_bitacora_y_no_toca_nada_mas():

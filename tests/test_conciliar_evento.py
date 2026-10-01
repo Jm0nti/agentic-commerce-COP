@@ -1,4 +1,4 @@
-"""`ConciliarEvento`: el webhook -> estado.
+"""`ConciliarEventoUseCase`: el webhook -> estado.
 
 Usa `AdaptadorSimulado` de verdad (no un doble a mano) para `validar_evento`/
 `resultado_desde_evento`: un doble reimplementaria justo la traduccion que
@@ -7,7 +7,7 @@ excepcion es la prueba de un evento invalido -- la simulada no valida nada
 (ver su docstring), asi que ese caso usa un doble minimo que solo existe para
 levantar donde `AdaptadorWompi.validar_evento` levantaria de verdad.
 
-MULTI-COMERCIO: `ConciliarEvento` recibe un `SelectorDePasarela`, no una
+MULTI-COMERCIO: `ConciliarEventoUseCase` recibe un `SelectorDePasarela`, no una
 pasarela fija, y `__call__` exige un `comercio_id` (el que trae la URL del
 webhook -- ver el docstring del caso de uso). Estas pruebas envuelven su
 pasarela falsa en `RegistroDePasarelas({}, por_defecto=pasarela)`, que
@@ -24,7 +24,7 @@ from agora.adaptadores.pasarelas.registro import RegistroDePasarelas
 from agora.adaptadores.pasarelas.simulada import APROBADO, DECLINADO, AdaptadorSimulado
 from agora.adaptadores.persistencia.memoria import LibroDeConsumoEnMemoria, RegistroDeEstadosEnMemoria
 from agora.adaptadores.sistema.ids import GeneradorIdsUuid
-from agora.aplicacion.conciliar_evento import ConciliarEvento
+from agora.usecase.conciliar_evento.conciliar_evento_use_case import ConciliarEventoUseCase
 from agora.model.commons.dinero import Dinero
 from agora.model.commons.errores import ErrorDePasarela
 from agora.model.mandato.modelo import Mandato
@@ -84,7 +84,7 @@ def _armar(estados=None):
     consumo = LibroDeConsumoEnMemoria(reloj, ids)
     pasarela = AdaptadorSimulado(ids, Ambiente.SANDBOX)
     bitacora = _BitacoraEnLista()
-    conciliar = ConciliarEvento(
+    conciliar = ConciliarEventoUseCase(
         consumo, RegistroDePasarelas({}, por_defecto=pasarela), bitacora, estados=estados,
     )
     return conciliar, consumo, pasarela, bitacora
@@ -101,7 +101,7 @@ def _orden(intencion_id: str, correo: str) -> OrdenDeCobro:
 
 
 def _reservar_y_cobrar_pendiente(consumo, pasarela, mandato, intencion_id):
-    """Reproduce lo que deja `EjecutarIntencion._cobrar` cuando la pasarela
+    """Reproduce lo que deja `EjecutarIntencionUseCase._cobrar` cuando la pasarela
     devuelve PENDIENTE: la reserva viva, y un cobro pendiente del lado de la
     pasarela con la misma referencia."""
     consumo.reservar(mandato, intencion_id, Dinero.de_pesos(2_000), Dinero.de_pesos(100_000))
@@ -197,7 +197,7 @@ def test_evento_no_reconocido_no_es_error():
 def test_evento_invalido_no_es_error_y_no_propaga_la_excepcion():
     consumo = LibroDeConsumoEnMemoria(_RelojFijo(HOY), GeneradorIdsUuid())
     bitacora = _BitacoraEnLista()
-    conciliar = ConciliarEvento(
+    conciliar = ConciliarEventoUseCase(
         consumo, RegistroDePasarelas({}, por_defecto=_PasarelaQueRechazaTodo()), bitacora,
     )
 

@@ -48,7 +48,7 @@ Antes de esta version, `titular_id` llegaba como texto libre desde
 `chat.html` (un `<input>` guardado en `localStorage`), sin ninguna
 verificacion -- cualquiera podia escribir el `titular_id` de otro y ver
 sus medios de pago. Ahora `POST /auth/iniciar-sesion` verifica usuario y
-contrasena (`IniciarSesion`, `aplicacion/autenticacion.py`,
+contrasena (`IniciarSesionUseCase`, `aplicacion/autenticacion.py`,
 usuarios creados de antemano con `scripts/crear_usuario.py` -- no hay
 registro por HTTP) y deja una cookie httponly (`entradas/api/
 autenticacion.py:AlmacenDeSesionesWeb`). Toda ruta que antes aceptaba
@@ -70,20 +70,18 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
-from ...agente.conversacion import Agente, LimiteDeTurnosExcedido
-from ...agente.pausa import DecisionHumana, TipoDePausa
-from ...aplicacion.autenticacion import IniciarSesion
-from ...aplicacion.emitir_mandato import EmitirMandato
-from ...aplicacion.enrolar_medio import (
-    ConfirmarEnrolamiento,
-    ConsultarEnrolamiento,
-    IniciarEnrolamiento,
-)
-from ...aplicacion.listar_medios import ListarMediosVivos
-from ...aplicacion.navegar_catalogo import NavegarCatalogo
-from ...aplicacion.pagar_carrito import PagarCarrito
-from ...aplicacion.rechazar_propuesta import RechazarPropuesta
-from ...aplicacion.revocar_medio import RevocarMedio
+from ...usecase.agente.conversacion import Agente, LimiteDeTurnosExcedido
+from ...usecase.agente.pausa import DecisionHumana, TipoDePausa
+from ...usecase.iniciar_sesion.iniciar_sesion_use_case import IniciarSesionUseCase
+from ...usecase.emitir_mandato.emitir_mandato_use_case import EmitirMandatoUseCase
+from ...usecase.confirmar_enrolamiento.confirmar_enrolamiento_use_case import ConfirmarEnrolamientoUseCase
+from ...usecase.consultar_enrolamiento.consultar_enrolamiento_use_case import ConsultarEnrolamientoUseCase
+from ...usecase.iniciar_enrolamiento.iniciar_enrolamiento_use_case import IniciarEnrolamientoUseCase
+from ...usecase.listar_medios_vivos.listar_medios_vivos_use_case import ListarMediosVivosUseCase
+from ...usecase.navegar_catalogo.navegar_catalogo_use_case import NavegarCatalogoUseCase
+from ...usecase.pagar_carrito.pagar_carrito_use_case import PagarCarritoUseCase
+from ...usecase.rechazar_propuesta.rechazar_propuesta_use_case import RechazarPropuestaUseCase
+from ...usecase.revocar_medio.revocar_medio_use_case import RevocarMedioUseCase
 from ...model.commons.errores import (
     CredencialesInvalidas,
     ErrorDeDominio,
@@ -107,16 +105,16 @@ class DependenciasDeLaApi(Protocol):
 
     ambiente: Ambiente
     reloj: Reloj
-    iniciar_sesion: IniciarSesion
-    navegar_catalogo: NavegarCatalogo
-    emitir_mandato: EmitirMandato
-    rechazar_propuesta: RechazarPropuesta
-    pagar_carrito: PagarCarrito
-    iniciar_enrolamiento: IniciarEnrolamiento
-    consultar_enrolamiento: ConsultarEnrolamiento
-    confirmar_enrolamiento: ConfirmarEnrolamiento
-    listar_medios_vivos: ListarMediosVivos
-    revocar_medio: RevocarMedio
+    iniciar_sesion: IniciarSesionUseCase
+    navegar_catalogo: NavegarCatalogoUseCase
+    emitir_mandato: EmitirMandatoUseCase
+    rechazar_propuesta: RechazarPropuestaUseCase
+    pagar_carrito: PagarCarritoUseCase
+    iniciar_enrolamiento: IniciarEnrolamientoUseCase
+    consultar_enrolamiento: ConsultarEnrolamientoUseCase
+    confirmar_enrolamiento: ConfirmarEnrolamientoUseCase
+    listar_medios_vivos: ListarMediosVivosUseCase
+    revocar_medio: RevocarMedioUseCase
 
 
 class _MensajeEntrante(BaseModel):
@@ -333,7 +331,7 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
     ) -> dict[str, Any]:
         """La persona rechazo la propuesta desde el popup ("Cancelar"), sin
         firmarla. A diferencia de `firmar`, esto no emite ningun `Mandato`
-        (`RechazarPropuesta`, ver su docstring): solo deja
+        (`RechazarPropuestaUseCase`, ver su docstring): solo deja
         constancia en la bitacora y le avisa a la conversacion, exactamente
         igual que `retomar` ya hace con `aprueba=False` -- antes de esta
         ruta, rechazar una propuesta armada por el agente no le llegaba a
@@ -360,7 +358,7 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
         intencion_id: str, cuerpo: _RetomarEntrante, _titular_id: str = Depends(_requiere_titular),
     ) -> dict[str, Any]:
         """Mismo llamado que `entradas/cli/__main__.py:cmd_retomar`: pide
-        de nuevo `mandato_id`/`carrito_id` porque `EjecutarIntencion.
+        de nuevo `mandato_id`/`carrito_id` porque `EjecutarIntencionUseCase.
         retomar` vuelve a evaluar la politica completa contra el mismo
         `Intencion` -- no alcanza con el `intencion_id` solo (ver el
         docstring de `retomar` en `aplicacion/ejecutar_intencion.py`)."""
@@ -422,7 +420,7 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
     ) -> dict[str, Any]:
         """Paso 1: crea el token y dispara el push (Wompi real) o lo
         aprueba de inmediato (la simulada). El mismo paso que usa
-        `EnrolarMedio` para la CLI -- aca no se queda bloqueado sondeando,
+        `EnrolarMedioUseCase` para la CLI -- aca no se queda bloqueado sondeando,
         eso es tarea de quien llame a `estado_enrolamiento` despues."""
         try:
             proceso = dependencias.iniciar_enrolamiento(cuerpo.telefono, cuerpo.correo, cuerpo.comercio_id)
@@ -440,7 +438,7 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
         bloquea esperando un estado final, igual que el resto del puerto
         de pasarela. `comercio_id` tiene que ser el mismo que se uso en
         "iniciar" para este token (ver el docstring de aplicacion/
-        enrolar_medio.py:ConsultarEnrolamiento)."""
+        enrolar_medio.py:ConsultarEnrolamientoUseCase)."""
         try:
             estado = dependencias.consultar_enrolamiento(token, comercio_id)
         except PasarelaNoDisponible as exc:
@@ -474,7 +472,7 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
     def listar_medios(titular_id: str = Depends(_requiere_titular)) -> dict[str, Any]:
         """Los medios vivos del titular AUTENTICADO (cookie de sesion, ver
         `_requiere_titular`) en el ambiente que ya tiene configurado este
-        proceso (`ListarMediosVivos`) -- mismo criterio que
+        proceso (`ListarMediosVivosUseCase`) -- mismo criterio que
         `entradas/cli/__main__.py:cmd_fuentes`, sin selector de ambiente en
         la peticion: la pasarela (simulada/wompi) y el ambiente los fija
         el .env del servidor, no el navegador. Antes de esta version
@@ -492,7 +490,7 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
         """El boton de panico (`aplicacion/revocar_medio.py`) por HTTP --
         hasta ahora solo lo alcanzaba `entradas/cli/__main__.py:cmd_revocar`.
         Mismo criterio que el resto de esta seccion: `titular_id` sale de la
-        cookie de sesion, nunca del cuerpo. `RevocarMedio` ya verifica que la
+        cookie de sesion, nunca del cuerpo. `RevocarMedioUseCase` ya verifica que la
         referencia sea del titular autenticado (`RepositorioMedios.vivos`)
         antes de pedirle la revocacion a la pasarela -- revocar a ciegas
         podria apagar la fuente equivocada (docstring de `aplicacion/

@@ -61,10 +61,10 @@ class MandatoDeOtroAmbiente(ErrorDeMandato):
 
 
 class PropuestaInvalida(ErrorDeMandato):
-    """`EmitirMandato` (etapa 5) con una `PropuestaDeMandato` que no calza
+    """`EmitirMandatoUseCase` (etapa 5) con una `PropuestaDeMandato` que no calza
     con el carrito que dice referenciar -- por ejemplo, `comercio_id`
     distinto del que tiene el `Carrito` guardado. Nunca deberia pasar si la
-    propuesta viene de `NavegarCatalogo.armar_carrito`; si pasa, alguien
+    propuesta viene de `NavegarCatalogoUseCase.armar_carrito`; si pasa, alguien
     arma una propuesta a mano con datos que no coinciden."""
 
 
@@ -74,18 +74,18 @@ class PropuestaDesconocida(ErrorDeMandato):
     `armar_carrito` guardo en un adaptador en memoria que ya se reinicio.
     Es al `propuesta_id` lo que `CarritoDesconocido` es al `carrito_id`: el
     mismo argumento (`RepositorioCarritos`, mas arriba) aplicado a la otra
-    mitad de lo que `EmitirMandato` tiene que volver a buscar por su cuenta
+    mitad de lo que `EmitirMandatoUseCase` tiene que volver a buscar por su cuenta
     en vez de aceptar por parametro."""
 
 
 class SinMedioDePagoVivo(ErrorDeMandato):
-    """`EmitirMandato` sin un `MedioDePagoRef` vivo para el titular en este
+    """`EmitirMandatoUseCase` sin un `MedioDePagoRef` vivo para el titular en este
     ambiente. No hay contra que firmar: primero hay que enrolar
     (`aplicacion/enrolar_medio.py`)."""
 
 
 class SinMedioVinculadoAlComercio(ErrorDeMandato):
-    """`EmitirMandato` (multi-comercio) con medios vivos, pero NINGUNO
+    """`EmitirMandatoUseCase` (multi-comercio) con medios vivos, pero NINGUNO
     vinculado al `comercio_id` de la propuesta -- distinto de
     `SinMedioDePagoVivo`: aca el titular ya enrolo un medio (con OTRO
     comercio, o con ninguno todavia), pero un `payment_source_id` de Wompi
@@ -162,7 +162,7 @@ class MedioNoAprobado(ErrorDePasarela):
 
 
 class MedioNoRegistrado(ErrorDePasarela):
-    """`RevocarMedio` con una referencia que `RepositorioMedios.vivos` no
+    """`RevocarMedioUseCase` con una referencia que `RepositorioMedios.vivos` no
     reconoce para ese titular. Mismo espiritu que la guarda de
     `boveda/enrolamiento.py:revocar` -- revocar a ciegas puede apagar la
     fuente equivocada."""
@@ -184,8 +184,8 @@ class ErrorDeConsumo(ErrorDeDominio):
 
 
 class ReservaNoEncontrada(ErrorDeConsumo):
-    """`EjecutarIntencion.retomar` (etapa 4) sobre una intencion sin una
-    reserva pendiente viva -- ya se resolvio (por `ConciliarEvento`, o por un
+    """`EjecutarIntencionUseCase.retomar` (etapa 4) sobre una intencion sin una
+    reserva pendiente viva -- ya se resolvio (por `ConciliarEventoUseCase`, o por un
     `retomar` anterior), o nunca existio. No es reintentable con los mismos
     datos: retomar de nuevo la misma intencion no hace aparecer una reserva
     que ya no esta."""
@@ -212,12 +212,12 @@ class ProductoDesconocido(ErrorDeCatalogo):
 class CarritoDesconocido(ErrorDeCatalogo):
     """`RepositorioCarritos.obtener` (etapa 5) con un `carrito_id` que no
     existe -- en la practica, solo si alguien inventa un id a mano o si
-    `EmitirMandato` recibe una `PropuestaDeMandato` mas vieja que el proceso
+    `EmitirMandatoUseCase` recibe una `PropuestaDeMandato` mas vieja que el proceso
     que la armo (memoria, no sqlite, en esta etapa)."""
 
 
 class ProductoDeOtroComercio(ErrorDeCatalogo):
-    """`NavegarCatalogo.armar_carrito` con un producto cuyo `comercio_id` no
+    """`NavegarCatalogoUseCase.armar_carrito` con un producto cuyo `comercio_id` no
     es el del carrito que se esta armando. Un carrito es de un solo
     comercio -- mezclar dos rompe la premisa de `Mandato.comercio_id`."""
 
@@ -232,7 +232,7 @@ class ProductoNoDisponible(ErrorDeCatalogo):
 
 
 class EstadoDesconocido(ErrorDeDominio):
-    """`ConsultarEstado` (etapa 5) sobre un `intencion_id` que
+    """`ConsultarEstadoUseCase` (etapa 5) sobre un `intencion_id` que
     `RegistroDeEstados` nunca vio -- nunca se ejecuto una intencion con ese
     id, o el registro (en memoria en esta etapa) se reinicio."""
 
@@ -264,7 +264,7 @@ class CredencialesInvalidas(ErrorDeAutenticacion):
     hash guardado -- deliberadamente el MISMO error para los dos casos:
     distinguirlos permitiria enumerar nombres de usuario validos probando
     contra `POST /auth/iniciar-sesion` (`aplicacion/autenticacion.py:
-    IniciarSesion`)."""
+    IniciarSesionUseCase`)."""
 
 
 class SesionInvalida(ErrorDeAutenticacion):
@@ -275,7 +275,7 @@ class SesionInvalida(ErrorDeAutenticacion):
 
 
 class NombreDeUsuarioYaExiste(ErrorDeAutenticacion):
-    """`aplicacion/autenticacion.py:RegistrarUsuario` (el unico camino es
+    """`aplicacion/autenticacion.py:RegistrarUsuarioUseCase` (el unico camino es
     `scripts/crear_usuario.py`, no hay registro por HTTP) con un nombre de
     usuario que ya existe. Se verifica ANTES de generar la llave de firma
     nueva, para no dejar una llave huerfana sin usuario dueño si el nombre
@@ -300,7 +300,7 @@ class RespuestaModeloInvalida(ErrorDeModeloDeLenguaje):
     es JSON con una forma distinta a la esperada. Nunca se acepta a medias
     ni se rellenan campos faltantes con un valor por defecto: una respuesta
     que no calza con el contrato se descarta entera, no se repara en
-    silencio (`GenerarCatalogoSemilla`, etapa 5)."""
+    silencio (`GenerarCatalogoSemillaUseCase`, etapa 5)."""
 
 
 # -- recuperacion documental (migracion a agentes, etapa 2) ----------------- #

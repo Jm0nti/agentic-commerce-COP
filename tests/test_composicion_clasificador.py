@@ -9,12 +9,12 @@ from dataclasses import replace
 
 import pytest
 
-from agora.agente.clasificacion import (
+from agora.usecase.agente.clasificacion import (
     ClasificadorConModelo,
     ClasificadorEnCadena,
     ClasificadorPorReglas,
 )
-from agora.agente.intencion import OrigenDeClasificacion, TipoDeIntencion
+from agora.model.agente.intencion import OrigenDeClasificacion, TipoDeIntencion
 from agora.composicion.agente import construir_agente, construir_clasificador
 from agora.composicion.configuracion import ConfiguracionInvalida, leer_configuracion
 from agora.composicion.contenedor import construir

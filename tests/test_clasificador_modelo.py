@@ -12,13 +12,13 @@ import json
 
 import pytest
 
-from agora.agente.clasificacion.modelo import (
+from agora.usecase.agente.clasificacion.modelo import (
     SISTEMA_CLASIFICADOR,
     ClasificadorConModelo,
     armar_instruccion,
     interpretar_respuesta,
 )
-from agora.agente.intencion import OrigenDeClasificacion, TipoDeIntencion
+from agora.model.agente.intencion import OrigenDeClasificacion, TipoDeIntencion
 from agora.model.commons.errores import ModeloNoDisponible, RespuestaModeloInvalida
 from agora.model.agente.gateways.modelo_lenguaje import LlamadaHerramienta, Mensaje
 

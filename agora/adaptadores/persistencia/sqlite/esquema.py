@@ -99,8 +99,8 @@ CREATE TABLE IF NOT EXISTS medio_de_pago (
     PRIMARY KEY (proveedor, ambiente, id_externo)
 );
 
--- Etapa 5: el carrito que `NavegarCatalogo.armar_carrito` arma y que
--- `EmitirMandato`/`EjecutarIntencion` vuelven a buscar por `carrito_id`.
+-- Etapa 5: el carrito que `NavegarCatalogoUseCase.armar_carrito` arma y que
+-- `EmitirMandatoUseCase`/`EjecutarIntencionUseCase` vuelven a buscar por `carrito_id`.
 -- Tiene que sobrevivir entre procesos igual que `mandato` -- si no,
 -- `entradas/cli/` (donde "armar y firmar" y "pagar" son comandos separados,
 -- cada uno su propio proceso) nunca podria completar una compra con
@@ -114,8 +114,8 @@ CREATE TABLE IF NOT EXISTS carrito (
     items                        TEXT NOT NULL
 );
 
--- Etapa 6: la `PropuestaDeMandato` que `NavegarCatalogo.armar_carrito` arma
--- junto con el carrito. Sin esto, `EmitirMandato` solo podia firmar una
+-- Etapa 6: la `PropuestaDeMandato` que `NavegarCatalogoUseCase.armar_carrito` arma
+-- junto con el carrito. Sin esto, `EmitirMandatoUseCase` solo podia firmar una
 -- propuesta que le llegara por parametro desde el MISMO proceso que la
 -- creo -- lo que dejaba sin conectar el carrito que arma el chat (un
 -- proceso) con la firma que hace el titular (`entradas/cli/firmar`, otro
@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS estado_intencion (
 
 -- Multi-usuario (4 de septiembre de 2026): quien puede iniciar sesion.
 -- `nombre_usuario` UNIQUE porque es la clave con la que la persona inicia
--- sesion (`aplicacion/autenticacion.py:IniciarSesion`); `titular_id` sigue
+-- sesion (`aplicacion/autenticacion.py:IniciarSesionUseCase`); `titular_id` sigue
 -- siendo la clave primaria porque es lo que el resto del esquema (mandato,
 -- medio_de_pago, ...) ya usa para referenciar a un titular -- agregar una
 -- tabla `usuario` no cambia esa convencion, solo le da una identidad con

@@ -23,11 +23,15 @@ import json
 import pytest
 
 from agora.adaptadores.orquestacion.con_langgraph import CompiladorLangGraph
-from agora.agente.contexto import ContextoInyectado
-from agora.agente.conversacion import Agente, LimiteDeTurnosExcedido
-from agora.agente.grafo import AgenteEnGrafo
-from agora.agente.herramientas import CATALOGO_DE_HERRAMIENTAS, construir_herramientas
-from agora.agente.intencion import ClasificacionDeIntencion, OrigenDeClasificacion, TipoDeIntencion
+from agora.model.agente.contexto import ContextoInyectado
+from agora.usecase.agente.conversacion import Agente, LimiteDeTurnosExcedido
+from agora.usecase.agente.grafo import AgenteEnGrafo
+from agora.usecase.agente.herramientas import CATALOGO_DE_HERRAMIENTAS, construir_herramientas
+from agora.model.agente.intencion import (
+    ClasificacionDeIntencion,
+    OrigenDeClasificacion,
+    TipoDeIntencion,
+)
 from agora.model.agente.gateways.modelo_lenguaje import LlamadaHerramienta, Mensaje, RespuestaModelo
 
 
@@ -345,7 +349,7 @@ def test_la_topologia_es_el_orquestador_y_un_nodo_por_agente():
     """Etapa 4: el worker unico de la etapa 3 se partio en siete destinos, y
     la condicional que la etapa 3 se nego a poner de utileria ahora es real
     -- siete destinos, todos alcanzables (`DefinicionDeGrafo` lo valida)."""
-    from agora.agente.grafo import definir_grafo_del_turno
+    from agora.usecase.agente.grafo import definir_grafo_del_turno
     from agora.model.agente.gateways.orquestacion import FIN
 
     agente, _, _, _ = _armar_agente(lambda: [], [], False)
@@ -380,7 +384,7 @@ def test_un_agente_sin_ruta_falla_fuerte_en_vez_de_inventar_una():
     """Solo puede pasar si alguien arma el grafo mal (un agente que no viene
     del orquestador). Mejor que reviente ahi que que el turno corra con la
     ruta de respaldo sin que nadie lo haya decidido."""
-    from agora.agente.grafo import EstadoDelTurno, definir_grafo_del_turno
+    from agora.usecase.agente.grafo import EstadoDelTurno, definir_grafo_del_turno
 
     agente, _, _, _ = _armar_agente(lambda: [], [], False)
     nodo = definir_grafo_del_turno(agente).nodos["agente_catalogo"]

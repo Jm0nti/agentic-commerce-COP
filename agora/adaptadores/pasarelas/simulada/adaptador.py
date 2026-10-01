@@ -157,7 +157,7 @@ class AdaptadorSimulado:
 
     def resultado_desde_evento(self, evento: dict[str, Any]) -> tuple[str, ResultadoCobro] | None:
         """Espera la misma forma que produce Wompi (`event`, `data.
-        transaction`) -- ver `evento_de` -- para que `ConciliarEvento` no
+        transaction`) -- ver `evento_de` -- para que `ConciliarEventoUseCase` no
         necesite saber contra que pasarela esta corriendo."""
         if evento.get("event") != "transaction.updated":
             return None
@@ -182,7 +182,7 @@ class AdaptadorSimulado:
 
     def evento_de(self, id_externo: str) -> dict[str, Any]:
         """Empaqueta el cobro actual como el `transaction.updated` que Wompi
-        mandaria por webhook, para ejercitar `ConciliarEvento` o
+        mandaria por webhook, para ejercitar `ConciliarEventoUseCase` o
         `entradas/webhooks/` en una demo o una prueba sin un servidor de
         Wompi real. Igual que `resolver_pendiente`: solo para demos y
         pruebas, no existe en el `Protocol`."""

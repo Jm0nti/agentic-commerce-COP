@@ -20,21 +20,20 @@ import json
 import pytest
 
 from agora.adaptadores.orquestacion.con_langgraph import CompiladorLangGraph
-from agora.agente.conversacion import Agente
-from agora.agente.grafo import (
+from agora.usecase.agente.conversacion import Agente
+from agora.usecase.agente.grafo import (
     NODO_ESPERA_HUMANA,
     AgenteEnGrafo,
     EstadoDelTurno,
     definir_grafo_del_turno,
 )
-from agora.agente.herramientas import CATALOGO_DE_HERRAMIENTAS, construir_herramientas
-from agora.agente.intencion import ClasificacionDeIntencion, OrigenDeClasificacion, TipoDeIntencion
-from agora.agente.pausa import (
-    DecisionHumana,
-    PausaDelTurno,
-    TipoDePausa,
-    detectar_pausa,
+from agora.usecase.agente.herramientas import CATALOGO_DE_HERRAMIENTAS, construir_herramientas
+from agora.model.agente.intencion import (
+    ClasificacionDeIntencion,
+    OrigenDeClasificacion,
+    TipoDeIntencion,
 )
+from agora.usecase.agente.pausa import DecisionHumana, PausaDelTurno, TipoDePausa, detectar_pausa
 from agora.model.agente.gateways.modelo_lenguaje import LlamadaHerramienta, Mensaje, RespuestaModelo
 from agora.model.agente.gateways.orquestacion import PausaRequerida
 

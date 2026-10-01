@@ -17,8 +17,8 @@ queda, hasta que alguien vuelva a escribirle.
 
 COMO LO RESUELVE
 -----------------
-`aplicacion/consultar_estado.py:ConsultarEstado` ya lee el mismo sqlite que
-`ConciliarEvento` escribe -- el estado SI esta compartido entre los dos
+`aplicacion/consultar_estado.py:ConsultarEstadoUseCase` ya lee el mismo sqlite que
+`ConciliarEventoUseCase` escribe -- el estado SI esta compartido entre los dos
 procesos, solo que nadie de este lado volvia a preguntar. Esta clase corre
 en un hilo de fondo dentro del proceso del chat, sondea (a intervalos, sin
 bloquear ninguna peticion HTTP) las intenciones que `AlmacenDeSesiones`
@@ -52,7 +52,7 @@ from __future__ import annotations
 import threading
 from typing import Callable
 
-from ...aplicacion.consultar_estado import EstadoIntencion
+from ...usecase.consultar_estado.consultar_estado_use_case import EstadoIntencion
 from ...model.commons.errores import EstadoDesconocido
 from .sesiones import AlmacenDeSesiones
 

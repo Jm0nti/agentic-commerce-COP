@@ -11,9 +11,13 @@ from __future__ import annotations
 
 import json
 
-from agora.agente.conversacion import Agente
-from agora.agente.herramientas import CATALOGO_DE_HERRAMIENTAS, construir_herramientas
-from agora.agente.intencion import ClasificacionDeIntencion, OrigenDeClasificacion, TipoDeIntencion
+from agora.usecase.agente.conversacion import Agente
+from agora.usecase.agente.herramientas import CATALOGO_DE_HERRAMIENTAS, construir_herramientas
+from agora.model.agente.intencion import (
+    ClasificacionDeIntencion,
+    OrigenDeClasificacion,
+    TipoDeIntencion,
+)
 from agora.model.agente.gateways.modelo_lenguaje import LlamadaHerramienta, Mensaje, RespuestaModelo
 
 

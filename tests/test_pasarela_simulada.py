@@ -147,7 +147,7 @@ def test_desenlace_es_un_value_object_comparable():
 def test_evento_de_y_resultado_desde_evento_hacen_el_viaje_completo():
     """`evento_de` empaqueta el cobro como lo haria el webhook de Wompi;
     `resultado_desde_evento` lo desempaqueta. Juntos son lo que le permite a
-    una demo ejercitar `ConciliarEvento` sin un servidor de Wompi real."""
+    una demo ejercitar `ConciliarEventoUseCase` sin un servidor de Wompi real."""
     pasarela = _pasarela()
     r = pasarela.cobrar(_orden("cliente.pendiente@correo-real.com"))
     pasarela.resolver_pendiente(r.id_externo, APROBADO)

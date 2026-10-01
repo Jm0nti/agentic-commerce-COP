@@ -10,9 +10,9 @@ from dataclasses import replace
 
 import pytest
 
-from agora.agente.conversacion import Agente
-from agora.agente.grafo import AgenteEnGrafo
-from agora.agente.intencion import TipoDeIntencion
+from agora.usecase.agente.conversacion import Agente
+from agora.usecase.agente.grafo import AgenteEnGrafo
+from agora.model.agente.intencion import TipoDeIntencion
 from agora.composicion import agente as composicion_agente
 from agora.composicion.agente import construir_agente, envolver_en_grafo
 from agora.composicion.configuracion import ConfiguracionInvalida, leer_configuracion

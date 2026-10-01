@@ -5,7 +5,7 @@ pasando `validar_catalogo`."""
 
 from __future__ import annotations
 
-from agora.agente.herramientas import CATALOGO_DE_HERRAMIENTAS, construir_herramientas
+from agora.usecase.agente.herramientas import CATALOGO_DE_HERRAMIENTAS, construir_herramientas
 
 
 def _funcion(*_a, **_k):

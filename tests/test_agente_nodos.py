@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from agora.agente.herramientas import (
+from agora.usecase.agente.herramientas import (
     CATALOGO_DE_HERRAMIENTAS,
     HERRAMIENTAS_DEL_FLUJO_DE_DINERO,
     HERRAMIENTAS_POR_NODO,
@@ -23,8 +23,18 @@ from agora.agente.herramientas import (
     validar_asignacion_por_nodo,
     validar_catalogo,
 )
-from agora.agente.intencion import ClasificacionDeIntencion, OrigenDeClasificacion, TipoDeIntencion
-from agora.agente.nodos import INSTRUCCIONES_POR_NODO, RUTA_DE_RESPALDO, RUTAS, Ruta, ruta_para
+from agora.model.agente.intencion import (
+    ClasificacionDeIntencion,
+    OrigenDeClasificacion,
+    TipoDeIntencion,
+)
+from agora.usecase.agente.nodos import (
+    INSTRUCCIONES_POR_NODO,
+    RUTA_DE_RESPALDO,
+    RUTAS,
+    Ruta,
+    ruta_para,
+)
 
 
 def _funcion(*_a, **_k):

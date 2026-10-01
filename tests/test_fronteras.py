@@ -36,8 +36,11 @@ CAPAS: dict[str, str] = {
     "__init__.py": "raiz",
     # Fase 2: `dominio/` y `puertos/` se fusionaron en `domain/model`.
     "model": "model",
-    "aplicacion": "aplicacion",
-    "agente": "agente",
+    # Fase 3: los casos de uso viven en `domain/usecase`. El agente tambien,
+    # pero con capa propia: su regla es mas estricta (no importa ningun otro
+    # caso de uso), asi que gana el prefijo mas largo.
+    "usecase": "usecase",
+    "usecase/agente": "agente",
     "adaptadores": "adaptadores",
     "entradas": "entradas",
     "composicion": "composicion",
@@ -47,9 +50,9 @@ CAPAS: dict[str, str] = {
 # reglas pasan sin mirar nada. Minimos = conteo del 30 sep 2026. Bajar uno
 # tiene que ser una decision, no un accidente.
 MINIMO_DE_MODULOS_POR_CAPA: dict[str, int] = {
-    "model": 24,
-    "aplicacion": 14,
-    "agente": 16,
+    "model": 26,
+    "usecase": 18,
+    "agente": 14,
     "adaptadores": 61,
     "entradas": 10,
     "composicion": 4,
@@ -59,11 +62,12 @@ MINIMO_DE_MODULOS_POR_CAPA: dict[str, int] = {
 REGLAS: dict[str, tuple[str, ...]] = {
     # El nucleo no sabe que existe el mundo exterior.
     # Entidades y gateways juntos, como en el scaffold de Bancolombia.
-    "model": ("aplicacion", "adaptadores", "agente", "entradas", "composicion"),
+    "model": ("usecase", "adaptadores", "agente", "entradas", "composicion"),
     # Los casos de uso hablan con interfaces, nunca con implementaciones.
-    "aplicacion": ("adaptadores", "entradas", "composicion"),
+    # `agente` se agrego en la Fase 3: un caso de uso no depende del agente.
+    "usecase": ("adaptadores", "entradas", "composicion", "agente"),
     # Un adaptador no orquesta.
-    "adaptadores": ("aplicacion", "entradas", "composicion"),
+    "adaptadores": ("usecase", "entradas", "composicion"),
     # LA FRONTERA. El agente no puede alcanzar una credencial de pago
     # ni aunque quiera.
     #
@@ -72,9 +76,9 @@ REGLAS: dict[str, tuple[str, ...]] = {
     # build si agente/ importa aplicacion/", `herramientas.py:
     # construir_herramientas`) NO estaba en esta tabla -- un modulo de
     # `agente/` con `from ..aplicacion.ejecutar_intencion import
-    # EjecutarIntencion` pasaba la suite en verde. Ver
+    # EjecutarIntencionUseCase` pasaba la suite en verde. Ver
     # `test_el_detector_atrapa_al_agente_importando_un_caso_de_uso`.
-    "agente": ("aplicacion", "adaptadores", "entradas", "composicion"),
+    "agente": ("usecase", "adaptadores", "entradas", "composicion"),
     # Las entradas reciben los adaptadores ya armados desde composicion.
     # `composicion` se agrego en la Fase 1 del refactor a la Clean
     # Architecture de Bancolombia: un entry point recibe casos de uso, no
@@ -122,15 +126,15 @@ CAPAS_QUE_PUEDEN_IMPORTAR_LLM = ("adaptadores",)
 # excluye alguno sin querer, la prueba lo diga en vez de dejar de mirarlo.
 MODULOS_DE_LA_MIGRACION_A_AGENTES = (
     # etapa 1
-    "agente/intencion.py",
-    "agente/nodos.py",
-    "agente/clasificacion/__init__.py",
-    "agente/clasificacion/cadena.py",
-    "agente/clasificacion/modelo.py",
-    "agente/clasificacion/reglas.py",
+    "model/agente/intencion.py",
+    "usecase/agente/nodos.py",
+    "usecase/agente/clasificacion/__init__.py",
+    "usecase/agente/clasificacion/cadena.py",
+    "usecase/agente/clasificacion/modelo.py",
+    "usecase/agente/clasificacion/reglas.py",
     # etapa 2
-    "agente/contexto.py",
-    "agente/contexto_documental.py",
+    "model/agente/contexto.py",
+    "usecase/agente/contexto_documental.py",
     "model/agente/gateways/recuperacion.py",
     "adaptadores/embeddings/__init__.py",
     "adaptadores/embeddings/proveedor_openai/__init__.py",
@@ -141,21 +145,21 @@ MODULOS_DE_LA_MIGRACION_A_AGENTES = (
     "adaptadores/recuperacion/langchain_en_memoria/buscador.py",
     "adaptadores/recuperacion/langchain_en_memoria/documentos.py",
     # etapa 3
-    "agente/grafo.py",
+    "usecase/agente/grafo.py",
     "model/agente/gateways/orquestacion.py",
     "adaptadores/orquestacion/__init__.py",
     "adaptadores/orquestacion/con_langgraph/__init__.py",
     "adaptadores/orquestacion/con_langgraph/compilador.py",
     # etapa 4
-    "agente/agentes.py",
+    "usecase/agente/agentes.py",
     "model/catalogo/gateways/busqueda_productos.py",
     "adaptadores/busqueda_productos/__init__.py",
     "adaptadores/busqueda_productos/semantico_en_memoria/__init__.py",
     "adaptadores/busqueda_productos/semantico_en_memoria/buscador.py",
     # trazabilidad del agente
-    "agente/traza.py",
+    "usecase/agente/traza.py",
     # etapa 5
-    "agente/pausa.py",
+    "usecase/agente/pausa.py",
 )
 
 
@@ -320,7 +324,7 @@ PUERTOS_VEDADOS_AL_AGENTE = (
 
 
 def _alcanza_pagos(importado: str) -> bool:
-    return _capa_de(importado) in ("aplicacion", "adaptadores") or any(
+    return _capa_de(importado) in ("usecase", "adaptadores") or any(
         _es_modulo(importado, p) for p in PUERTOS_VEDADOS_AL_AGENTE
     )
 
@@ -406,7 +410,8 @@ def test_el_agente_no_importa_nada_por_nombre_en_un_string() -> None:
 def test_los_modulos_de_la_migracion_estan_bajo_las_reglas_de_su_capa(relativo: str) -> None:
     archivo = _archivo(relativo)
     assert archivo in _modulos(), f"{relativo} no existe o quedo fuera de _modulos()"
-    assert _capa(archivo) == relativo.split("/")[0]
+    esperada = "agente" if relativo.startswith("usecase/agente/") else relativo.split("/")[0]
+    assert _capa(archivo) == esperada
 
 
 # -- etapa 2: recuperacion documental ----------------------------------------- #
@@ -496,7 +501,7 @@ def test_el_puerto_de_orquestacion_no_conoce_ninguna_libreria_de_grafos() -> Non
 def test_el_grafo_del_agente_solo_conoce_el_puerto() -> None:
     """`agente/grafo.py` arma la topologia del turno sin saber quien la
     compila: recibe el `CompiladorDeGrafos` por constructor."""
-    importados = _imports(_archivo("agente/grafo.py"))
+    importados = _imports(_archivo("usecase/agente/grafo.py"))
 
     assert any(_es_modulo(i, "model.agente.gateways.orquestacion") for i in importados)
     assert not [i for i in importados if i.split(".")[0] == "langgraph"]
@@ -563,11 +568,11 @@ def test_los_agentes_especializados_no_alcanzan_ninguna_pasarela() -> None:
     """`agente/agentes.py` decide que herramientas ve cada agente: es
     exactamente el modulo donde un import de mas seria peor."""
     ofensas = [
-        i for i in _imports(_archivo("agente/agentes.py"))
+        i for i in _imports(_archivo("usecase/agente/agentes.py"))
         if _alcanza_pagos(i)
     ]
 
-    assert not ofensas, "agente/agentes.py cruza una frontera:\n  " + "\n  ".join(ofensas)
+    assert not ofensas, "usecase/agente/agentes.py cruza una frontera:\n  " + "\n  ".join(ofensas)
 
 
 # -- trazabilidad ------------------------------------------------------------- #
@@ -579,11 +584,11 @@ def test_la_traza_no_conoce_ningun_adaptador_de_bitacora() -> None:
     el destino de las trazas (a stdout, a otro formato) obligaria a tocar el
     agente."""
     ofensas = [
-        i for i in _imports(_archivo("agente/traza.py"))
+        i for i in _imports(_archivo("usecase/agente/traza.py"))
         if _es_modulo(i, "adaptadores") or _es_modulo(i, "composicion")
     ]
 
-    assert not ofensas, "agente/traza.py conoce un adaptador:\n  " + "\n  ".join(ofensas)
+    assert not ofensas, "usecase/agente/traza.py conoce un adaptador:\n  " + "\n  ".join(ofensas)
 
 
 # -- etapa 5: la pausa humana -------------------------------------------------- #
@@ -593,13 +598,13 @@ def test_la_pausa_no_alcanza_ningun_caso_de_uso_ni_pasarela() -> None:
     """`agente/pausa.py` describe QUE hay que decidir y arma el texto que lee
     el modelo. Quien firma y quien cobra siguen siendo `aplicacion/`, por
     pedido de una persona desde `entradas/`. Si este modulo pudiera importar
-    `EmitirMandato`, el agente estaria a un import de firmar solo."""
+    `EmitirMandatoUseCase`, el agente estaria a un import de firmar solo."""
     ofensas = [
-        i for i in _imports(_archivo("agente/pausa.py"))
+        i for i in _imports(_archivo("usecase/agente/pausa.py"))
         if _alcanza_pagos(i)
     ]
 
-    assert not ofensas, "agente/pausa.py cruza una frontera:\n  " + "\n  ".join(ofensas)
+    assert not ofensas, "usecase/agente/pausa.py cruza una frontera:\n  " + "\n  ".join(ofensas)
 
 
 def test_el_puerto_de_orquestacion_define_la_pausa_sin_conocer_el_motor() -> None:
@@ -623,7 +628,7 @@ def test_solo_agente_pausa_arma_el_aviso_que_lee_el_modelo() -> None:
         if marca in p.read_text(encoding="utf-8")
     ]
 
-    assert set(culpables) == {"agente/pausa.py"}, (
+    assert set(culpables) == {"usecase/agente/pausa.py"}, (
         "el aviso se arma en mas de un lugar:\n  " + "\n  ".join(sorted(set(culpables)))
     )
 
@@ -645,16 +650,16 @@ def _agora_de_mentira(tmp_path: Path, relativo: str, contenido: str) -> tuple[Pa
 def test_el_detector_atrapa_al_agente_importando_un_caso_de_uso(tmp_path: Path) -> None:
     raiz, archivo = _agora_de_mentira(
         tmp_path,
-        "agente/clasificacion/intruso.py",
-        "from ...aplicacion.ejecutar_intencion import EjecutarIntencion\n",
+        "usecase/agente/clasificacion/intruso.py",
+        "from ...ejecutar_intencion.ejecutar_intencion_use_case import EjecutarIntencionUseCase\n",
     )
     ofensas = _violaciones_de_dependencia(archivo, raiz)
-    assert ofensas and "aplicacion" in ofensas[0]
+    assert ofensas and "usecase" in ofensas[0]
 
 
 def test_el_detector_atrapa_al_agente_importando_entradas(tmp_path: Path) -> None:
     raiz, archivo = _agora_de_mentira(
-        tmp_path, "agente/intruso.py", "from agora.entradas.api.app import crear_app\n",
+        tmp_path, "usecase/agente/intruso.py", "from agora.entradas.api.app import crear_app\n",
     )
     assert _violaciones_de_dependencia(archivo, raiz)
 
@@ -668,7 +673,7 @@ def test_el_detector_atrapa_al_agente_importando_entradas(tmp_path: Path) -> Non
         "from openai import OpenAI",
     ],
 )
-@pytest.mark.parametrize("capa", ["model", "aplicacion", "agente", "entradas", "composicion"])
+@pytest.mark.parametrize("capa", ["model", "usecase", "usecase/agente", "entradas", "composicion"])
 def test_el_detector_atrapa_librerias_de_llm_fuera_de_adaptadores(
     tmp_path: Path, capa: str, linea: str
 ) -> None:
@@ -703,8 +708,8 @@ def test_el_detector_atrapa_al_grafo_del_agente_importando_su_adaptador(
     de dependencia."""
     raiz, archivo = _agora_de_mentira(
         tmp_path,
-        "agente/grafo.py",
-        "from ..adaptadores.orquestacion.con_langgraph import CompiladorLangGraph\n",
+        "usecase/agente/grafo.py",
+        "from ...adaptadores.orquestacion.con_langgraph import CompiladorLangGraph\n",
     )
     ofensas = _violaciones_de_dependencia(archivo, raiz)
     assert ofensas and "adaptadores" in ofensas[0]
@@ -749,16 +754,16 @@ def test_el_detector_atrapa_a_los_agentes_importando_un_caso_de_uso(
 ) -> None:
     raiz, archivo = _agora_de_mentira(
         tmp_path,
-        "agente/agentes.py",
-        "from ..aplicacion.navegar_catalogo import NavegarCatalogo\n",
+        "usecase/agente/agentes.py",
+        "from ..navegar_catalogo.navegar_catalogo_use_case import NavegarCatalogoUseCase\n",
     )
     ofensas = _violaciones_de_dependencia(archivo, raiz)
-    assert ofensas and "aplicacion" in ofensas[0]
+    assert ofensas and "usecase" in ofensas[0]
 
 
 def test_el_detector_atrapa_importaciones_dinamicas(tmp_path: Path) -> None:
     _, archivo = _agora_de_mentira(
-        tmp_path, "agente/intruso.py", 'p = __import__("agora.adaptadores.pasarelas.wompi")\n',
+        tmp_path, "usecase/agente/intruso.py", 'p = __import__("agora.adaptadores.pasarelas.wompi")\n',
     )
     assert _importaciones_dinamicas(archivo)
 
@@ -771,7 +776,7 @@ def test_el_detector_atrapa_importaciones_dinamicas(tmp_path: Path) -> None:
         "model.pago.gateways.repositorios",
         "agora.model.usuario.gateways.autenticacion",
         "adaptadores.pasarelas.wompi",
-        "agora.aplicacion.ejecutar_intencion",
+        "agora.usecase.ejecutar_intencion.ejecutar_intencion_use_case",
     ],
 )
 def test_el_detector_atrapa_al_agente_alcanzando_pagos(importado: str) -> None:
@@ -830,3 +835,37 @@ def test_el_modelo_solo_conoce_el_modelo_y_la_biblioteca_estandar(archivo: Path)
 def test_el_detector_atrapa_al_modelo_importando_una_libreria(tmp_path: Path) -> None:
     raiz, archivo = _agora_de_mentira(tmp_path, "model/pago/intruso.py", "from pydantic import BaseModel\n")
     assert _ajenos_al_modelo(archivo, raiz) == ["pydantic"]
+
+
+# -- Fase 3: domain/usecase ---------------------------------------------------- #
+
+
+def test_el_detector_atrapa_un_caso_de_uso_importando_al_agente(tmp_path: Path) -> None:
+    """La otra mitad de la frontera: los casos de uso no saben que existe un
+    agente. Si `PagarCarritoUseCase` importara la conversacion, el agente
+    dejaria de ser un cliente mas de los casos de uso."""
+    raiz, archivo = _agora_de_mentira(
+        tmp_path,
+        "usecase/pagar_carrito/intruso.py",
+        "from ..agente.conversacion import Agente\n",
+    )
+    ofensas = _violaciones_de_dependencia(archivo, raiz)
+    assert ofensas and "agente" in ofensas[0]
+
+
+def test_cada_caso_de_uso_vive_en_su_carpeta_y_termina_en_usecase() -> None:
+    """La convencion del scaffold: `usecase/<caso>/<caso>_use_case.py` con
+    una sola clase `<Caso>UseCase` (mas los tipos que devuelve)."""
+    ofensas = []
+    for archivo in _modulos():
+        partes = _rel(archivo).split("/")
+        if _capa(archivo) != "usecase" or partes[-1] == "__init__.py":
+            continue
+        if len(partes) != 3 or partes[2] != f"{partes[1]}_use_case.py":
+            ofensas.append(f"{_rel(archivo)}: no es usecase/<caso>/<caso>_use_case.py")
+            continue
+        arbol = ast.parse(archivo.read_text(encoding="utf-8"))
+        casos = [n.name for n in arbol.body if isinstance(n, ast.ClassDef) and n.name.endswith("UseCase")]
+        if len(casos) != 1:
+            ofensas.append(f"{_rel(archivo)}: {len(casos)} clases *UseCase (tiene que haber 1)")
+    assert not ofensas, "\n  ".join(["casos de uso fuera de la convencion:", *ofensas])

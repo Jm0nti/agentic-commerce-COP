@@ -91,7 +91,7 @@ def test_pagar_le_pasa_a_la_persona_el_comando_retomar_exacto_si_queda_esperando
         mandato_id=mandato.mandato_id, carrito_id=carrito_id,
     )
 
-    # `EmitirMandato` corta el mandato exacto al carrito -- dispara casi
+    # `EmitirMandatoUseCase` corta el mandato exacto al carrito -- dispara casi
     # siempre las senales blandas (ver docs/etapa-5-agente-y-cli.md).
     assert resultado["esperando_confirmacion"] is True
     intencion_id = resultado["intencion_id"]

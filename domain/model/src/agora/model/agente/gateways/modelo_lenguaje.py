@@ -1,7 +1,7 @@
 """El puerto del modelo de lenguaje.
 
 `generar()` es la porcion angosta que se construyo primero, para
-`GenerarCatalogoSemilla` (una sola llamada, sin memoria de turnos, que espera
+`GenerarCatalogoSemillaUseCase` (una sola llamada, sin memoria de turnos, que espera
 JSON de vuelta). El docstring original de este archivo explicaba por que
 `responder(mensajes, herramientas) -> RespuestaModelo` -- el loop de turnos
 con tool-calling que describe `docs/arquitectura-v2.md`, seccion 4 -- todavia

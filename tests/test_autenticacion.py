@@ -27,7 +27,8 @@ from agora.adaptadores.persistencia.sqlite import (
 )
 from agora.adaptadores.sistema import GeneradorIdsUuid, HasherPBKDF2, RegistroDeFirmantes
 from agora.adaptadores.sistema.firma_ed25519 import generar_par_ed25519
-from agora.aplicacion.autenticacion import IniciarSesion, RegistrarUsuario
+from agora.usecase.iniciar_sesion.iniciar_sesion_use_case import IniciarSesionUseCase
+from agora.usecase.registrar_usuario.registrar_usuario_use_case import RegistrarUsuarioUseCase
 from agora.model.commons.errores import (
     CredencialesInvalidas,
     NombreDeUsuarioYaExiste,
@@ -50,7 +51,7 @@ class _RelojFijo:
 
 class _GeneradorDeLlavesFalso:
     """Devuelve siempre el MISMO par -- alcanza para probar que
-    `RegistrarUsuario` lo guarda donde corresponde, sin generar criptografia
+    `RegistrarUsuarioUseCase` lo guarda donde corresponde, sin generar criptografia
     de verdad en cada prueba."""
 
     def __init__(self) -> None:
@@ -88,7 +89,7 @@ def test_verificar_contra_un_hash_con_formato_invalido_no_revienta():
     assert not hasher.verifica("cualquier-cosa", "esto-no-es-un-hash-valido")
 
 
-# -- RegistrarUsuario / IniciarSesion ----------------------------------------- #
+# -- RegistrarUsuarioUseCase / IniciarSesionUseCase ----------------------------------------- #
 
 
 def _armar_autenticacion():
@@ -98,11 +99,11 @@ def _armar_autenticacion():
     generador_llaves = _GeneradorDeLlavesFalso()
     ids = GeneradorIdsUuid()
     reloj = _RelojFijo(AHORA)
-    registrar = RegistrarUsuario(
+    registrar = RegistrarUsuarioUseCase(
         usuarios=usuarios, llaves=llaves, hasher=hasher,
         generador_llaves=generador_llaves, ids=ids, reloj=reloj,
     )
-    iniciar = IniciarSesion(usuarios=usuarios, hasher=hasher)
+    iniciar = IniciarSesionUseCase(usuarios=usuarios, hasher=hasher)
     return registrar, iniciar, usuarios, llaves, generador_llaves
 
 
@@ -136,7 +137,7 @@ def test_registrar_usuario_con_nombre_repetido_levanta():
 
     # Nunca se llego a generar una segunda llave -- se verifica el nombre
     # ANTES de tocar cualquier cosa de criptografia (ver el docstring de
-    # `RegistrarUsuario`).
+    # `RegistrarUsuarioUseCase`).
     assert generador_llaves.llamadas == 1
 
 

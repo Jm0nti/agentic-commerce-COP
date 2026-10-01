@@ -31,7 +31,7 @@ que no hace falta -- ni conviene -- meter async/await en un agente que
 QUE NO HACE ESTE MODULO
 --------------------------
 No firma propuestas ni resuelve confirmaciones -- eso lo sigue haciendo
-`app.py`, llamando a `EmitirMandato`/`PagarCarrito.retomar`, exactamente como `entradas/cli/__main__.py:
+`app.py`, llamando a `EmitirMandatoUseCase`/`PagarCarritoUseCase.retomar`, exactamente como `entradas/cli/__main__.py:
 cmd_firmar`/`cmd_retomar`. Este modulo solo le avisa despues a la
 conversacion correspondiente (`reanudar`) para que el agente se entere y
 conteste -- la persona sigue siendo quien decide firmar o confirmar, nunca
@@ -73,8 +73,8 @@ from dataclasses import dataclass, field
 from queue import Queue
 from typing import Any, Callable
 
-from ...agente.conversacion import Agente, Conversacion
-from ...agente.pausa import DecisionHumana, PausaDelTurno, TipoDePausa
+from ...usecase.agente.conversacion import Agente, Conversacion
+from ...usecase.agente.pausa import DecisionHumana, PausaDelTurno, TipoDePausa
 from ...model.catalogo.modelo import Carrito
 
 
@@ -109,7 +109,7 @@ class AlmacenDeSesiones:
     la etapa 6; esto solo une esas piezas en una sola pestana."""
 
     def __init__(self, agente: Agente, ver_carrito: Callable[[str], Carrito]) -> None:
-        """`ver_carrito` es `NavegarCatalogo.ver_carrito`: los items del
+        """`ver_carrito` es `NavegarCatalogoUseCase.ver_carrito`: los items del
         popup de firma salen de un caso de uso, nunca de un repositorio."""
         self._agente = agente
         self._ver_carrito = ver_carrito

@@ -426,6 +426,14 @@ los puentes.
 
 ### Fase 3: `domain/usecase`, con el agente (1,5 a 2 días)
 
+> **✅ Hecha (30 sep 2026).** Queda en 1.205 pruebas, con el flujo de CLI de punta a punta en simulado y los 5 scripts arrancando sin errores.
+> - **17 casos de uso,** cada uno en `domain/usecase/src/agora/usecase/<caso>/<caso>_use_case.py`, con la clase terminada en `UseCase`. Aquí se hizo lo que la Fase 1 había dejado pendiente: `enrolar_medio.py` se partió en cuatro (`iniciar_enrolamiento`, `consultar_enrolamiento`, `confirmar_enrolamiento` y `enrolar_medio`, que compone a los otros tres) y `autenticacion.py` en dos (`registrar_usuario`, `iniciar_sesion`). `ListarMediosVivos` vive en `listar_medios_vivos/`.
+> - **Renombre `…UseCase`:** 324 apariciones en 64 archivos (código, pruebas, scripts y docstrings). La documentación `.md` queda para la Fase 7. Ningún nombre de caso de uso llegaba al modelo de lenguaje ni a la bitácora, así que el agente no ve ningún cambio.
+> - **Agente:** `agente/` se movió a `usecase/agente/`. Solo `intencion.py` y `contexto.py`, que son tipos puros, pasaron a `model/agente/`. `pausa.py`, `herramientas.py`, `nodos.py` y `traza.py` se quedaron en `usecase/agente/` porque mezclan tipos con lógica (el texto del aviso, la lista blanca, el enrutado).
+> - **Fronteras:** `usecase/agente` es una capa propia ("agente") porque su prefijo es el más largo en `CAPAS`. Así sigue sin poder importar ningún otro caso de uso, adaptador ni gateway de pago, firma o llaves. La regla también quedó en sentido contrario: un caso de uso no puede importar al agente. Lo comprobé poniendo imports prohibidos reales en los dos sentidos: la suite falla con ellos y vuelve a verde sin ellos.
+> - **Regla nueva del scaffold:** cada archivo de `usecase/` tiene que llamarse `<caso>/<caso>_use_case.py` y tener exactamente una clase `…UseCase`.
+> - Tampoco hubo módulos puente: los imports (228) se reescribieron con el mismo script de la Fase 2.
+
 1. `aplicacion/<caso>.py` → `usecase/<caso>/<caso>_use_case.py`, con la clase
    renombrada a `…UseCase`. Los DTOs de salida (`Recibo`, `EstadoIntencion`,
    `ResultadoConciliacion`, `ItemPedido`, `ComercioGenerado`) van con su caso de

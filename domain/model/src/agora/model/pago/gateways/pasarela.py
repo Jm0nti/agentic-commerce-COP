@@ -96,7 +96,7 @@ class PasarelaDePagos(Protocol):
         cobro que le pertenezca a esta app -- otro tipo de evento, o una
         referencia que esta pasarela no reconoce como propia.
 
-        `None` no es un error: `ConciliarEvento` (etapa 4) lo trata como "nada
+        `None` no es un error: `ConciliarEventoUseCase` (etapa 4) lo trata como "nada
         que hacer aqui", no como algo que reintentar. Igual que
         `validar_evento`, la forma del evento es propia de cada pasarela (la
         manera de recuperar el `intencion_id` a partir de la referencia que
@@ -112,8 +112,8 @@ class SelectorDePasarela(Protocol):
 
     Antes de multi-comercio, `composicion/contenedor.py` armaba UNA sola
     `PasarelaDePagos` por proceso y la inyectaba fija en el constructor de
-    cada caso de uso (`EjecutarIntencion`, `ConciliarEvento`, `EnrolarMedio`
-    y sus tres pasos, `RevocarMedio`). Eso alcanzaba mientras solo existiera
+    cada caso de uso (`EjecutarIntencionUseCase`, `ConciliarEventoUseCase`, `EnrolarMedioUseCase`
+    y sus tres pasos, `RevocarMedioUseCase`). Eso alcanzaba mientras solo existiera
     un comercio real por proceso. Con N comercios reales de Wompi, cada uno
     con sus propias credenciales (`WOMPI_PUBLIC_KEY`/`PRIVATE_KEY`/
     `INTEGRITY_SECRET`/`EVENTS_SECRET`), hace falta resolver la pasarela

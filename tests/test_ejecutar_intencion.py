@@ -1,4 +1,4 @@
-"""`EjecutarIntencion` de punta a punta, con adaptadores de verdad.
+"""`EjecutarIntencionUseCase` de punta a punta, con adaptadores de verdad.
 
 Es lo que hoy es `Boveda.ejecutar` (`boveda/nucleo.py:337-408`), partido en
 caso de uso (`aplicacion/ejecutar_intencion.py`, sin cambios en esta etapa) y
@@ -25,7 +25,7 @@ from agora.adaptadores.persistencia.memoria import (
     RepositorioMandatosEnMemoria,
 )
 from agora.adaptadores.sistema import GeneradorIdsUuid, VerificadorEd25519
-from agora.aplicacion.ejecutar_intencion import EjecutarIntencion
+from agora.usecase.ejecutar_intencion.ejecutar_intencion_use_case import EjecutarIntencionUseCase
 from agora.model.commons.dinero import Dinero
 from agora.model.mandato.modelo import Intencion, Mandato
 from agora.model.mandato.politica import Decision
@@ -94,10 +94,10 @@ def _armar(correo: str = "juan@correo-real.com", estados=None):
     pasarela = AdaptadorSimulado(ids, Ambiente.SANDBOX)
     bitacora = _BitacoraEnLista()
 
-    ejecutar = EjecutarIntencion(
+    ejecutar = EjecutarIntencionUseCase(
         mandatos=mandatos,
         consumo=consumo,
-        # Multi-comercio: `EjecutarIntencion` recibe un `SelectorDePasarela`,
+        # Multi-comercio: `EjecutarIntencionUseCase` recibe un `SelectorDePasarela`,
         # no una pasarela fija. `por_defecto` hace que CUALQUIER comercio_id
         # (esta prueba usa "com_x") resuelva a la misma pasarela simulada --
         # no hace falta credenciales por comercio para una prueba de dominio.
@@ -281,7 +281,7 @@ def test_retomar_revalida_la_politica_y_bloquea_si_el_mandato_vencio_mientras_es
     consumo = LibroDeConsumoEnMemoria(reloj, ids)
     pasarela = AdaptadorSimulado(ids, Ambiente.SANDBOX)
     bitacora = _BitacoraEnLista()
-    ejecutar = EjecutarIntencion(
+    ejecutar = EjecutarIntencionUseCase(
         mandatos=mandatos, consumo=consumo,
         selector_pasarela=RegistroDePasarelas({}, por_defecto=pasarela), topes=TopesDuros(),
         reloj=reloj, bitacora=bitacora, verificador=VerificadorEd25519(),
@@ -343,8 +343,8 @@ def test_declinado_por_antifraude_no_consume_el_mandato():
 
 def test_pendiente_deja_la_reserva_viva():
     """El cambio grande de la v2 frente a la v1 (`docs/arquitectura-v2.md`,
-    seccion 6): `EjecutarIntencion` no espera. Un `PENDING` no se confirma ni
-    se libera -- lo cierra `ConciliarEvento` desde el webhook (etapa 4)."""
+    seccion 6): `EjecutarIntencionUseCase` no espera. Un `PENDING` no se confirma ni
+    se libera -- lo cierra `ConciliarEventoUseCase` desde el webhook (etapa 4)."""
     sk = Ed25519PrivateKey.generate()
     ejecutar, mandatos, consumo, _, _ = _armar(correo="cliente.pendiente@correo-real.com")
     m = _mandato(sk, monto_max=Dinero.de_pesos(20_000), tope_total=Dinero.de_pesos(20_000),
@@ -361,9 +361,9 @@ def test_pendiente_deja_la_reserva_viva():
 
 
 def test_carrito_hash_correcto_deja_pasar_un_mandato_atado_a_un_carrito():
-    """Etapa 5: un `Mandato` con `carrito_hash` (obra de `EmitirMandato`) solo
-    cobra si quien llama a `EjecutarIntencion` reafirma el mismo hash --
-    ver el docstring de `EjecutarIntencion.__call__`."""
+    """Etapa 5: un `Mandato` con `carrito_hash` (obra de `EmitirMandatoUseCase`) solo
+    cobra si quien llama a `EjecutarIntencionUseCase` reafirma el mismo hash --
+    ver el docstring de `EjecutarIntencionUseCase.__call__`."""
     sk = Ed25519PrivateKey.generate()
     ejecutar, mandatos, _, _, _ = _armar()
     m = _mandato(sk, monto_max=Dinero.de_pesos(20_000), tope_total=Dinero.de_pesos(20_000),
@@ -391,9 +391,9 @@ def test_carrito_hash_distinto_bloquea_por_carrito_alterado():
 
 def test_registro_de_estados_es_opcional_y_se_actualiza_cuando_se_provee():
     """Etapa 5: `estados` es `None` por defecto (todas las pruebas de arriba
-    lo confirman sin pedirlo). Cuando se provee, `EjecutarIntencion` anota en
+    lo confirman sin pedirlo). Cuando se provee, `EjecutarIntencionUseCase` anota en
     cada uno de sus tres desenlaces -- aprobado, bloqueado, esperando
-    confirmacion -- lo que `ConsultarEstado` despues necesita leer."""
+    confirmacion -- lo que `ConsultarEstadoUseCase` despues necesita leer."""
     sk = Ed25519PrivateKey.generate()
     estados = RegistroDeEstadosEnMemoria()
     ejecutar, mandatos, _, _, _ = _armar(estados=estados)

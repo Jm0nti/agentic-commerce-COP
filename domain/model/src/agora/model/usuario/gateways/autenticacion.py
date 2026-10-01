@@ -3,7 +3,7 @@ registrar, verificar al iniciar sesion.
 
 Separado de `puertos/firma.py` a proposito: una contrasena autentica a la
 PERSONA frente a `entradas/api/` (web), una llave de firma autoriza un
-MANDATO frente a `EmitirMandato` -- son dos secretos con ciclos de vida
+MANDATO frente a `EmitirMandatoUseCase` -- son dos secretos con ciclos de vida
 independientes (cambiar la contrasena no tiene por que rotar la llave de
 firma, y al reves), y mezclarlos en una sola interfaz obligaria a todo el
 que solo necesita una de las dos operaciones a depender de la otra tambien.

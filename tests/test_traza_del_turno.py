@@ -15,12 +15,16 @@ import json
 import pytest
 
 from agora.adaptadores.orquestacion.con_langgraph import CompiladorLangGraph
-from agora.agente.contexto import ContextoInyectado
-from agora.agente.conversacion import Agente
-from agora.agente.grafo import AgenteEnGrafo
-from agora.agente.herramientas import CATALOGO_DE_HERRAMIENTAS, construir_herramientas
-from agora.agente.intencion import ClasificacionDeIntencion, OrigenDeClasificacion, TipoDeIntencion
-from agora.agente.traza import EVENTO, MARCA_DE_RECORTE, MAX_CARACTERES_POR_CAMPO
+from agora.model.agente.contexto import ContextoInyectado
+from agora.usecase.agente.conversacion import Agente
+from agora.usecase.agente.grafo import AgenteEnGrafo
+from agora.usecase.agente.herramientas import CATALOGO_DE_HERRAMIENTAS, construir_herramientas
+from agora.model.agente.intencion import (
+    ClasificacionDeIntencion,
+    OrigenDeClasificacion,
+    TipoDeIntencion,
+)
+from agora.usecase.agente.traza import EVENTO, MARCA_DE_RECORTE, MAX_CARACTERES_POR_CAMPO
 from agora.model.agente.gateways.modelo_lenguaje import LlamadaHerramienta, RespuestaModelo
 
 

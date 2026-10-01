@@ -1,4 +1,4 @@
-"""`PagarCarrito`: la `Intencion` sale del carrito guardado, nunca de quien
+"""`PagarCarritoUseCase`: la `Intencion` sale del carrito guardado, nunca de quien
 llama. Es el camino del dinero de cuatro puntos de entrada (agente, CLI x2,
 API), asi que se prueba solo, sin pasarela ni mandato."""
 
@@ -7,7 +7,7 @@ from __future__ import annotations
 import pytest
 
 from agora.adaptadores.persistencia.memoria.repositorio_carritos import RepositorioCarritosEnMemoria
-from agora.aplicacion.pagar_carrito import PagarCarrito
+from agora.usecase.pagar_carrito.pagar_carrito_use_case import PagarCarritoUseCase
 from agora.model.catalogo.modelo import Carrito, ItemCarrito
 from agora.model.commons.dinero import Dinero
 from agora.model.commons.errores import CarritoDesconocido
@@ -38,11 +38,11 @@ CARRITO = Carrito(
 )
 
 
-def _armar() -> tuple[PagarCarrito, _EjecutarQueAnota]:
+def _armar() -> tuple[PagarCarritoUseCase, _EjecutarQueAnota]:
     carritos = RepositorioCarritosEnMemoria()
     carritos.guardar(CARRITO)
     ejecutar = _EjecutarQueAnota()
-    return PagarCarrito(ejecutar, carritos, _Ids()), ejecutar
+    return PagarCarritoUseCase(ejecutar, carritos, _Ids()), ejecutar
 
 
 def test_pagar_arma_la_intencion_desde_el_carrito_guardado() -> None:

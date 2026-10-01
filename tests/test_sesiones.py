@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import json
 
-from agora.agente.conversacion import Conversacion
-from agora.agente.pausa import detectar_pausa
+from agora.usecase.agente.conversacion import Conversacion
+from agora.usecase.agente.pausa import detectar_pausa
 from agora.entradas.api.sesiones import AlmacenDeSesiones
 from agora.model.agente.gateways.modelo_lenguaje import Mensaje
 

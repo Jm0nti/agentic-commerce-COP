@@ -1,6 +1,6 @@
 """`AdaptadorWompi`: el `PasarelaDePagos` que mueve dinero real.
 
-Junto con `EjecutarIntencion` (`aplicacion/ejecutar_intencion.py`), es en lo
+Junto con `EjecutarIntencionUseCase` (`aplicacion/ejecutar_intencion.py`), es en lo
 que se parte `Boveda.ejecutar` (`boveda/nucleo.py:337-408`). Este archivo es
 la traduccion: recibe tipos del dominio (`OrdenDeCobro`, `MedioDePagoRef`),
 llama al `ClienteWompi` HTTP puro (`cliente.py`), y devuelve `ResultadoCobro`.
@@ -100,7 +100,7 @@ class AdaptadorWompi:
         titular la baje el mismo desde "Cobro Automatico" en su app Nequi.
         Por eso, cuando Wompi rechaza especificamente por este motivo, esto
         NO se trata como una falla: se desactiva el medio solo del lado de
-        esta app (`estado="VOIDED_LOCAL"`, que `RevocarMedio` va a guardar
+        esta app (`estado="VOIDED_LOCAL"`, que `RevocarMedioUseCase` va a guardar
         igual que cualquier otro estado no-`AVAILABLE`) y se devuelve un
         aviso explicito en `detalle["aviso"]` para que quien llame (CLI o
         UI) le explique al titular que todavia tiene que cancelarlo del

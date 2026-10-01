@@ -13,7 +13,7 @@ from ..modelo import Usuario
 class RepositorioUsuarios(Protocol):
     """Multi-usuario (4 de septiembre de 2026). `guardar` es upsert por
     `titular_id` (mismo criterio que el resto de los repositorios de este
-    archivo). `nombre_usuario` es UNICO -- `RegistrarUsuario` (`aplicacion/
+    archivo). `nombre_usuario` es UNICO -- `RegistrarUsuarioUseCase` (`aplicacion/
     autenticacion.py`) verifica `buscar_por_nombre_usuario` antes de crear
     uno nuevo, para no dejar dos usuarios respondiendo al mismo login."""
 

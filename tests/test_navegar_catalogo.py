@@ -1,4 +1,4 @@
-"""`NavegarCatalogo`: las busquedas delegan tal cual, `armar_carrito` es
+"""`NavegarCatalogoUseCase`: las busquedas delegan tal cual, `armar_carrito` es
 donde vive la regla (un solo comercio por carrito, nada `AGOTADO`).
 """
 
@@ -11,7 +11,7 @@ from agora.adaptadores.persistencia.memoria import (
     RepositorioPropuestasEnMemoria,
 )
 from agora.adaptadores.sistema import GeneradorIdsUuid
-from agora.aplicacion.navegar_catalogo import ItemPedido, NavegarCatalogo
+from agora.usecase.navegar_catalogo.navegar_catalogo_use_case import ItemPedido, NavegarCatalogoUseCase
 from agora.model.catalogo.modelo import Comercio, Disponibilidad, Producto
 from agora.model.commons.dinero import Dinero
 from agora.model.commons.errores import (
@@ -55,8 +55,8 @@ class _CatalogoFalso:
         return self._productos[producto_id]
 
 
-def _armar() -> NavegarCatalogo:
-    return NavegarCatalogo(
+def _armar() -> NavegarCatalogoUseCase:
+    return NavegarCatalogoUseCase(
         catalogo=_CatalogoFalso(), carritos=RepositorioCarritosEnMemoria(),
         ids=GeneradorIdsUuid(), propuestas=RepositorioPropuestasEnMemoria(),
     )

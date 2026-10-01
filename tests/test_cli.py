@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from agora.aplicacion.navegar_catalogo import ItemPedido
+from agora.usecase.navegar_catalogo.navegar_catalogo_use_case import ItemPedido
 from agora.composicion.configuracion import leer_configuracion
 from agora.composicion.contenedor import construir
 from agora.model.pago.modelo import Ambiente
@@ -108,7 +108,7 @@ def test_flujo_completo_enrolar_emitir_pagar_retomar(tmp_path, capsys):
 
 def test_chat_arma_propuesta_y_titular_la_firma_en_otro_proceso(tmp_path, capsys):
     """Etapa 6, el bug que motivo el cambio: el carrito que arma
-    `NavegarCatalogo.armar_carrito` (lo que hace el chat, `composicion/
+    `NavegarCatalogoUseCase.armar_carrito` (lo que hace el chat, `composicion/
     agente.py:armar_carrito`) tiene que poder firmarse desde un `Contenedor`
     DISTINTO -- otro proceso, otra terminal, la misma sqlite -- y el
     `carrito_id` que resulta tiene que ser el MISMO que ya tiene quien

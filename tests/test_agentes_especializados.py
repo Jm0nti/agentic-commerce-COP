@@ -16,7 +16,7 @@ from __future__ import annotations
 import pytest
 
 from agora.adaptadores.orquestacion.con_langgraph import CompiladorLangGraph
-from agora.agente.agentes import (
+from agora.usecase.agente.agentes import (
     NOMBRE_DEL_RESPALDO,
     AgenteEspecializado,
     RutaDeOtroAgente,
@@ -25,15 +25,19 @@ from agora.agente.agentes import (
     nombre_del_agente,
     toda_intencion_tiene_agente,
 )
-from agora.agente.conversacion import Agente
-from agora.agente.grafo import AgenteEnGrafo, definir_grafo_del_turno, nodo_del_agente
-from agora.agente.herramientas import (
+from agora.usecase.agente.conversacion import Agente
+from agora.usecase.agente.grafo import AgenteEnGrafo, definir_grafo_del_turno, nodo_del_agente
+from agora.usecase.agente.herramientas import (
     CATALOGO_DE_HERRAMIENTAS,
     HERRAMIENTAS_POR_NODO,
     construir_herramientas,
 )
-from agora.agente.intencion import ClasificacionDeIntencion, OrigenDeClasificacion, TipoDeIntencion
-from agora.agente.nodos import RUTA_DE_RESPALDO, RUTAS, Ruta, ruta_para
+from agora.model.agente.intencion import (
+    ClasificacionDeIntencion,
+    OrigenDeClasificacion,
+    TipoDeIntencion,
+)
+from agora.usecase.agente.nodos import RUTA_DE_RESPALDO, RUTAS, Ruta, ruta_para
 from agora.model.agente.gateways.modelo_lenguaje import Mensaje, RespuestaModelo
 
 
@@ -173,7 +177,7 @@ def test_un_agente_acepta_la_suya():
 def test_el_nodo_del_grafo_rechaza_una_ruta_ajena():
     """El bug que un grafo hace posible y que con un solo worker no existia:
     enrutar mal. Mejor que reviente que que soporte corra con `pagar`."""
-    from agora.agente.grafo import EstadoDelTurno
+    from agora.usecase.agente.grafo import EstadoDelTurno
 
     agente = Agente(modelo=_ModeloQueContesta(), herramientas=_todas())
     nodo = definir_grafo_del_turno(agente).nodos["agente_soporte"]

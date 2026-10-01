@@ -18,7 +18,7 @@ proceso, no un servicio aparte") sin necesidad real).
 Pese al nombre del modulo -- "wompi" porque asi se llamaba la ruta ya
 configurada en el dashboard de Wompi antes de multi-comercio -- `crear_app`
 sigue sin saber que pasarela hay del otro lado de cada comercio. Recibe un
-`ConciliarEvento` ya armado (que a su vez ya trae el `SelectorDePasarela`
+`ConciliarEventoUseCase` ya armado (que a su vez ya trae el `SelectorDePasarela`
 que resuelve wompi o simulada segun el `comercio_id` de la URL) y solo
 traduce HTTP hacia adentro y hacia afuera. Nada de `os.environ`, nada de
 construir el `Contenedor`: eso es trabajo del composition root de este
@@ -29,12 +29,12 @@ entorno (ver `tests/test_webhook_wompi.py`).
 WOMPI ESPERA UN 200, SIEMPRE
 -----------------------------
 Mismo argumento que `boveda/eventos.py` y que el docstring de
-`ConciliarEvento`: un checksum invalido, un evento que no es un cobro de
+`ConciliarEventoUseCase`: un checksum invalido, un evento que no es un cobro de
 esta app, un `comercio_id` en la URL que no tiene credenciales configuradas,
 o una reserva que ya no existe no son fallos del receptor -- son desenlaces
 normales de un webhook. Reintentar no arregla ninguno, y devolver algo
 distinto de 200 solo le da a un atacante una forma barata de hacer que
-Wompi reintente sin limite. `ConciliarEvento.__call__` ya nunca levanta, asi
+Wompi reintente sin limite. `ConciliarEventoUseCase.__call__` ya nunca levanta, asi
 que esta ruta no necesita ni un `try/except`: siempre llega a un `Response`
 200.
 """
@@ -46,10 +46,10 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from ...aplicacion.conciliar_evento import ConciliarEvento
+from ...usecase.conciliar_evento.conciliar_evento_use_case import ConciliarEventoUseCase
 
 
-def crear_app(conciliar_evento: ConciliarEvento) -> FastAPI:
+def crear_app(conciliar_evento: ConciliarEventoUseCase) -> FastAPI:
     """Factoria pura: sin efectos de importacion, sin leer variables de
     entorno. `conciliar_evento` ya viene armado por quien llame (el
     `Contenedor`, o un doble de pruebas)."""

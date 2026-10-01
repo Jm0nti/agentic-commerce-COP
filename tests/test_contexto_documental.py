@@ -11,7 +11,7 @@ import re
 
 import pytest
 
-from agora.agente.contexto_documental import (
+from agora.usecase.agente.contexto_documental import (
     MARCA_CIFRA,
     SIN_DOCUMENTACION,
     SIN_RESULTADOS,

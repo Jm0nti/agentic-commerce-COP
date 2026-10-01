@@ -7,7 +7,7 @@ siempre pasa por alguien con acceso a la terminal del servidor.
 
 Este script solo lee el `.env`, arma el `Contenedor` (`composicion/
 contenedor.py:construir`) y le delega TODO el trabajo a `contenedor.
-registrar_usuario` (`aplicacion/autenticacion.py:RegistrarUsuario`): hashea
+registrar_usuario` (`aplicacion/autenticacion.py:RegistrarUsuarioUseCase`): hashea
 la contrasena, genera un par de llaves ed25519 nuevo, y guarda las dos
 cosas (tabla `usuario`, tabla `llave_firma`) segun `AGORA_PERSISTENCIA` --
 mismo patron de composition root que `scripts/servir_api.py`.

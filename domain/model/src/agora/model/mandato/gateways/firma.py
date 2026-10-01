@@ -1,7 +1,7 @@
 """El puerto de firma. `Verificador` vive en `dominio/mandato/modelo.py` (el
 dominio declara la interfaz que necesita internamente para evaluar un
 mandato); `Firmante` vive aca porque quien lo necesita es un caso de uso de
-`aplicacion/` (`EmitirMandato`), no el dominio -- y `aplicacion/` nunca
+`aplicacion/` (`EmitirMandatoUseCase`), no el dominio -- y `aplicacion/` nunca
 importa `adaptadores/` directo, solo puertos.
 
 DOS INTERFACES SEPARADAS, A PROPOSITO
@@ -9,7 +9,7 @@ DOS INTERFACES SEPARADAS, A PROPOSITO
 Firmar y verificar no son la misma operacion vista desde dos lados: firmar
 exige la llave privada del titular, verificar solo la publica que ya viaja
 dentro del propio mandato. Juntarlas en un solo `Protocol` obligaria a
-`EjecutarIntencion` (que solo verifica) a depender de una interfaz que
+`EjecutarIntencionUseCase` (que solo verifica) a depender de una interfaz que
 tambien sabe firmar -- una superficie mas ancha de la que ese caso de uso
 necesita.
 
@@ -38,7 +38,7 @@ class SelectorDeFirmante(Protocol):
     de septiembre de 2026): mismo argumento que `SelectorDePasarela`
     (`puertos/pasarela.py`) un escalon mas adentro -- antes se armaba UN
     solo `Firmante` por proceso (`cargar_o_generar_firmante`, `adaptadores/
-    sistema/firma_ed25519.py`) y `EmitirMandato` lo recibia fijo por
+    sistema/firma_ed25519.py`) y `EmitirMandatoUseCase` lo recibia fijo por
     constructor, sin importar que titular firmara. Con cada usuario
     registrado teniendo su propia llave (`RepositorioLlaves`), hace falta
     resolver el `Firmante` correcto en el momento de cada firma, no una
@@ -56,7 +56,7 @@ class SelectorDeFirmante(Protocol):
 
 class GeneradorDeLlaves(Protocol):
     """Genera un par de llaves ed25519 nuevo, crudo. Lo usa `aplicacion/
-    autenticacion.py:RegistrarUsuario` para darle a cada usuario nuevo su
+    autenticacion.py:RegistrarUsuarioUseCase` para darle a cada usuario nuevo su
     propia llave de firma en el momento de crearlo -- separado de
     `Firmante` porque generar una llave y firmar con una llave ya existente
     son operaciones distintas (la primera no necesita ninguna llave

@@ -13,7 +13,7 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from agora.aplicacion.navegar_catalogo import ItemPedido
+from agora.usecase.navegar_catalogo.navegar_catalogo_use_case import ItemPedido
 from agora.composicion.configuracion import (
     CORREO_POR_DEFECTO,
     ConfiguracionInvalida,
@@ -248,7 +248,7 @@ def test_construir_encadena_navegar_emitir_pagar_y_consultar_de_punta_a_punta(tm
         comercio_id=carrito.comercio_id, carrito_id=carrito.carrito_id, monto=carrito.total,
     )
     recibo = contenedor.ejecutar_intencion(intencion, carrito_hash=carrito.hash_canonico)
-    # `EmitirMandato` corta el mandato exacto al carrito (monto_max ==
+    # `EmitirMandatoUseCase` corta el mandato exacto al carrito (monto_max ==
     # carrito.total, usos_max=1): eso siempre dispara las senales blandas de
     # `dominio/mandato/politica.py` ("agota el mandato de una sola vez", "es
     # el ultimo uso") y deja la intencion en `CONFIRMAR`, no en `PERMITIR`.

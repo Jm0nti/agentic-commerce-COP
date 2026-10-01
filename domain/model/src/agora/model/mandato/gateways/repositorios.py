@@ -67,10 +67,10 @@ class LibroDeConsumo(Protocol):
 
         `None` cubre dos casos que a quien llama no le importa distinguir:
         nunca hubo una reserva con este `intencion_id`, o la hubo pero ya se
-        resolvio (confirmada o liberada). Es lo que usa `ConciliarEvento`
+        resolvio (confirmada o liberada). Es lo que usa `ConciliarEventoUseCase`
         (etapa 4) para encontrar, desde un webhook que llega sin memoria de
         haber llamado a `reservar`, cual reserva cerrar -- y lo que usa
-        `EjecutarIntencion.retomar` para recuperar una reserva que se dejo
+        `EjecutarIntencionUseCase.retomar` para recuperar una reserva que se dejo
         viva a proposito mientras se esperaba una decision humana
         (`Decision.CONFIRMAR`).
         """
@@ -98,11 +98,11 @@ class RepositorioMandatos(Protocol):
 
 class RepositorioPropuestas(Protocol):
     """Etapa 6. El mismo argumento que `RepositorioCarritos`, aplicado a la
-    otra mitad de lo que se firma: `EmitirMandato` vuelve a buscar la
+    otra mitad de lo que se firma: `EmitirMandatoUseCase` vuelve a buscar la
     `PropuestaDeMandato` EXACTA por `propuesta_id` al momento de firmar, en
     vez de aceptar una que le llegue por parametro.
 
-    Antes de esta etapa `EmitirMandato` recibia el objeto `PropuestaDeMandato`
+    Antes de esta etapa `EmitirMandatoUseCase` recibia el objeto `PropuestaDeMandato`
     directo -- comodo mientras "armar el carrito" y "firmar" corrian en el
     mismo proceso (`entradas/cli/emitir`, el humano operando la CLI de punta
     a punta). En cuanto la propuesta la arma el agente en una conversacion de
@@ -110,7 +110,7 @@ class RepositorioPropuestas(Protocol):
     aceptar una `PropuestaDeMandato` por parametro significaria confiar en
     cualquier `monto_max`/`usos_max`/`categorias` que ese segundo proceso
     diga tener -- el mismo hueco que `carrito_hash` existe para cerrar del
-    lado del carrito. `NavegarCatalogo.armar_carrito` es el unico que
+    lado del carrito. `NavegarCatalogoUseCase.armar_carrito` es el unico que
     guarda."""
 
     def guardar(self, propuesta: PropuestaDeMandato) -> None: ...

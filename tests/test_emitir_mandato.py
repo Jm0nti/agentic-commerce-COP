@@ -1,4 +1,4 @@
-"""`EmitirMandato`: la firma del humano. Verifica que el mandato que sale
+"""`EmitirMandatoUseCase`: la firma del humano. Verifica que el mandato que sale
 valida contra `VerificadorEd25519`, que `carrito_hash` sale del carrito
 guardado (no de lo que diga la propuesta), y las tres formas de fallar antes
 de firmar -- incluida la propuesta que no se busco desde
@@ -19,7 +19,7 @@ from agora.adaptadores.persistencia.memoria import (
     RepositorioPropuestasEnMemoria,
 )
 from agora.adaptadores.sistema import GeneradorIdsUuid, VerificadorEd25519, cargar_o_generar_firmante
-from agora.aplicacion.emitir_mandato import EmitirMandato
+from agora.usecase.emitir_mandato.emitir_mandato_use_case import EmitirMandatoUseCase
 from agora.model.catalogo.modelo import Carrito, ItemCarrito
 from agora.model.commons.dinero import Dinero
 from agora.model.commons.errores import (
@@ -52,7 +52,7 @@ class _BitacoraEnLista:
 
 class _SelectorFirmanteFijo:
     """Test double de `puertos.firma.SelectorDeFirmante`: estas pruebas
-    ejercitan la logica PROPIA de `EmitirMandato` (limites, resolucion de
+    ejercitan la logica PROPIA de `EmitirMandatoUseCase` (limites, resolucion de
     medio, comercio_id), no la resolucion multi-usuario de la llave -- un
     selector que siempre devuelve el mismo `Firmante` alcanza, igual que
     `RegistroDeFirmantes` haria con un solo titular ya provisto."""
@@ -93,7 +93,7 @@ def _armar(tmp_path, con_medio: bool = True):
         medios.guardar(MedioDePagoRef(Proveedor.SIMULADA, Ambiente.SANDBOX, "src_1"), "tit_1", "com_1")
     mandatos = RepositorioMandatosEnMemoria()
     firmante = cargar_o_generar_firmante(tmp_path / "firma.sk", tmp_path / "firma.pk")
-    emitir = EmitirMandato(
+    emitir = EmitirMandatoUseCase(
         carritos=carritos, propuestas=propuestas, medios=medios, mandatos=mandatos,
         selector_firmante=_SelectorFirmanteFijo(firmante), ids=GeneradorIdsUuid(),
         reloj=_RelojFijo(AHORA), bitacora=_BitacoraEnLista(), ambiente=Ambiente.SANDBOX,
@@ -150,7 +150,7 @@ def test_usa_el_medio_mas_reciente_vinculado_a_ese_comercio(tmp_path):
     # deberia poder elegirse para firmar contra "com_1".
     medios.guardar(MedioDePagoRef(Proveedor.SIMULADA, Ambiente.SANDBOX, "src_ajeno"), "tit_1", "com_ajeno")
     firmante = cargar_o_generar_firmante(tmp_path / "firma.sk", tmp_path / "firma.pk")
-    emitir = EmitirMandato(
+    emitir = EmitirMandatoUseCase(
         carritos=carritos, propuestas=propuestas, medios=medios,
         mandatos=RepositorioMandatosEnMemoria(), selector_firmante=_SelectorFirmanteFijo(firmante),
         ids=GeneradorIdsUuid(), reloj=_RelojFijo(AHORA), bitacora=_BitacoraEnLista(),
@@ -177,7 +177,7 @@ def test_medio_vivo_pero_de_otro_comercio_levanta_sin_medio_vinculado(tmp_path):
     medios = RepositorioMediosEnMemoria()
     medios.guardar(MedioDePagoRef(Proveedor.SIMULADA, Ambiente.SANDBOX, "src_1"), "tit_1", "com_otro")
     firmante = cargar_o_generar_firmante(tmp_path / "firma.sk", tmp_path / "firma.pk")
-    emitir = EmitirMandato(
+    emitir = EmitirMandatoUseCase(
         carritos=carritos, propuestas=propuestas, medios=medios,
         mandatos=RepositorioMandatosEnMemoria(), selector_firmante=_SelectorFirmanteFijo(firmante),
         ids=GeneradorIdsUuid(), reloj=_RelojFijo(AHORA), bitacora=_BitacoraEnLista(),

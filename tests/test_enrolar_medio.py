@@ -1,9 +1,9 @@
-"""`EnrolarMedio`: token -> sondeo -> confirmacion -> `RepositorioMedios.
+"""`EnrolarMedioUseCase`: token -> sondeo -> confirmacion -> `RepositorioMedios.
 guardar`. Un doble de pasarela controla exactamente cuantas veces hay que
 sondear antes de llegar a un estado final, para no depender de `time.sleep`
 real en la prueba (se pasa `pausa_seg=0`).
 
-MULTI-COMERCIO: los tres pasos y `EnrolarMedio` reciben un
+MULTI-COMERCIO: los tres pasos y `EnrolarMedioUseCase` reciben un
 `SelectorDePasarela`, no una `PasarelaDePagos` fija. Estas pruebas usan
 `RegistroDePasarelas({}, por_defecto=pasarela)` -- la unica pasarela falsa
 resuelve para cualquier `comercio_id`, que es exactamente el comportamiento
@@ -17,7 +17,7 @@ import pytest
 
 from agora.adaptadores.pasarelas.registro import RegistroDePasarelas
 from agora.adaptadores.persistencia.memoria import RepositorioMediosEnMemoria
-from agora.aplicacion.enrolar_medio import EnrolarMedio
+from agora.usecase.enrolar_medio.enrolar_medio_use_case import EnrolarMedioUseCase
 from agora.model.commons.errores import MedioNoAprobado
 from agora.model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
 from agora.model.pago.gateways.pasarela import EstadoMedio, MedioEnProceso
@@ -65,9 +65,9 @@ def _selector(pasarela: _PasarelaFalsa) -> RegistroDePasarelas:
     return RegistroDePasarelas({}, por_defecto=pasarela)
 
 
-def _armar(pasarela: _PasarelaFalsa) -> tuple[EnrolarMedio, RepositorioMediosEnMemoria]:
+def _armar(pasarela: _PasarelaFalsa) -> tuple[EnrolarMedioUseCase, RepositorioMediosEnMemoria]:
     medios = RepositorioMediosEnMemoria()
-    enrolar = EnrolarMedio(
+    enrolar = EnrolarMedioUseCase(
         selector_pasarela=_selector(pasarela), medios=medios, bitacora=_BitacoraEnLista(),
         ambiente=Ambiente.SANDBOX, espera_seg=0.05, pausa_seg=0,
     )
@@ -126,18 +126,20 @@ def test_al_avanzar_recibe_las_etapas():
 
 # -- Las piezas granulares que usa la web (etapa 8): mismo doble de pasarela,
 # pero cada clase se prueba por separado en vez de solo a traves del sondeo
-# bloqueante de `EnrolarMedio`. -------------------------------------------- #
+# bloqueante de `EnrolarMedioUseCase`. -------------------------------------------- #
 
-from agora.aplicacion.enrolar_medio import (
-    ConfirmarEnrolamiento,
-    ConsultarEnrolamiento,
-    IniciarEnrolamiento,
+from agora.usecase.confirmar_enrolamiento.confirmar_enrolamiento_use_case import (
+    ConfirmarEnrolamientoUseCase,
 )
+from agora.usecase.consultar_enrolamiento.consultar_enrolamiento_use_case import (
+    ConsultarEnrolamientoUseCase,
+)
+from agora.usecase.iniciar_enrolamiento.iniciar_enrolamiento_use_case import IniciarEnrolamientoUseCase
 
 
 def test_iniciar_enrolamiento_devuelve_el_proceso_sin_bloquear():
     pasarela = _PasarelaFalsa(estados_token=["PENDING"])
-    iniciar = IniciarEnrolamiento(selector_pasarela=_selector(pasarela), ambiente=Ambiente.SANDBOX)
+    iniciar = IniciarEnrolamientoUseCase(selector_pasarela=_selector(pasarela), ambiente=Ambiente.SANDBOX)
 
     proceso = iniciar("3001234567", "titular@correo.com", COMERCIO_ID)
 
@@ -148,7 +150,7 @@ def test_iniciar_enrolamiento_devuelve_el_proceso_sin_bloquear():
 def test_consultar_enrolamiento_delega_en_la_pasarela():
     pasarela = _PasarelaFalsa(estados_token=["PENDING", "APPROVED"])
     pasarela.preparar_medio(None)  # consume el primer estado, como haria iniciar()
-    consultar = ConsultarEnrolamiento(selector_pasarela=_selector(pasarela))
+    consultar = ConsultarEnrolamientoUseCase(selector_pasarela=_selector(pasarela))
 
     estado = consultar("tok_1", COMERCIO_ID)
 
@@ -159,7 +161,7 @@ def test_confirmar_enrolamiento_guarda_el_medio_cuando_el_estado_es_approved():
     pasarela = _PasarelaFalsa(estados_token=["APPROVED"])
     medios = RepositorioMediosEnMemoria()
     bitacora = _BitacoraEnLista()
-    confirmar = ConfirmarEnrolamiento(selector_pasarela=_selector(pasarela), medios=medios, bitacora=bitacora)
+    confirmar = ConfirmarEnrolamientoUseCase(selector_pasarela=_selector(pasarela), medios=medios, bitacora=bitacora)
 
     ref = confirmar("tok_1", "titular@correo.com", "tit_1", "APPROVED", COMERCIO_ID)
 
@@ -172,7 +174,7 @@ def test_confirmar_enrolamiento_guarda_el_medio_cuando_el_estado_es_approved():
 def test_confirmar_enrolamiento_no_confirma_si_el_estado_token_no_es_approved():
     pasarela = _PasarelaFalsa(estados_token=["DECLINED"])
     medios = RepositorioMediosEnMemoria()
-    confirmar = ConfirmarEnrolamiento(selector_pasarela=_selector(pasarela), medios=medios, bitacora=_BitacoraEnLista())
+    confirmar = ConfirmarEnrolamientoUseCase(selector_pasarela=_selector(pasarela), medios=medios, bitacora=_BitacoraEnLista())
 
     with pytest.raises(MedioNoAprobado):
         confirmar("tok_1", "titular@correo.com", "tit_1", "DECLINED", COMERCIO_ID)
@@ -184,7 +186,7 @@ def test_confirmar_enrolamiento_no_confirma_si_el_estado_token_no_es_approved():
 def test_confirmar_enrolamiento_levanta_si_la_pasarela_no_deja_el_medio_disponible():
     pasarela = _PasarelaFalsa(estados_token=["APPROVED"], estado_confirmacion="DECLINED")
     medios = RepositorioMediosEnMemoria()
-    confirmar = ConfirmarEnrolamiento(selector_pasarela=_selector(pasarela), medios=medios, bitacora=_BitacoraEnLista())
+    confirmar = ConfirmarEnrolamientoUseCase(selector_pasarela=_selector(pasarela), medios=medios, bitacora=_BitacoraEnLista())
 
     with pytest.raises(MedioNoAprobado):
         confirmar("tok_1", "titular@correo.com", "tit_1", "APPROVED", COMERCIO_ID)

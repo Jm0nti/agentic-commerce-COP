@@ -38,7 +38,7 @@ class RepositorioMedios(Protocol):
 
     def comercio_de(self, ref: MedioDePagoRef) -> str | None:
         """Bajo que comercio se creo este medio, o `None` si el medio no
-        esta registrado. Lo usa `RevocarMedio` para resolver con que
+        esta registrado. Lo usa `RevocarMedioUseCase` para resolver con que
         pasarela pedir la revocacion sin que quien llame tenga que volver a
         pasar el `comercio_id` a mano."""
         ...
@@ -55,7 +55,7 @@ class RegistroDeEstados(Protocol):
     ni `Bitacora` -- que es auditoria de solo escritura, no estado de
     aplicacion (`puertos/sistema.py`) -- estan pensados para contestarla.
 
-    `EjecutarIntencion` y `ConciliarEvento` escriben aqui en cada uno de sus
+    `EjecutarIntencionUseCase` y `ConciliarEventoUseCase` escriben aqui en cada uno de sus
     puntos de decision ya existentes (parametro opcional, `None` por
     defecto: no cambia su comportamiento si nadie lo provee). `estado` es
     texto libre y corto -- "pendiente", "aprobado", "rechazado",

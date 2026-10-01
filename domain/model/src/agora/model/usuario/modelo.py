@@ -15,7 +15,7 @@ el nombre con el que inicia sesion, y el hash de su contrasena. La llave de
 firma ed25519 NO viaja aca -- vive en `RepositorioLlaves`
 (`puertos/repositorios.py`), un repositorio aparte, porque el ciclo de vida
 de una llave de firma (rotarla, revocarla) no tiene por que acoplarse al
-ciclo de vida de un usuario, y porque `EmitirMandato` solo necesita
+ciclo de vida de un usuario, y porque `EmitirMandatoUseCase` solo necesita
 resolver un `Firmante` por `titular_id` (`puertos/firma.py:
 SelectorDeFirmante`), nunca un `Usuario` completo.
 

@@ -1,4 +1,4 @@
-"""El enrutador de recuperacion de `NavegarCatalogo` (migracion a agentes,
+"""El enrutador de recuperacion de `NavegarCatalogoUseCase` (migracion a agentes,
 etapa 4): los tres peldanos de la decision 1, en orden.
 
 Lo que se prueba aca, sobre todo:
@@ -21,7 +21,7 @@ from agora.adaptadores.persistencia.memoria import (
     RepositorioPropuestasEnMemoria,
 )
 from agora.adaptadores.sistema import GeneradorIdsUuid
-from agora.aplicacion.navegar_catalogo import NavegarCatalogo
+from agora.usecase.navegar_catalogo.navegar_catalogo_use_case import NavegarCatalogoUseCase
 from agora.model.catalogo.modelo import Comercio, Disponibilidad, Producto
 from agora.model.commons.dinero import Dinero
 from agora.model.commons.errores import ComercioDesconocido, RecuperacionNoDisponible
@@ -83,8 +83,8 @@ class _SemanticoEspia:
         return list(self._devuelve if self._devuelve is not None else candidatos[:limite])
 
 
-def _navegar(semantico=None, catalogo=None) -> NavegarCatalogo:
-    return NavegarCatalogo(
+def _navegar(semantico=None, catalogo=None) -> NavegarCatalogoUseCase:
+    return NavegarCatalogoUseCase(
         catalogo=catalogo or _CatalogoFalso(),
         carritos=RepositorioCarritosEnMemoria(),
         ids=GeneradorIdsUuid(),

@@ -8,7 +8,7 @@ respaldo reproduciria exactamente el problema que esta implementacion
 reemplaza (ver el docstring de `puertos.firma.SelectorDeFirmante` y de
 `composicion/contenedor.py`, seccion MULTI-USUARIO). Un `titular_id` sin
 llave levanta `SinLlaveDeFirma`, nunca genera una al vuelo: las llaves solo
-nacen en `aplicacion/autenticacion.py:RegistrarUsuario` (y ese, a su vez,
+nacen en `aplicacion/autenticacion.py:RegistrarUsuarioUseCase` (y ese, a su vez,
 solo lo llama `scripts/crear_usuario.py`), junto con el usuario que las va
 a usar -- una decision explicita, no un accidente de implementacion.
 """

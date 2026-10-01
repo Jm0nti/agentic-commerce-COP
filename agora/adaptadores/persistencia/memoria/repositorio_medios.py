@@ -1,6 +1,6 @@
 """`RepositorioMedios` en memoria.
 
-No lo usa `EjecutarIntencion` (que solo necesita el `MedioDePagoRef` que ya
+No lo usa `EjecutarIntencionUseCase` (que solo necesita el `MedioDePagoRef` que ya
 trae el mandato firmado), pero completa el puerto para cuando
 `aplicacion/enrolar_medio.py` exista (etapa 5) y lo necesite para listar los
 medios vivos de un titular.
@@ -52,7 +52,7 @@ class RepositorioMediosEnMemoria:
         self, titular_id: str, comercio_id: str, ambiente: Ambiente
     ) -> MedioDePagoRef | None:
         with self._lock:
-            # El mas reciente: mismo criterio que `EmitirMandato` usaba para
+            # El mas reciente: mismo criterio que `EmitirMandatoUseCase` usaba para
             # "el ultimo enrolado" antes de que existiera este metodo --
             # `_medios` agrega al final, asi que se recorre al reves.
             for m in reversed(self._medios):
