@@ -21,13 +21,16 @@ agora_datos/
 *.db-shm
 *.db.bak-*
 
-
+# Documentacion interna
 docs/poc-documentation/
-docs/diagramas/
-docs/poc-documentation/
+#Info de utilidad para desarrollo
 docs/utils/
-docs/soporte/
-docs/arquitectura-agentes/
+# Info para el agente de soporte. No se versiona
+docs/soporte/ 
+# Info evolucion de arquitectura. Solo incluir README
+docs/arquitectura-agentes/*
+# #README necesario de arq agentes
+!docs\arquitectura-agentes\README.md
 
 
 

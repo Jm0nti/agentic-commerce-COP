@@ -1,0 +1,50 @@
+---
+title: El turno como grafo · migracion a agentes, etapas 3-5
+---
+flowchart LR
+    IN(["persona<br/>escribe"]) --> ORQ
+
+    ORQ{{"orquestador<br/><i>clasifica la intencion,<br/>arma ruta y contexto</i>"}}
+
+    A1["agente_catalogo<br/><small>buscar_comercios · buscar_productos<br/>ver_producto</small>"]
+    A2["agente_carrito_pago<br/><small>las tres de catalogo<br/>+ armar_carrito + pagar</small>"]
+    A3["agente_estado<br/><small>consultar_estado</small>"]
+    A4["agente_soporte<br/><small>sin herramientas<br/>+ contexto documental</small>"]
+    A5["agente_medios_de_pago<br/><small>sin herramientas</small>"]
+    A6["agente_fuera_de_alcance<br/><small>sin herramientas</small>"]
+    A7["agente_respaldo<br/><small>las seis · el agente de antes</small>"]
+
+    ORQ -->|catalogo| A1
+    ORQ -->|carrito_pago| A2
+    ORQ -->|estado| A3
+    ORQ -->|soporte| A4
+    ORQ -->|medios_de_pago| A5
+    ORQ -->|fuera_de_alcance| A6
+    ORQ -->|"sin certeza"| A7
+
+    A1 --> DEC
+    A2 --> DEC
+    A3 --> DEC
+    A4 --> DEC
+    A5 --> DEC
+    A6 --> DEC
+    A7 --> DEC
+
+    DEC{"¿el turno dejo algo<br/>esperando a una persona?"}
+    DEC -->|no| FIN(["FIN"])
+    DEC -->|si| ESP
+
+    ESP["<b>espera_humana</b><br/><i>no hace nada mas que detenerse</i><br/>levanta PausaRequerida"]
+    ESP --> POP(["popup: la PERSONA<br/>firma o rechaza"])
+
+    classDef orq fill:#3d2f5c,stroke:#9b7fc4,color:#f0e8f8
+    classDef dinero fill:#5c2f3d,stroke:#d96f8f,color:#f8e8ee
+    classDef agente fill:#5c3d2f,stroke:#d99a6f,color:#f8f0e8
+    classDef humano fill:#1e3a5f,stroke:#4a90d9,color:#e8f0f8
+    classDef borde fill:#4a4a4a,stroke:#999,color:#eee
+
+    class ORQ orq
+    class A2 dinero
+    class A1,A3,A4,A5,A6,A7 agente
+    class ESP,POP humano
+    class IN,FIN,DEC borde

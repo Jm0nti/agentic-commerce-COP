@@ -1,0 +1,30 @@
+---
+title: Los tres peldanos de la recuperacion de catalogo · decision 1, etapa 4
+---
+flowchart LR
+    Q(["buscar_productos<br/>(comercio, consulta, filtros)"]) --> P1
+
+    P1["<b>1 · ESTRUCTURADO</b><br/>RepositorioCatalogo.buscar_productos<br/><i>match por substring · auditable<br/>no puede inventar un producto</i>"]
+    P1 --> P2
+    P2["<b>2 · REGLAS DURAS</b><br/>FiltrosDeProducto.aplicar<br/><i>disponibilidad · rango de precio</i><br/>argumentos de la herramienta,<br/>no prosa del prompt"]
+    P2 --> D1{"¿encontro<br/>algo?"}
+
+    D1 -->|si| OUT(["productos"])
+    D1 -->|no| D2{"¿hay buscador<br/>semantico?"}
+    D2 -->|"no · sin OPENAI_API_KEY"| VACIO(["lista vacia"])
+    D2 -->|si| CAND
+
+    CAND["candidatos = TODO el comercio,<br/>ya pasado por las reglas duras"]
+    CAND --> P3
+    P3["<b>3 · SEMANTICO</b><br/>BuscadorSemanticoDeProductos<br/><i>coseno con numpy · piso 0,31 medido</i><br/><b>solo ordena y recorta</b><br/>no lee el catalogo, no consulta stock"]
+    P3 --> OUT
+
+    classDef estructurado fill:#2f4f3d,stroke:#6fbf8f,color:#e8f8ee
+    classDef duro fill:#5c2f3d,stroke:#d96f8f,color:#f8e8ee
+    classDef semantico fill:#3d2f5c,stroke:#9b7fc4,color:#f0e8f8
+    classDef borde fill:#4a4a4a,stroke:#999,color:#eee
+
+    class P1 estructurado
+    class P2,CAND duro
+    class P3 semantico
+    class Q,OUT,VACIO,D1,D2 borde

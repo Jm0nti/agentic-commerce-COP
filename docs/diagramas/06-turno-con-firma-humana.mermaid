@@ -1,0 +1,55 @@
+---
+title: Un turno de compra de punta a punta · quien decide que
+---
+sequenceDiagram
+    autonumber
+    actor T as Titular
+    participant UI as Chat web<br/>entry_points/api
+    participant GR as Grafo del turno<br/>usecase/agente/grafo.py
+    participant MO as DeepSeek<br/>ModeloDeLenguaje
+    participant AP as usecase/<br/>casos de uso
+    participant BV as Motor de pagos<br/>EjecutarIntencionUseCase
+    participant TZ as trazas.jsonl
+
+    rect rgb(253, 245, 235)
+    Note over T,TZ: EL AGENTE PROPONE · nunca toca una credencial
+    T->>UI: "quiero comprar las gomitas"
+    UI->>GR: turno(conversacion, texto)
+    GR->>MO: clasificar intencion
+    MO-->>GR: carrito_pago · confianza 0.92
+    Note right of GR: enruta a agente_carrito_pago:<br/>catalogo + armar_carrito + pagar<br/>y NADA mas
+    GR->>MO: responder(historial, SOLO esas herramientas)
+    MO-->>GR: armar_carrito(comercio, items)
+    GR->>AP: NavegarCatalogoUseCase.armar_carrito
+    AP-->>GR: Carrito + PropuestaDeMandato SIN FIRMAR
+    MO-->>GR: "te arme la propuesta"
+    end
+
+    rect rgb(232, 244, 253)
+    Note over T,TZ: EL HUMANO FIRMA · el turno se detiene aqui
+    GR->>GR: detectar_pausa -> PausaDelTurno
+    GR-xGR: espera_humana levanta PausaRequerida
+    GR->>TZ: traza del turno + "pausa": firma_de_propuesta
+    GR-->>UI: respuesta + pausa tipada
+    UI-->>T: popup con items, monto y justificacion
+    Note over T: aqui, y solo aqui,<br/>se decide gastar plata
+    T->>UI: click en "Firmar"
+    UI->>AP: EmitirMandatoUseCase(propuesta_id, titular_id)
+    AP-->>UI: Mandato firmado con la llave del titular
+    end
+
+    rect rgb(235, 250, 240)
+    Note over T,TZ: EL MOTOR DE PAGOS EJECUTA · contra el mandato, nunca contra el chat
+    UI->>GR: reanudar(conversacion, DecisionHumana)
+    GR->>MO: responder(+ aviso tipado con mandato_id y carrito_id)
+    MO-->>GR: pagar(mandato_id, carrito_id)
+    GR->>AP: EjecutarIntencionUseCase
+    AP->>BV: verificar los nueve controles del mandato
+    BV-->>AP: Dictamen: PERMITIR / CONFIRMAR / BLOQUEAR
+    AP-->>GR: Recibo
+    GR->>TZ: traza del segundo turno
+    GR-->>UI: "listo, ya cobre" (o "quedo esperando confirmacion")
+    UI-->>T: resultado
+    end
+
+    Note over T,TZ: Si el modelo alucina "pagar" en un turno de soporte,<br/>se rechaza AL EJECUTAR y queda escrito: "fuera_de_ruta": true
