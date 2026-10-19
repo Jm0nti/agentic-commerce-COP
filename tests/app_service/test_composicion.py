@@ -1,4 +1,4 @@
-"""`composicion/`: que arme lo correcto segun la configuracion, y que sea
+"""`app_service/config/`: que arme lo correcto segun la configuracion, y que sea
 efectivamente el unico lugar que lee el entorno.
 """
 
@@ -28,7 +28,7 @@ from agora.model.pago.modelo import Ambiente, MedioDePagoRef, Proveedor
 def _registro_wompi(tmp_path: Path, comercio_id: str = "com_x", **credenciales) -> str:
     """Escribe el JSON de credenciales por comercio (`AGORA_WOMPI_COMERCIOS`)
     que `leer_configuracion` exige desde multi-comercio -- ver el docstring
-    de `composicion/configuracion.py`. `credenciales` sobreescribe las
+    de `app_service/config/configuracion.py`. `credenciales` sobreescribe las
     llaves de sandbox por defecto (para las pruebas que necesitan un
     prefijo de produccion)."""
     entrada = {
@@ -64,8 +64,7 @@ def test_pasarela_wompi_con_credenciales_arma_configuracion_wompi(tmp_path):
 
 
 def test_perfil_del_pagador_omite_tipo_de_documento_sin_documento():
-    """Igual que `boveda/nucleo.py:perfil_pagador`: `legal_id_type` solo
-    tiene sentido acompanado del documento."""
+    """`legal_id_type` solo tiene sentido acompanado del documento."""
     config = leer_configuracion({"PAGADOR_NOMBRE": "Juan"})
     assert "legal_id_type" not in config.datos_pagador
     assert config.datos_pagador["full_name"] == "Juan"
@@ -211,7 +210,7 @@ def test_construir_encadena_navegar_emitir_pagar_y_consultar_de_punta_a_punta(tm
     """El flujo completo de la etapa 5, con las piezas que arma `Contenedor`
     de verdad (sin wiring manual): enrolar -> armar_carrito -> firmar ->
     pagar -> consultar_estado. Usa el catalogo semilla que se entrega con el
-    repo (`agora/adaptadores/catalogo/semilla/datos/catalogo.json`)."""
+    repo (`driven_adapters/catalogo_semilla/datos/catalogo.json`)."""
     config = leer_configuracion({
         "AGORA_BITACORA": str(tmp_path / "recibos.jsonl"),
         "PAGADOR_EMAIL": "juan@correo-real.com",
@@ -219,7 +218,7 @@ def test_construir_encadena_navegar_emitir_pagar_y_consultar_de_punta_a_punta(tm
     contenedor = construir(config)
     # Multi-usuario: `emitir_mandato` ya no acepta cualquier titular_id --
     # hace falta un usuario (y su llave) creado de antemano, igual que
-    # exigiria `scripts/crear_usuario.py` en produccion.
+    # exigiria `app_service/crear_usuario.py` en produccion.
     contenedor.registrar_usuario("tit_1", "clave-de-prueba", titular_id="tit_1")
 
     # El catalogo semilla no es un dato fijo de esta prueba (mismo hallazgo
@@ -231,7 +230,7 @@ def test_construir_encadena_navegar_emitir_pagar_y_consultar_de_punta_a_punta(tm
     producto = contenedor.navegar_catalogo.buscar_productos(comercio.comercio_id)[0]
 
     # Multi-comercio: enrolar ahora vincula el medio con ESTE comercio (ver
-    # el docstring de aplicacion/enrolar_medio.py) -- por eso el comercio se
+    # el docstring de usecase/enrolar_medio/enrolar_medio_use_case.py) -- por eso el comercio se
     # descubre antes de enrolar, no despues.
     ref = contenedor.enrolar_medio("3001234567", "titular@correo.com", "tit_1", comercio.comercio_id)
     assert contenedor.medios.vivos("tit_1", Ambiente.SANDBOX) == [ref]
@@ -250,7 +249,7 @@ def test_construir_encadena_navegar_emitir_pagar_y_consultar_de_punta_a_punta(tm
     recibo = contenedor.ejecutar_intencion(intencion, carrito_hash=carrito.hash_canonico)
     # `EmitirMandatoUseCase` corta el mandato exacto al carrito (monto_max ==
     # carrito.total, usos_max=1): eso siempre dispara las senales blandas de
-    # `dominio/mandato/politica.py` ("agota el mandato de una sola vez", "es
+    # `model/mandato/politica.py` ("agota el mandato de una sola vez", "es
     # el ultimo uso") y deja la intencion en `CONFIRMAR`, no en `PERMITIR`.
     # No es un fallo de esta prueba -- es la consecuencia esperada de firmar
     # un mandato tan angosto, y `retomar()` es como un humano lo resuelve.

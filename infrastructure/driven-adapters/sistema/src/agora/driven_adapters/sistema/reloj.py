@@ -1,7 +1,7 @@
 """El reloj real. La unica implementacion que llama a `datetime.now`.
 
 Todo lo demas del dominio y de aplicacion recibe la hora como parametro
-(ver `puertos/sistema.py`). Este adaptador es el unico sitio autorizado a
+(ver `model/commons/gateways/sistema.py`). Este adaptador es el unico sitio autorizado a
 consultar el reloj del sistema operativo.
 """
 

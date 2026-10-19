@@ -4,18 +4,18 @@ firma) e iniciar sesion. Cerrar sesion NO esta aca -- ver mas abajo.
 POR QUE REGISTRAR UN USUARIO TAMBIEN LE CREA SU LLAVE DE FIRMA
 --------------------------------------------------------------------
 Antes de esta version (multi-usuario, 4 de septiembre de 2026),
-`composicion/contenedor.py` armaba UNA sola llave de firma para todo el
+`app_service/config/contenedor.py` armaba UNA sola llave de firma para todo el
 proceso (`cargar_o_generar_firmante`), sin importar que titular firmara --
 un mandato de cualquiera se firmaba con la MISMA llave que un mandato de
 cualquier otro, indistinguible desde la criptografia sola. `RegistrarUsuarioUseCase`
 es donde eso se corrige: cada usuario nuevo nace con su propio par ed25519
 (`GeneradorDeLlaves`), guardado junto con el (`RepositorioLlaves`) para que
-`SelectorDeFirmante.para(titular_id)` (`adaptadores/sistema/
+`SelectorDeFirmante.para(titular_id)` (`driven_adapters/sistema/
 registro_firmantes.py:RegistroDeFirmantes`) pueda resolver el `Firmante`
-correcto al momento de emitir un mandato -- ver `aplicacion/
+correcto al momento de emitir un mandato -- ver `usecase/
 emitir_mandato.py`.
 
-`scripts/crear_usuario.py` es el UNICO lugar que llama a `RegistrarUsuarioUseCase`
+`app_service/crear_usuario.py` es el UNICO lugar que llama a `RegistrarUsuarioUseCase`
 en produccion: no hay ruta HTTP de auto-registro -- el usuario fue
 explicito en que los usuarios se crean por script, asi que un usuario
 nuevo siempre pasa por alguien con acceso a la terminal del servidor,
@@ -27,9 +27,9 @@ POR QUE `CerrarSesion` NO ES UN CASO DE USO
 guardado es una regla que vale la pena probar sola, sin FastAPI de por
 medio. Cerrar sesion es borrar un token de una cookie de un almacen en
 memoria -- cero logica de dominio, un detalle de COMO llega la sesion por
-HTTP. Envolverlo en una clase de `aplicacion/` solo para simetria seria
-ceremonia: vive directo en `entradas/api/autenticacion.py`, igual que
-`entradas/api/sesiones.py:AlmacenDeSesiones` nunca tuvo un caso de uso
+HTTP. Envolverlo en una clase de `usecase/` solo para simetria seria
+ceremonia: vive directo en `entry_points/api_rest/autenticacion.py`, igual que
+`entry_points/api_rest/sesiones.py:AlmacenDeSesiones` nunca tuvo un caso de uso
 `CerrarSesionDeChat` para borrar una `Conversacion`.
 """
 

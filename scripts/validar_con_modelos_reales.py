@@ -7,9 +7,9 @@ tres son numeros que no se pueden elegir mirando una charla:
 
     1. la calidad del clasificador de intencion          (etapa 1)
     2. el piso del RAG de soporte                        (etapa 2)
-       `agente/contexto_documental.py:PUNTAJE_MINIMO_POR_DEFECTO`
+       `usecase/agente/contexto_documental.py:PUNTAJE_MINIMO_POR_DEFECTO`
     3. el piso semantico del catalogo                    (etapa 4)
-       `adaptadores/busqueda_productos/.../PARECIDO_MINIMO_POR_DEFECTO`
+       `driven_adapters/.../PARECIDO_MINIMO_POR_DEFECTO`
 
 Este script las mide y propone un valor para cada umbral. No cambia nada:
 imprime, y quien decide sos vos.

@@ -1,7 +1,6 @@
 """`AdaptadorWompi`, contra una Wompi simulada con `httpx.MockTransport`.
 
-Misma tecnica que `tests/test_modos.py` y `tests/test_eventos.py` en la v1: no
-hay red real en las pruebas, pero el `ClienteWompi` que corre es el de
+No hay red real en las pruebas, pero el `ClienteWompi` que corre es el de
 verdad, solo con el transporte HTTP sustituido.
 """
 
@@ -71,7 +70,7 @@ def test_configuracion_exige_las_tres_credenciales():
 def test_configuracion_exige_que_el_prefijo_coincida_con_el_ambiente():
     """El bug que esto evita: una llave de produccion con ambiente sandbox no
     falla sola, cobra de verdad contra un endpoint que el codigo cree de
-    mentiras (`nucleo.py:131-139`)."""
+    mentiras."""
     with pytest.raises(ConfiguracionInvalida, match="pub_test_"):
         ConfiguracionWompi(
             ambiente=Ambiente.SANDBOX, llave_publica="pub_prod_x",
@@ -103,7 +102,7 @@ def test_cobrar_aprobado():
 
 
 def test_cobrar_declinado_por_antifraude():
-    """Reproduce la forma exacta de la corrida real (`docs/decline-afe.md`):
+    """Reproduce la forma exacta de la corrida real (`docs/utils/decline-afe.md`):
     `status: DECLINED` con `payment_method.afe_decision: DECLINE`."""
 
     def responder(req: httpx.Request) -> httpx.Response:
@@ -221,8 +220,8 @@ def test_consultar_cobro():
 
 
 def test_preparar_medio_no_bloquea_esperando_el_push():
-    """A diferencia de `boveda/enrolamiento.py:enrolar_nequi`, que sondea
-    hasta 300s dentro de la misma llamada, aqui solo se crea el token."""
+    """Solo se crea el token: sondear hasta 300s esperando el push no es
+    trabajo del adaptador."""
 
     def responder(req: httpx.Request) -> httpx.Response:
         if req.url.path.endswith("/tokens/nequi") and req.method == "POST":
@@ -382,10 +381,9 @@ def test_resultado_desde_evento_traduce_una_referencia_propia():
 
 def test_resultado_desde_evento_ignora_una_referencia_ajena():
     """Una referencia sin el prefijo `agora-` no es de esta app -- por
-    ejemplo, trafico de `boveda/` (v1) si algun dia comparten el mismo
-    webhook de Wompi."""
+    ejemplo, trafico de otro sistema que comparta el mismo webhook de Wompi."""
     adaptador = _adaptador(lambda req: httpx.Response(404, json={}))
-    evento = _evento_transaccion("referencia-vieja-de-la-v1")
+    evento = _evento_transaccion("referencia-de-otro-sistema")
 
     assert adaptador.resultado_desde_evento(evento) is None
 

@@ -12,7 +12,7 @@ from ...model.pago.gateways.pasarela import EstadoMedio, SelectorDePasarela
 class ConsultarEnrolamientoUseCase:
     """Paso 2: un sondeo, una sola vez. Quien orqueste el ritmo (el bucle
     bloqueante de `EnrolarMedioUseCase`, o un `GET` que el navegador repite cada
-    pocos segundos en `entradas/api/`) decide cuando volver a llamar --
+    pocos segundos en `entry_points/api_rest/`) decide cuando volver a llamar --
     esta clase no sabe ni le importa si es la primera consulta o la
     numero cien. `comercio_id` tiene que ser el MISMO que se uso en
     `IniciarEnrolamientoUseCase` para este token -- quien orquesta el sondeo es

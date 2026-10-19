@@ -1,7 +1,6 @@
 """Fase A: autorizar un medio de pago. Tres pasos reutilizables, mas
-`EnrolarMedioUseCase`, que los compone con un sondeo bloqueante -- igual que
-`boveda/enrolamiento.py:enrolar_nequi`, pero orquestada contra
-`PasarelaDePagos` (puerto) en vez de contra `ClienteWompi` (HTTP directo) --
+`EnrolarMedioUseCase`, que los compone con un sondeo bloqueante, orquestado
+contra `PasarelaDePagos` (puerto) y no contra el cliente HTTP de Wompi --
 por eso funciona igual con la simulada (aprueba de inmediato) que con Wompi
 real (token -> push -> sondeo).
 
@@ -13,15 +12,14 @@ real (token -> push -> sondeo).
         |
     RepositorioMedios.guardar()
 
-No cobra nada -- eso es `aplicacion/ejecutar_intencion.py`. Igual que en la
-v1 (`boveda/enrolamiento.py`, docstring del modulo): enrolar es un acto del
+No cobra nada -- eso es `usecase/ejecutar_intencion/ejecutar_intencion_use_case.py`. Enrolar es un acto del
 titular, cobrar es un acto del agente, y mezclarlos en un caso de uso haria
 imposible distinguir cual de los dos fallo.
 
-`agente/` no importa este modulo: no esta en `agente/herramientas.py:
+`usecase/agente/` no importa este modulo: no esta en `usecase/agente/herramientas.py:
 CATALOGO_DE_HERRAMIENTAS` (`enrolar` esta en la lista de `PROHIBIDAS`). Lo
-llama `entradas/cli/` (bloqueando la terminal, via `EnrolarMedioUseCase`) y
-`entradas/api/` (sondeando desde el navegador, via los tres pasos sueltos
+llama `entry_points/cli/` (bloqueando la terminal, via `EnrolarMedioUseCase`) y
+`entry_points/api_rest/` (sondeando desde el navegador, via los tres pasos sueltos
 de mas abajo) -- ambos del lado del titular.
 
 MULTI-COMERCIO (1 de septiembre de 2026)
@@ -39,7 +37,7 @@ pasarela resuelta entre llamadas, asi que no dependen de que el mismo
 `comercio_id` se repita entre `iniciar` y `confirmar` mas alla de lo que ya
 exige la logica de negocio (Wompi solo va a reconocer el token si se
 consulta contra el comercio que lo creo). Quien orquesta el sondeo
-(`EnrolarMedioUseCase` aca abajo, o `entradas/api/sesiones.py` para el camino
+(`EnrolarMedioUseCase` aca abajo, o `entry_points/api_rest/sesiones.py` para el camino
 asincrono) es quien tiene que seguir mandando el mismo `comercio_id` en
 cada paso.
 
@@ -48,17 +46,17 @@ POR QUE TRES CLASES Y NO SOLO `EnrolarMedioUseCase`
 Una terminal puede bloquearse hasta 5 minutos esperando el push de Nequi
 (`ESPERA_PUSH_SEG`); una peticion HTTP no deberia -- una conexion abierta
 tanto tiempo choca con temporizadores del navegador y de cualquier proxy de
-por medio, y es exactamente el problema que `puertos/pasarela.py` ya
+por medio, y es exactamente el problema que `model/pago/gateways/pasarela.py` ya
 resuelve para el cobro (nunca bloquea esperando un estado final). Por eso
 cada paso de la Fase A se separa en su propia clase de una sola
 responsabilidad -- `IniciarEnrolamientoUseCase`, `ConsultarEnrolamientoUseCase`,
-`ConfirmarEnrolamientoUseCase` -- para que `entradas/api/` pueda sondear a su
+`ConfirmarEnrolamientoUseCase` -- para que `entry_points/api_rest/` pueda sondear a su
 propio ritmo (una consulta por cada vez que el navegador pregunta) sin
 tener que reimplementar la logica de "que hacer con la respuesta de la
 pasarela", que sigue viviendo en un solo lugar.
 
 `EnrolarMedioUseCase` no desaparece: sigue siendo exactamente la misma clase (mismo
-constructor, mismo comportamiento) que usa `entradas/cli/`, solo que por
+constructor, mismo comportamiento) que usa `entry_points/cli/`, solo que por
 dentro ahora compone los mismos tres pasos en vez de llamar a la pasarela
 directo -- cero duplicacion de la logica de negocio entre el camino
 bloqueante (CLI) y el camino asincrono (web).
@@ -84,7 +82,7 @@ PAUSA_SONDEO_SEG = 3.0
 
 class EnrolarMedioUseCase:
     """Compone los tres pasos de arriba con un sondeo bloqueante -- para la
-    CLI, donde bloquear la terminal esta bien (`docs/arquitectura-v2.md`,
+    CLI, donde bloquear la terminal esta bien (`docs/arquitectura.md`,
     seccion 9: no hay que inventar asincronia donde nadie la necesita
     todavia). Mismo comportamiento observable que antes de separar los
     pasos, salvo que ahora `comercio_id` es obligatorio: multi-comercio
@@ -112,7 +110,7 @@ class EnrolarMedioUseCase:
     ) -> MedioDePagoRef:
         """`al_avanzar` recibe `(etapa, detalle)` para que quien llame (la
         CLI) narre el sondeo sin que este caso de uso sepa nada de como se
-        imprime -- mismo patron que `boveda/enrolamiento.py:enrolar_nequi`.
+        imprime.
         """
         aviso = al_avanzar or (lambda *_: None)
 

@@ -1,7 +1,7 @@
 """`RepositorioMandatos` contra SQLite.
 
-Misma guarda de ambiente que `RepositorioMandatosEnMemoria` (etapa 2) y que
-`nucleo.py:319-330` en la v1 -- aqui sobrevive un reinicio, que es
+Misma guarda de ambiente que `RepositorioMandatosEnMemoria` -- aqui sobrevive
+un reinicio, que es
 precisamente lo que la version en memoria no puede ofrecer.
 """
 

@@ -1,7 +1,7 @@
 """`RepositorioMediosSQLite`: sin equivalente en memoria probado en la etapa
 2 (`RepositorioMediosEnMemoria` existia pero nada lo ejercitaba todavia --
-nada de `agora/` lo necesita hasta `aplicacion/enrolar_medio.py`, etapa 5).
-Aqui si se prueba, porque es la tabla que usa `aplicacion/enrolar_medio.py`
+nada de `agora/` lo necesita hasta `usecase/enrolar_medio/enrolar_medio_use_case.py`, etapa 5).
+Aqui si se prueba, porque es la tabla que usa `usecase/enrolar_medio/enrolar_medio_use_case.py`
 en produccion.
 
 Multi-comercio (1 de septiembre de 2026): `guardar` ahora exige

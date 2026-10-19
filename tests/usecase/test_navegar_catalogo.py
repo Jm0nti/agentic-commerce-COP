@@ -93,7 +93,7 @@ def test_armar_carrito_persiste_en_repositorio_carritos():
 
 
 def test_armar_carrito_persiste_la_propuesta_en_repositorio_propuestas():
-    """Etapa 6: sin esto, `entradas/cli/firmar` (otro proceso) nunca podria
+    """Etapa 6: sin esto, `entry_points/cli/firmar` (otro proceso) nunca podria
     encontrar la propuesta que el chat le mostro a la persona."""
     nav = _armar()
     _, propuesta = nav.armar_carrito("com_1", [ItemPedido("prd_audifonos")])

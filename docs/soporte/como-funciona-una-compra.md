@@ -3,7 +3,7 @@
 Una compra con el asistente pasa siempre por las mismas etapas, y en dos de
 ellas decide la persona, nunca el asistente: autorizar la compra y, a veces,
 confirmar el cobro. La idea que resume todo el sistema es esta: **el
-asistente propone, la persona firma, la bóveda ejecuta**.
+asistente propone, la persona firma, el motor de pagos ejecuta**.
 
 ## Paso a paso
 
@@ -18,7 +18,7 @@ asistente propone, la persona firma, la bóveda ejecuta**.
   firma crea un mandato: un permiso firmado digitalmente, atado a ese carrito,
   con un monto máximo, un número de usos y una vigencia corta.
 - **Pago.** Con el mandato firmado, el asistente puede pedir el cobro. Antes de
-  cobrar, la bóveda revisa el mandato completo: que la firma sea válida, que no
+  cobrar, el motor de pagos revisa el mandato completo: que la firma sea válida, que no
   haya vencido, que el comercio y el monto correspondan, y que el carrito no
   haya cambiado desde que se firmó.
 - **Confirmación, si hace falta.** Si el cobro cabe en el mandato pero tiene

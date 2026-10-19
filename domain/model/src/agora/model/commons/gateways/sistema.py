@@ -1,9 +1,8 @@
 """Reloj, identificadores y bitacora.
 
-Parecen ceremonia y no lo son. Hoy `ahora()` llama a `datetime.now`
-(mandato.py:42) y `emitir()` a `uuid4` (mandato.py:159). Consecuencia: probar
-un vencimiento obliga a trucos como emitir un mandato con vigencia negativa --
-que es literalmente lo que hubo que hacer en `tests/test_modos.py`.
+Parecen ceremonia y no lo son. Si el dominio llamara a `datetime.now` y a
+`uuid4` directo, probar un vencimiento obligaria a trucos como emitir un
+mandato con vigencia negativa.
 
 Con el tiempo como parametro, la prueba dice lo que quiere decir.
 """

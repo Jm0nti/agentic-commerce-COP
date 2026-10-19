@@ -1,8 +1,6 @@
 """`RepositorioMandatosEnMemoria`: la version tipada de la guarda de ambiente.
 
-Equivalente en la v1: `nucleo.py:319-330`, `tests/test_modos.py`. Alli el
-ambiente vivia en un `dict` `modos` aparte, revisado a mano dentro de
-`obtener`. Aqui es un parametro obligatorio del puerto -- no se puede llamar
+El ambiente es un parametro obligatorio del puerto -- no se puede llamar
 `obtener(mandato_id)` sin decir desde que ambiente, asi que no se puede
 olvidar la guarda.
 """

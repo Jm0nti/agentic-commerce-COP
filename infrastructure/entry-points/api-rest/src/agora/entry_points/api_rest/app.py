@@ -3,15 +3,15 @@ solo proceso lo que las etapas 5 y 6 resolvian con dos terminales -- la
 persona charla con el agente y firma la propuesta / confirma el cobro
 mediante una ventana emergente, sin salir de la misma pestana.
 
-Misma convencion que `entradas/webhooks/wompi.py`: `crear_app` es una
+Misma convencion que `entry_points/webhook_wompi/wompi.py`: `crear_app` es una
 factoria pura (nada de `os.environ`, nada de construir el `Contenedor`) --
-eso es trabajo del composition root, `scripts/servir_api.py`. Lo que prueba
-`tests/test_api_app.py` con `TestClient` nunca necesita una variable de
+eso es trabajo del composition root, `app_service/servir_api.py`. Lo que prueba
+`tests/entry_points/test_api_app.py` con `TestClient` nunca necesita una variable de
 entorno.
 
 QUE HACE QUE FIRMAR/CONFIRMAR SIGA SIENDO DECISION HUMANA
 --------------------------------------------------------------
-`agente/herramientas.py:PROHIBIDAS` le niega `firmar`/`retomar` al agente a
+`usecase/agente/herramientas.py:PROHIBIDAS` le niega `firmar`/`retomar` al agente a
 nivel de catalogo de herramientas -- eso no cambia aca. Las rutas `POST
 /propuestas/{id}/firmar`, `POST /propuestas/{id}/rechazar` y `POST
 /intenciones/{id}/retomar` no las llama el agente: las llama el navegador,
@@ -35,10 +35,10 @@ ENROLAR UN MEDIO DE PAGO, AL MARGEN DE CUALQUIER CHAT
 `POST /medios/enrolar/iniciar`, `GET /medios/enrolar/{token}/estado`,
 `POST /medios/enrolar/confirmar` y `GET /medios` no dependen de una sesion
 de chat ni de un agente -- son actos del titular, igual que
-`entradas/cli/enrolar`/`fuentes`. Van en tres pasos (en vez de una sola
+`entry_points/cli/enrolar`/`fuentes`. Van en tres pasos (en vez de una sola
 ruta bloqueante) porque el enrolamiento contra Wompi real puede tardar
 hasta 5 minutos mientras el titular acepta el push de Nequi
-(`aplicacion/enrolar_medio.py:ESPERA_PUSH_SEG`): ninguna peticion HTTP se
+(`usecase/enrolar_medio/enrolar_medio_use_case.py:ESPERA_PUSH_SEG`): ninguna peticion HTTP se
 queda esperando eso, el navegador sondea `estado` a su propio ritmo hasta
 ver un estado final y recien entonces llama a `confirmar`.
 
@@ -48,15 +48,15 @@ Antes de esta version, `titular_id` llegaba como texto libre desde
 `chat.html` (un `<input>` guardado en `localStorage`), sin ninguna
 verificacion -- cualquiera podia escribir el `titular_id` de otro y ver
 sus medios de pago. Ahora `POST /auth/iniciar-sesion` verifica usuario y
-contrasena (`IniciarSesionUseCase`, `aplicacion/autenticacion.py`,
-usuarios creados de antemano con `scripts/crear_usuario.py` -- no hay
-registro por HTTP) y deja una cookie httponly (`entradas/api/
+contrasena (`IniciarSesionUseCase`, `usecase/{registrar_usuario,iniciar_sesion}/`,
+usuarios creados de antemano con `app_service/crear_usuario.py` -- no hay
+registro por HTTP) y deja una cookie httponly (`entry_points/api_rest/
 autenticacion.py:AlmacenDeSesionesWeb`). Toda ruta que antes aceptaba
 `titular_id` por parametro (`firmar`, `confirmar_enrolamiento`,
 `listar_medios`) ahora lo resuelve de esa cookie via la dependencia
 `_requiere_titular` -- nunca de un campo que mande el cliente. Crear una
 sesion de chat (`POST /sesiones`) tambien exige estar autenticado, y queda
-atada al `titular_id` que la creo (`entradas/api/sesiones.py`).
+atada al `titular_id` que la creo (`entry_points/api_rest/sesiones.py`).
 """
 
 from __future__ import annotations
@@ -104,7 +104,7 @@ class DependenciasDeLaApi(Protocol):
     """Todo lo que esta app puede tocar: casos de uso, el ambiente como valor
     y el reloj de las sesiones web. Ningun repositorio -- un entry point
     delega en un caso de uso (Clean Architecture de Bancolombia, Fase 1 del
-    refactor). En produccion es el `Contenedor` de `composicion/`, que cumple
+    refactor). En produccion es el `Contenedor` de `app_service/config/`, que cumple
     este contrato sin que esta app lo importe."""
 
     ambiente: Ambiente
@@ -149,7 +149,7 @@ class _IniciarEnrolamientoEntrante(BaseModel):
     telefono: str
     correo: str
     # Multi-comercio: enrolar vincula el medio con ESTE comercio (ver el
-    # docstring de aplicacion/enrolar_medio.py) -- el navegador lo manda
+    # docstring de usecase/enrolar_medio/enrolar_medio_use_case.py) -- el navegador lo manda
     # porque es quien sabe en que comercio esta el titular comprando.
     comercio_id: str
 
@@ -170,7 +170,7 @@ class _RevocarMedioEntrante(BaseModel):
 
 def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastAPI:
     """Factoria pura. `agente` puede ser `None` (falta `DEEPSEEK_API_KEY`,
-    mismo criterio que `entradas/cli/__main__.py:cmd_chat`) -- el proceso
+    mismo criterio que `entry_points/cli/cli.py:cmd_chat`) -- el proceso
     igual levanta, pero `POST /sesiones` responde 503 en vez de arrancar
     una charla que no puede hablarle a ningun modelo."""
 
@@ -181,7 +181,7 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
     )
     sesiones_web = AlmacenDeSesionesWeb(dependencias.reloj)
     app = FastAPI(title="agora -- chat con firma en una sola pestana")
-    # Expuesto para pruebas (`tests/test_api_app.py`): leer la cola de
+    # Expuesto para pruebas (`tests/entry_points/test_api_app.py`): leer la cola de
     # eventos de una sesion directo, sin pelear con como el `TestClient` de
     # turno maneja (o no) una lectura incremental de un `StreamingResponse`
     # que nunca termina -- la ruta HTTP sigue siendo el unico camino real
@@ -193,7 +193,7 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
         sesion (`COOKIE_SESION`), NUNCA de un campo que mande el cliente.
         401 (no 400) si no hay cookie o si `AlmacenDeSesionesWeb` la
         rechaza -- no es un dato mal formado, es una peticion sin
-        autenticar (ver `dominio/comun/errores.py:SesionInvalida`)."""
+        autenticar (ver `model/commons/errores.py:SesionInvalida`)."""
         token = request.cookies.get(COOKIE_SESION)
         if not token:
             raise HTTPException(status_code=401, detail="no hay sesion iniciada")
@@ -214,7 +214,7 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
     # -- Autenticacion (multi-usuario, 4 de septiembre de 2026) --------------- #
     #
     # Sin registro por HTTP: los usuarios se crean de antemano con
-    # `scripts/crear_usuario.py`. Estas tres rutas son las UNICAS que no
+    # `app_service/crear_usuario.py`. Estas tres rutas son las UNICAS que no
     # exigen la cookie de sesion via `_requiere_titular` -- son las que la
     # arman o la destruyen.
 
@@ -271,7 +271,7 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ErrorDeDominio as exc:
             # `ModeloNoDisponible`/`RespuestaModeloInvalida`
-            # (`puertos/modelo_lenguaje.py`): el problema es DeepSeek, no lo
+            # (`model/agente/gateways/modelo_lenguaje.py`): el problema es DeepSeek, no lo
             # que mando la persona -- 502, no 400.
             raise HTTPException(status_code=502, detail=exc.mensaje) from exc
         except LimiteDeTurnosExcedido as exc:
@@ -292,7 +292,7 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
     def firmar(
         propuesta_id: str, cuerpo: _FirmarEntrante, titular_id: str = Depends(_requiere_titular),
     ) -> dict[str, Any]:
-        """Mismo llamado que `entradas/cli/__main__.py:cmd_firmar`: busca
+        """Mismo llamado que `entry_points/cli/cli.py:cmd_firmar`: busca
         la propuesta y el carrito por id, nunca arma un carrito nuevo. La
         diferencia es que aca la persona lo dispara apretando "Firmar" en
         el popup, no corriendo un comando en otra terminal. `titular_id`
@@ -361,11 +361,11 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
     def retomar(
         intencion_id: str, cuerpo: _RetomarEntrante, _titular_id: str = Depends(_requiere_titular),
     ) -> dict[str, Any]:
-        """Mismo llamado que `entradas/cli/__main__.py:cmd_retomar`: pide
+        """Mismo llamado que `entry_points/cli/cli.py:cmd_retomar`: pide
         de nuevo `mandato_id`/`carrito_id` porque `EjecutarIntencionUseCase.
         retomar` vuelve a evaluar la politica completa contra el mismo
         `Intencion` -- no alcanza con el `intencion_id` solo (ver el
-        docstring de `retomar` en `aplicacion/ejecutar_intencion.py`)."""
+        docstring de `retomar` en `usecase/ejecutar_intencion/ejecutar_intencion_use_case.py`)."""
         try:
             recibo = dependencias.pagar_carrito.retomar(
                 intencion_id, cuerpo.mandato_id, cuerpo.carrito_id, cuerpo.aprueba,
@@ -377,7 +377,7 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
         # Nequi, que liquida de forma asincronica), esta sesion se registra
         # para que `SondeoDePagosPendientes` la resuelva sola en cuanto el
         # webhook de la pasarela (otro proceso) le de un desenlace final --
-        # ver `entradas/api/sondeo_pagos.py`.
+        # ver `entry_points/api_rest/sondeo_pagos.py`.
         if recibo.motivo == "PENDING" and sesiones is not None and cuerpo.sesion_id:
             sesiones.registrar_pendiente(cuerpo.sesion_id, intencion_id)
 
@@ -403,18 +403,18 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
     # -- Fase A por HTTP: enrolar un medio de pago y verlos ------------------ #
     #
     # Mismo principio que el resto de esta app: enrolar es un acto del
-    # titular, nunca del agente (`agente/herramientas.py:PROHIBIDAS` ya le
+    # titular, nunca del agente (`usecase/agente/herramientas.py:PROHIBIDAS` ya le
     # niega "enrolar" y "revocar"). Estas cuatro rutas viven al margen de
     # cualquier sesion de chat -- no hace falta estar charlando con el
     # agente para autorizar o consultar un medio de pago propio.
     #
     # El enrolamiento contra Wompi real puede tardar hasta 5 minutos
-    # (`aplicacion/enrolar_medio.py:ESPERA_PUSH_SEG`) mientras el titular
+    # (`usecase/enrolar_medio/enrolar_medio_use_case.py:ESPERA_PUSH_SEG`) mientras el titular
     # acepta el push en la app Nequi -- por eso son DOS peticiones
     # (iniciar, despues confirmar) con una tercera de sondeo en el medio
     # (estado), en vez de una sola que se quede esperando: ninguna de las
     # tres bloquea mas de lo que tarda una llamada a la pasarela, igual que
-    # ya exige `puertos/pasarela.py`. El frontend es quien decide el ritmo
+    # ya exige `model/pago/gateways/pasarela.py`. El frontend es quien decide el ritmo
     # del sondeo (`GET /medios/enrolar/{token}/estado`, repetido cada pocos
     # segundos) hasta ver un estado final.
 
@@ -441,7 +441,7 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
         """Paso 2, repetido por el navegador a su propio ritmo -- nunca
         bloquea esperando un estado final, igual que el resto del puerto
         de pasarela. `comercio_id` tiene que ser el mismo que se uso en
-        "iniciar" para este token (ver el docstring de aplicacion/
+        "iniciar" para este token (ver el docstring de usecase/
         enrolar_medio.py:ConsultarEnrolamientoUseCase)."""
         try:
             estado = dependencias.consultar_enrolamiento(token, comercio_id)
@@ -457,7 +457,7 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
     ) -> dict[str, Any]:
         """Paso 3: vuelve a consultar el estado del token ACA, en vez de
         confiar en lo que el navegador dice haber visto en su ultimo
-        sondeo -- mismo argumento que `carrito_hash` en `composicion/
+        sondeo -- mismo argumento que `carrito_hash` en `app_service/config/
         agente.py:pagar`: lo que decide si algo se autoriza nunca sale de
         un dato que el cliente podria inventar. Mismo criterio con
         `titular_id`: sale de la cookie de sesion, nunca del cuerpo."""
@@ -477,7 +477,7 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
         """Los medios vivos del titular AUTENTICADO (cookie de sesion, ver
         `_requiere_titular`) en el ambiente que ya tiene configurado este
         proceso (`ListarMediosVivosUseCase`) -- mismo criterio que
-        `entradas/cli/__main__.py:cmd_fuentes`, sin selector de ambiente en
+        `entry_points/cli/cli.py:cmd_fuentes`, sin selector de ambiente en
         la peticion: la pasarela (simulada/wompi) y el ambiente los fija
         el .env del servidor, no el navegador. Antes de esta version
         `titular_id` viajaba como query param que cualquiera podia cambiar
@@ -491,13 +491,13 @@ def crear_app(agente: Agente | None, dependencias: DependenciasDeLaApi) -> FastA
         cuerpo: _RevocarMedioEntrante,
         titular_id: str = Depends(_requiere_titular),
     ) -> dict[str, Any]:
-        """El boton de panico (`aplicacion/revocar_medio.py`) por HTTP --
-        hasta ahora solo lo alcanzaba `entradas/cli/__main__.py:cmd_revocar`.
+        """El boton de panico (`usecase/revocar_medio/revocar_medio_use_case.py`) por HTTP --
+        hasta ahora solo lo alcanzaba `entry_points/cli/cli.py:cmd_revocar`.
         Mismo criterio que el resto de esta seccion: `titular_id` sale de la
         cookie de sesion, nunca del cuerpo. `RevocarMedioUseCase` ya verifica que la
         referencia sea del titular autenticado (`RepositorioMedios.vivos`)
         antes de pedirle la revocacion a la pasarela -- revocar a ciegas
-        podria apagar la fuente equivocada (docstring de `aplicacion/
+        podria apagar la fuente equivocada (docstring de `usecase/
         revocar_medio.py`)."""
         try:
             ref = MedioDePagoRef(

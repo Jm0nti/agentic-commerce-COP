@@ -53,7 +53,7 @@ _DOCUMENTOS = [
         texto=(
             "# Compra\n\n"
             "## Firma\nLa persona titular firma el mandato con su llave; el asistente no firma.\n\n"
-            "## Pago\nCon el mandato firmado, la boveda cobra al comercio autorizado.\n"
+            "## Pago\nCon el mandato firmado, el motor de pagos cobra al comercio autorizado.\n"
         ),
     ),
     DocumentoFuente(

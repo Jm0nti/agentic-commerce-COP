@@ -1,11 +1,9 @@
-"""`RevocarMedioUseCase`: el unico boton de panico que existe, igual que
-`boveda/enrolamiento.py:revocar`. Apaga una fuente de pago -- no hay
+"""`RevocarMedioUseCase`: el unico boton de panico que existe. Apaga una fuente de pago -- no hay
 "pausar" ni "bajar el tope" en el puerto, o esta viva o no.
 
 Verifica primero que la referencia pertenezca al titular en este ambiente
 (`RepositorioMedios.vivos`) antes de pedirle a la pasarela que revoque:
-revocar a ciegas puede apagar la fuente equivocada, mismo argumento que la
-guarda de la v1.
+revocar a ciegas puede apagar la fuente equivocada.
 
 Multi-comercio: la revocacion tiene que pedirsele a la pasarela DEL COMERCIO
 que creo ese medio -- Wompi no reconoce una fuente de pago fuera de la
@@ -25,8 +23,8 @@ devuelva), o Wompi no tiene forma de anular esta fuente por API (Nequi) y
 el medio se desactivo solo del lado de esta app -- en ese segundo caso
 `estado.detalle["aviso"]` trae el texto que hay que mostrarle al titular
 ("todavia tenes que cancelarlo desde tu app Nequi"). Devolver solo el
-string tiraria ese aviso a la basura. `entradas/cli/__main__.py:cmd_revocar`
-y `entradas/api/app.py:revocar_medio` ya se actualizaron para leer
+string tiraria ese aviso a la basura. `entry_points/cli/cli.py:cmd_revocar`
+y `entry_points/api_rest/app.py:revocar_medio` ya se actualizaron para leer
 `estado.estado`/`estado.detalle` en vez de tratar el resultado como texto.
 """
 

@@ -533,6 +533,15 @@ con los nombres de Bancolombia y se verifica.
 
 ### Fase 7: Documentación y salida a `prod` (1 día)
 
+> **✅ Pasos 1 y 2 hechos (5 oct 2026).** Queda en 1.387 pruebas. Diferencias con lo planeado:
+>
+> - **La documentación habla solo de agora.** Se borraron `docs/historico/`, la guía de limpieza previa de `docs/utils/` y `docs/arquitectura-v2.{md,html}`; ningún documento, docstring ni comentario habla ya de implementaciones anteriores a agora. El lema queda en *"El agente propone. El humano firma. El motor de pagos ejecuta."*
+> - **`docs/arquitectura.md` reemplaza a `arquitectura-v2.md`**, con la estructura Bancolombia y el ADR-9. `README.md` y `Documentacion.md` se reescribieron; los diagramas `01-capas`, `04-despliegue` y `06-turno-con-firma-humana` se rehicieron.
+> - **Rutas:** las referencias `agora/…`, `dominio/…`, `puertos/…` y los nombres de casos de uso sin `UseCase` se reescribieron en todo `docs/` (más de mil reemplazos). Cada ruta `docs/…`, `tests/…` o de código citada en la documentación existe.
+> - **`docs/soporte/`** (el corpus RAG) solo cambió en el nombre de quien ejecuta el cobro ("el motor de pagos"); sigue sin cifras y sus pruebas pasan.
+> - **El anteproyecto** (`.md` y `.tex`) se actualizó (nueve controles del mandato, rutas nuevas); el `.pdf` hay que volver a compilarlo.
+> - **Pendiente, pasos 3 y 4:** prueba de punta a punta en sandbox (Wompi, webhook por ngrok, chat web con firma) y la transacción real supervisada antes de fusionar a `prod`.
+
 1. Actualizar `README.md`, `Documentacion.md`, `docs/arquitectura-v2.md` y el
    diagrama `docs/diagramas/01-capas.mermaid`. Hoy hay **91 referencias a rutas
    `agora/…`** en la documentación. `docs/historico/` **no se toca**: es historia.

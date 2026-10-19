@@ -1,8 +1,7 @@
 """`FirmanteEd25519` + `cargar_o_generar_firmante`: la mitad de firma del
 `Verificador` que ya se probaba solo. Una firma que sale de `FirmanteEd25519`
 tiene que validar contra `VerificadorEd25519`, y la llave en disco tiene que
-sobrevivir una recarga -- eso es lo que hace posible "igual que v1: llave en
-disco", que el mismo mandato firmado hoy siga verificando manana."""
+sobrevivir una recarga -- eso es lo que hace posible que el mismo mandato firmado hoy siga verificando manana."""
 
 from __future__ import annotations
 

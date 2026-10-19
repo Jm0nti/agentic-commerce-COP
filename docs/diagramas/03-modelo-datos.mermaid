@@ -37,7 +37,7 @@ erDiagram
 
     MANDATO {
         string id PK "mnd_..."
-        int version "1 legado, 2 con MedioDePagoRef"
+        int version "2, va dentro de la carga firmada"
         uuid medio_id FK
         string comercio_id "resuelto via medio.comercio_id al firmar; no cruza contra el mismo campo del medio dentro de la firma"
         int monto_max_centavos

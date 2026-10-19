@@ -1,6 +1,6 @@
 """`Comercio`/`Producto` <-> fila de `catalogo.json`.
 
-Centralizado aqui por la misma razon que `adaptadores/persistencia/sqlite/
+Centralizado aqui por la misma razon que `driven_adapters/persistencia_sqlite/
 serializacion.py`: para que `repositorio.py` no repita la forma del JSON en
 cada metodo, y para que escribir el archivo (`scripts/
 generar_catalogo_semilla.py`) y leerlo (`RepositorioCatalogoSemilla`) usen

@@ -1,6 +1,6 @@
 """`RepositorioCatalogoSemilla`: lee un `catalogo.json` de mentiras (no el
 real, `datos/catalogo.json`, que puede cambiar de contenido cada vez que se
-corre `scripts/generar_catalogo_semilla.py`) y sirve el puerto
+corre `app_service/generar_catalogo_semilla.py`) y sirve el puerto
 `RepositorioCatalogo`.
 """
 

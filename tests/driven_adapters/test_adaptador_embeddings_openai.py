@@ -1,6 +1,6 @@
 """`AdaptadorEmbeddingsOpenAI` contra un cliente de mentira con la forma
 `.embeddings.create(...).data[i].{index,embedding}` -- sin red ni llave real
-(mismo criterio que `tests/test_adaptador_deepseek.py`)."""
+(mismo criterio que `tests/driven_adapters/test_adaptador_deepseek.py`)."""
 
 from __future__ import annotations
 

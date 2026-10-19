@@ -1,100 +1,80 @@
 ---
-title: Las capas, despues de la migracion a agentes (etapas 1-5)
+title: agora · Clean Architecture de Bancolombia · modulos y regla de dependencia
 ---
 flowchart TB
-    subgraph ENTRADAS["entradas/ · adaptadores primarios"]
+    subgraph APPS["applications/app-service · el unico que conoce a todos"]
         direction LR
-        CLI["cli/<br/>operacion · chat · trazas"]
-        API["api/<br/>FastAPI · REST + SSE"]
-        WH["webhooks/<br/>transaction.updated (por comercio_id)"]
+        MAIN["main.py<br/>python -m agora api | webhook | cli | crear-usuario | generar-catalogo"]
+        CONF["config/<br/>configuracion · contenedor · agente"]
     end
 
-    subgraph AGENTE["agente/ · FRONTERA DURA · no importa aplicacion/, adaptadores/ ni entradas/"]
+    subgraph EP["infrastructure/entry-points · traducen y delegan en casos de uso"]
         direction LR
-        HERR["herramientas.py<br/>lo que el LLM puede llamar"]
-        CONV["conversacion.py<br/>el loop de turnos"]
-        POL["politica.py<br/>system prompt y limites"]
-        CLAS["clasificacion/<br/>reglas · modelo · cadena<br/><small>etapa 1</small>"]
-        NOD["nodos.py · intencion.py<br/>lista blanca por ruta<br/><small>etapa 1</small>"]
-        DOC["contexto_documental.py<br/><small>etapa 2 · piso 0,43 medido</small>"]
-        GRA["grafo.py · agentes.py<br/>orquestador + 7 agentes<br/><small>etapas 3-4</small>"]
-        PAU["pausa.py<br/>PausaDelTurno · DecisionHumana<br/><small>etapa 5</small>"]
-        TRZ["traza.py<br/>un evento por turno"]
+        API["api-rest<br/>FastAPI · REST + SSE · chat.html"]
+        WH["webhook-wompi<br/>transaction.updated por comercio_id"]
+        CLI["cli<br/>operacion · chat · trazas"]
     end
 
-    subgraph APP["aplicacion/ · casos de uso"]
+    subgraph UC["domain/usecase · un caso de uso por carpeta"]
         direction LR
-        EJ["EjecutarIntencion"]
-        EM["EmitirMandato"]
-        EN["EnrolarMedio"]
-        CE["ConciliarEvento"]
-        NC["NavegarCatalogo<br/><small>3 peldanos de retrieval</small>"]
+        EJ["EjecutarIntencionUseCase<br/><small>el motor de pagos</small>"]
+        PC["PagarCarritoUseCase"]
+        EM["EmitirMandatoUseCase"]
+        EN["EnrolarMedio · Iniciar/Consultar/<br/>ConfirmarEnrolamientoUseCase"]
+        CE["ConciliarEventoUseCase"]
+        NC["NavegarCatalogoUseCase<br/><small>3 peldanos de busqueda</small>"]
+        OT["RegistrarUsuario · IniciarSesion<br/>RevocarMedio · RechazarPropuesta<br/>ConsultarEstado · Listar*"]
     end
 
-    subgraph PUERTOS["puertos/ · interfaces · typing.Protocol"]
+    subgraph AG["domain/usecase/agente · FRONTERA DURA · no importa otro caso de uso, ni adaptadores, ni gateways de pago o firma"]
         direction LR
-        PP["PasarelaDePagos"]
-        PSEL["SelectorDePasarela<br/>multi-comercio: para(comercio_id)"]
-        PR["LibroDeConsumo<br/>RepositorioMandatos<br/>RepositorioMedios (+comercio_id)"]
-        PC["RepositorioCatalogo"]
-        PL["ModeloDeLenguaje"]
-        POR["CompiladorDeGrafos<br/>PausaRequerida<br/><small>etapas 3 y 5</small>"]
-        PRE["BuscadorDocumental<br/>ProveedorDeEmbeddings<br/><small>etapa 2</small>"]
-        PBP["BuscadorSemanticoDeProductos<br/>FiltrosDeProducto<br/><small>etapa 4</small>"]
-        PS["Reloj · GeneradorIds<br/>Firmante · Bitacora"]
+        HERR["herramientas.py<br/>6 herramientas · PROHIBIDAS"]
+        GRA["grafo.py · agentes.py<br/>orquestador + 7 agentes"]
+        CLAS["clasificacion/<br/>reglas · modelo · cadena"]
+        PAU["pausa.py<br/>PausaDelTurno · DecisionHumana"]
+        OTA["conversacion · contexto_documental<br/>nodos · politica · traza"]
     end
 
-    subgraph DOM["dominio/ · PURO · sin IO"]
+    subgraph MOD["domain/model · entidades + gateways · solo biblioteca estandar"]
         direction LR
-        MAN["Mandato · Intencion<br/>Violacion · Dictamen"]
-        DIN["Dinero · identidades"]
-        TOP["TopesDuros<br/>NO configurable"]
-        CAT["Comercio · Producto<br/>Carrito"]
+        MAN["mandato/<br/>Mandato · Intencion · Dictamen<br/><small>gateways: repositorios · firma</small>"]
+        PAG["pago/<br/>MedioDePagoRef · TopesDuros<br/><small>gateways: pasarela · repositorios</small>"]
+        CAT["catalogo/<br/>Comercio · Producto · Carrito<br/><small>gateways: catalogo · busqueda · repositorios</small>"]
+        USR["usuario/<br/>Usuario<br/><small>gateways: autenticacion · repositorios</small>"]
+        AGM["agente/<br/>TipoDeIntencion · ContextoInyectado<br/><small>gateways: modelo_lenguaje · orquestacion · recuperacion</small>"]
+        COM["commons/<br/>Dinero · errores<br/><small>gateways: Reloj · GeneradorIds · Bitacora</small>"]
     end
 
-    subgraph ADAP["adaptadores/ · adaptadores secundarios · los unicos que importan librerias de terceros"]
+    subgraph DA["infrastructure/driven-adapters · implementan gateways · un modulo por tecnologia"]
         direction LR
-        ARP["pasarelas/registro<br/>RegistroDePasarelas: por comercio_id"]
-        AW["pasarelas/wompi<br/>dinero real, credenciales por comercio"]
-        AS["pasarelas/simulada<br/>demo y pruebas"]
-        AQ["persistencia/sqlite"]
-        AM["persistencia/memoria"]
-        AD["llm/deepseek<br/>V4-Pro · V4-Flash"]
-        AC["catalogo/semilla"]
-        AO["orquestacion/con_langgraph<br/>el UNICO que importa langgraph"]
-        AR["recuperacion/langchain_en_memoria<br/>indice documental"]
-        AE["embeddings/proveedor_openai<br/>text-embedding-3-small"]
-        ABP["busqueda_productos/semantico_en_memoria<br/>indice de catalogo · coseno numpy"]
+        D1["pasarela-wompi · pasarela-simulada<br/>selector-pasarelas"]
+        D2["persistencia-sqlite · persistencia-memoria<br/>catalogo-semilla"]
+        D3["llm-deepseek · embeddings-openai<br/>recuperacion-langchain · busqueda-semantica-memoria<br/>orquestacion-langgraph"]
+        D4["firma-ed25519 · hasher-pbkdf2<br/>bitacora-jsonl · sistema"]
     end
 
-    COMP["composicion/contenedor.py · composicion/agente.py<br/>composition root · el unico que lee el entorno y arma el grafo"]
+    APPS -->|arma e inyecta| EP
+    APPS -->|construye| DA
+    APPS -->|construye| UC
+    EP --> UC
+    EP -.->|recibe armado| AG
+    AG -->|"solo callables cerrados por app-service<br/>mandato_id opacos"| UC
+    AG --> MOD
+    UC --> MOD
+    DA -.->|implementan gateways| MOD
 
-    ENTRADAS --> APP
-    AGENTE -->|"solo mandato_id opacos"| APP
-    AGENTE -.->|usa| PL
-    AGENTE -.->|usa| POR
-    AGENTE -.->|usa| PRE
-    APP --> PUERTOS
-    APP --> DOM
-    PUERTOS --> DOM
-    ADAP -.->|implementan| PUERTOS
-    ADAP --> DOM
-    COMP -->|inyecta| ENTRADAS
-    COMP -->|inyecta| APP
-    COMP -->|construye| ADAP
+    AG x-.-x|"prohibido: tests/arquitectura/test_fronteras.py falla el build"| DA
 
-    AGENTE x-.-x|"prohibido: sin credenciales, sin langgraph, sin langchain<br/>test_fronteras.py falla el build"| ADAP
-
-    classDef dominio fill:#1e3a5f,stroke:#4a90d9,color:#e8f0f8
-    classDef puerto fill:#3d2f5c,stroke:#9b7fc4,color:#f0e8f8
+    classDef modelo fill:#1e3a5f,stroke:#4a90d9,color:#e8f0f8
+    classDef caso fill:#3d2f5c,stroke:#9b7fc4,color:#f0e8f8
     classDef adaptador fill:#2f4f3d,stroke:#6fbf8f,color:#e8f8ee
     classDef agente fill:#5c3d2f,stroke:#d99a6f,color:#f8f0e8
     classDef entrada fill:#4a4a4a,stroke:#999,color:#eee
     classDef raiz fill:#5c2f3d,stroke:#d96f8f,color:#f8e8ee
 
-    class MAN,DIN,TOP,CAT dominio
-    class PP,PSEL,PR,PC,PL,POR,PRE,PBP,PS puerto
-    class ARP,AW,AS,AQ,AM,AD,AC,AO,AR,AE,ABP adaptador
-    class HERR,CONV,POL,CLAS,NOD,DOC,GRA,PAU,TRZ agente
-    class CLI,API,WH entrada
-    class COMP raiz
+    class MAN,PAG,CAT,USR,AGM,COM modelo
+    class EJ,PC,EM,EN,CE,NC,OT caso
+    class D1,D2,D3,D4 adaptador
+    class HERR,GRA,CLAS,PAU,OTA agente
+    class API,WH,CLI entrada
+    class MAIN,CONF raiz

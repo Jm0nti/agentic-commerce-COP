@@ -1,9 +1,9 @@
-"""`adaptadores/orquestacion/con_langgraph/`: el compilador real de LangGraph,
+"""`driven_adapters/orquestacion_langgraph/`: el compilador real de LangGraph,
 con nodos de mentira.
 
 Nada de esto toca el agente ni el dominio -- el punto es exactamente ese: el
 adaptador no sabe que viaja por el grafo. Lo que se verifica es lo que
-`agente/grafo.py` necesita poder dar por cierto:
+`usecase/agente/grafo.py` necesita poder dar por cierto:
 
   - un camino lineal corre en orden;
   - una condicional elige de verdad (incluida una rama que va a FIN);
@@ -115,7 +115,7 @@ def test_el_objeto_de_estado_conserva_su_identidad():
 
 def test_un_nodo_que_devuelve_un_estado_nuevo_es_el_que_sigue_viaje():
     """El otro caso: nodos que no mutan sino que devuelven una copia (es lo
-    que hace `agente/grafo.py` con `replace`). Lo que sale del grafo es lo
+    que hace `usecase/agente/grafo.py` con `replace`). Lo que sale del grafo es lo
     que devolvio el ultimo nodo, no lo que entro."""
     inicial = _Caja(rama="original")
     grafo = _compilar(
@@ -135,7 +135,7 @@ def test_un_nodo_que_devuelve_un_estado_nuevo_es_el_que_sigue_viaje():
 
 def test_una_excepcion_de_un_nodo_se_propaga_tal_cual():
     """Sin envolver: si `ejecutar_turno` levanta `LimiteDeTurnosExcedido`,
-    `entradas/api/app.py` lo tiene que seguir viendo como esa excepcion y no
+    `entry_points/api_rest/app.py` lo tiene que seguir viendo como esa excepcion y no
     como un error del motor de grafos."""
 
     class _ErrorDelNodo(Exception):

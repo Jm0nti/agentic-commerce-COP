@@ -1,7 +1,7 @@
 """La traza de un turno: como el agente llego a su respuesta.
 
 No es logging de diagnostico -- es lo mismo que dice
-`puertos/sistema.py:Bitacora`: *auditoria*. Un turno del agente es una
+`model/commons/gateways/sistema.py:Bitacora`: *auditoria*. Un turno del agente es una
 cadena de decisiones (clasificar -> enrutar -> habilitar herramientas ->
 inyectar contexto -> llamar herramientas -> contestar), y cada eslabon es
 una respuesta a "por que contesto esto". La traza es esa cadena, escrita
@@ -23,8 +23,8 @@ bandera que el loop levanto al pasar.
 
 LO QUE LA TRAZA PRUEBA
 ------------------------
-El principio de la PoC -- *el agente propone, el humano firma, la boveda
-ejecuta* -- es hoy una propiedad estructural (`test_fronteras.py`) y una
+El principio de la PoC -- *el agente propone, el humano firma, el motor de
+pagos ejecuta* -- es hoy una propiedad estructural (`test_fronteras.py`) y una
 propiedad de ejecucion (una herramienta fuera de ruta se rechaza al
 ejecutar). La traza la vuelve una propiedad OBSERVABLE despues del hecho:
 por cada turno queda escrito que herramientas se le ofrecieron al modelo,

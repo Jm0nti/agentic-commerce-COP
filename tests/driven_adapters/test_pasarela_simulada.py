@@ -1,11 +1,11 @@
 """La pasarela simulada: los cuatro desenlaces, a voluntad.
 
-ADR-2 (`docs/arquitectura-v2.md`): la simulada no es un mock de pruebas, es
+ADR-2 (`docs/arquitectura.md`): la simulada no es un mock de pruebas, es
 un adaptador de produccion para el modo demo, y tiene que poder reproducir
 aprobado, declinado, declinado por antifraude y pendiente sin gastar y sin
 depender de que Wompi coopere. Estas pruebas verifican los cuatro y, de paso,
 que la heuristica por defecto reproduce la senal real documentada en
-`docs/hallazgo-afe.md`: un correo en un dominio reservado por la RFC 2606
+`docs/utils/decline-afe.md`: un correo en un dominio reservado por la RFC 2606
 declina por antifraude.
 """
 
@@ -48,11 +48,11 @@ def test_correo_normal_aprueba():
 
 
 def test_dominio_reservado_declina_por_antifraude():
-    """Reproduce `docs/hallazgo-afe.md`: el correo `boveda+poc@example.com`
+    """Reproduce `docs/utils/decline-afe.md`: un correo en `example.com`
     -- un dominio que la RFC 2606 reserva y que nunca entrega -- fue lo que
     el motor antifraude de Wompi leyo como fraude en la primera corrida real.
     """
-    r = _pasarela().cobrar(_orden("boveda+poc@example.com"))
+    r = _pasarela().cobrar(_orden("comprador+poc@example.com"))
     assert r.estado is EstadoCobro.RECHAZADO
     assert r.afe_decision == "DECLINE"
     assert r.detenido_por_antifraude
@@ -72,7 +72,7 @@ def test_marcador_pendiente_queda_pendiente():
 
 def test_resolver_pendiente_cierra_el_ciclo():
     """Imita el webhook `transaction.updated` que en Wompi real convierte un
-    PENDING en su estado final (`docs/arquitectura-v2.md`, pasos 7d-8)."""
+    PENDING en su estado final (`docs/arquitectura.md`, pasos 7d-8)."""
     pasarela = _pasarela()
     r = pasarela.cobrar(_orden("cliente.pendiente@correo-real.com"))
     resuelto = pasarela.resolver_pendiente(r.id_externo, APROBADO)

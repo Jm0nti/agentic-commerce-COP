@@ -1,308 +1,218 @@
-# PoC de comercio agéntico sobre rieles colombianos
+# agora — comercio agéntico sobre rieles colombianos
 
-Un agente conversacional le compra algo a una persona. El dinero sale de una
-cuenta Nequi real, sobre Wompi. Lo que este repositorio estudia es lo que pasa
-en el medio: qué autoriza el titular, qué intenta ejecutar el agente, y cuánto
-de la diferencia entre esas dos cosas alcanza a detenerse antes de que se mueva
-un peso.
+agora es una herramienta para estudiar qué pasa cuando un agente de IA compra
+en nombre de una persona. Una persona chatea con un agente, el agente le arma
+una compra en un comercio, y el dinero sale de una cuenta Nequi real a través
+de Wompi. Lo que agora mide es lo que pasa en el medio: qué autoriza el
+titular, qué intenta ejecutar el agente, y cuánto de la diferencia entre esas
+dos cosas se detiene antes de que se mueva un peso.
 
 ## La idea en una frase
 
-> **El agente propone. El humano firma. La bóveda ejecuta.**
+> **El agente propone. El humano firma. El motor de pagos ejecuta.**
 > Ninguno de los tres puede hacer el trabajo de otro.
 
-En la práctica: una persona chatea con un agente de IA para comprarle algo a uno
-de los comercios (simulados, para esta demo). El agente busca productos, arma un
-carrito y *propone* una autorización de pago — nunca la firma él mismo, porque
-no tiene la llave para hacerlo. La persona ve exactamente qué se le pide
-autorizar (qué comercio, qué monto máximo, por cuánto tiempo, para cuántos
-usos) y firma esa autorización con un clic o un comando, en su propio
-dispositivo. Solo entonces el agente puede pedirle a la "bóveda" que cobre —y
-la bóveda vuelve a revisar todo (firma, vigencia, monto, comercio, que el
-carrito no haya cambiado) antes de llamar a la pasarela de pagos real.
+En la práctica: el agente busca productos, arma un carrito y *propone* una
+autorización de pago (un **mandato**) — nunca la firma, porque no tiene la
+llave. La persona ve exactamente qué se le pide autorizar (comercio, monto
+máximo, vigencia, usos) y la firma con un clic, desde su sesión. Recién
+entonces el agente puede pedir el cobro, y el motor de pagos vuelve a revisar
+todo (firma, vigencia, monto, comercio, que el carrito no haya cambiado)
+antes de llamar a la pasarela.
 
-Además de esa autorización específica (el "mandato"), existen **topes duros**
-que nunca se pueden desactivar, ni siquiera para experimentar: protegen el
-dinero real independientemente de que el mandato falle o se manipule.
+Por encima del mandato hay **topes duros** que nunca se pueden desactivar:
+20.000 COP por transacción y 100.000 COP por día, constantes en el código.
+Protegen el dinero real aunque el mandato falle o se manipule.
 
-## Qué hay hoy en este repositorio
+## Qué hay en agora
 
-`agora/` es la única implementación activa: arquitectura por capas
-(`docs/arquitectura-v2.md`), dominio, adaptadores, agente conversacional
-(DeepSeek, seis herramientas, frontera dura verificada por pruebas), CLI
-**y** una página web de chat con firma integrada, catálogo de comercios
-simulado y generado con IA (2 comercios: Dulcería La Golosina, Papelería El
-Lápiz Feliz), persistencia SQLite. Se puede correr contra la pasarela
-simulada sin gastar un peso, o contra Wompi real cambiando una sola variable
-de entorno.
-
-Hubo una versión anterior, `boveda/` (v1) — el experimento mínimo que primero
-movió dinero real en producción (Fase A + Fase B), reescrito por completo en
-`agora/` a lo largo de seis etapas. `boveda/` se retiró de este repositorio:
-queda preservado, con su evidencia experimental original
-(`recibos.jsonl`, mandatos v1 firmados), fuera de este checkout. Ver
-`docs/limpieza-v1-boveda.md` y `docs/historico/` para el contexto de esa
-migración y el hallazgo original que la motivó.
-
-`wompi_lab/` es un banco de pruebas antiguo, congelado — se conserva solo
-porque tiene el único código del repo que sabe hacer dispersiones (payouts)
-por Bre-B.
+- Un **agente conversacional** (DeepSeek) organizado como grafo: un
+  orquestador clasifica cada mensaje y lo enruta a uno de siete agentes
+  especializados, cada uno con solo las herramientas de su dominio. Seis
+  herramientas en total; ninguna firma, enrola ni ve un medio de pago.
+- Una **página web de chat** con inicio de sesión, firma y confirmación en un
+  popup, y gestión de medios de pago — más una **CLI** completa.
+- **Mandatos firmados con ed25519**, una llave por usuario, verificados en cada
+  cobro contra nueve controles.
+- **Multi-comercio**: varios comercios reales de Wompi en el mismo proceso,
+  cada uno con sus credenciales.
+- Un **catálogo simulado** generado con IA (Dulcería La Golosina y Papelería
+  El Lápiz Feliz, 24 productos).
+- **Persistencia SQLite** con reserva y confirmación atómica del consumo, y un
+  **webhook** de Wompi que cierra cada cobro.
+- Una **pasarela simulada** que reproduce los cuatro desenlaces de Wompi sin
+  gastar un peso. Se cambia a Wompi real con una variable de entorno.
 
 ## Arquitectura, de un vistazo
 
-```
-        entradas/            composicion/
-     (cli, api web,          (el único que arma
-      webhook)                 todo y lee el .env)
-           │                        │
-           ▼                        ▼
-   ┌─────────────────────────────────────┐
-   │            aplicacion/               │  casos de uso
-   │   EjecutarIntencion, EmitirMandato…  │
-   └─────────────────────────────────────┘
-           │                        ▲
-           ▼                        │ implementan
-   ┌───────────┐             ┌──────────────┐
-   │ puertos/  │◄────────────│ adaptadores/ │  wompi, simulada,
-   │(interfaces)│             │              │  sqlite, deepseek
-   └───────────┘             └──────────────┘
-           │
-           ▼
-   ┌─────────────────────────────────────┐
-   │              dominio/                │  reglas puras, sin red
-   │   Mandato, Intención, Dinero…        │
-   └─────────────────────────────────────┘
+agora sigue la **Clean Architecture de Bancolombia**: cada pieza es un módulo
+del scaffold y las dependencias apuntan siempre hacia el dominio.
 
-   agente/  →  solo ve dominio/ y puertos/. Nunca puede importar
-               una pasarela de pagos ni la llave de firma — una
-               prueba (tests/test_fronteras.py) rompe el build si
-               alguien lo intenta.
+```
+applications/app-service          python -m agora <perfil>: arma todo y arranca
+infrastructure/entry-points       api-rest · webhook-wompi · cli
+infrastructure/driven-adapters    pasarela-wompi · pasarela-simulada · persistencia-sqlite
+                                  llm-deepseek · orquestacion-langgraph · firma-ed25519 · …
+domain/usecase                    casos de uso (un caso por carpeta) + agente/ (frontera dura)
+domain/model                      entidades y gateways · solo biblioteca estándar
 ```
 
-El detalle completo de cada módulo está en **`Documentacion.md`**, en la raíz
-del repositorio.
+El agente vive en `domain/usecase/agente/` y no puede importar ningún otro
+caso de uso, adaptador ni gateway de pago o firma: lo que puede hacer le llega
+como seis funciones ya armadas. `tests/arquitectura/test_fronteras.py` rompe
+el build si alguien lo intenta. Detalle en
+[`docs/arquitectura.md`](docs/arquitectura.md).
 
-## Cómo correrlo, paso a paso
+## Cómo correrlo
 
-### 0. Requisitos
+### 1. Instalar
 
-Python 3.10 o superior y `pip`.
-
-### 1. Instalar dependencias
+Python 3.10 o superior.
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Crear el archivo de configuración
+Instala agora en modo editable (`pip install -e .[dev]`), que es lo que hace
+disponible `python -m agora`. Si mueves el repositorio de carpeta, vuelve a
+correrlo.
 
-Copiar la plantilla de `docs/variables-de-entorno.md` a un archivo `.env` en
-la raíz del repositorio (ya está en `.gitignore`: nunca se sube a control de
-versiones). Como mínimo, para empezar sin tocar dinero real, alcanza con:
+### 2. Configurar
+
+Crea un `.env` en la raíz (está en `.gitignore`) con la plantilla de
+[`docs/variables-de-entorno.md`](docs/variables-de-entorno.md). Para empezar
+sin tocar dinero real alcanza con:
 
 ```dotenv
 AGORA_AMBIENTE=sandbox
 AGORA_PASARELA=simulada
 AGORA_PERSISTENCIA=sqlite
+DEEPSEEK_API_KEY=sk-...        # para el chat
 ```
 
-Ver la sección **Archivos de configuración** más abajo para el resto de las
-variables (Wompi, el perfil del pagador, DeepSeek).
-
-### 3. Correr las pruebas
+### 3. Probar
 
 ```bash
-python -m pytest tests/ -q
+python -m pytest -q
 ```
 
-Deberían quedar todas en verde.
+Corre la suite completa, incluidas las reglas de arquitectura.
 
-### 4. Explorar el catálogo simulado
+### 4. Crear un usuario
+
+Los usuarios se crean por consola (no hay registro público). Cada usuario
+nace con su propia llave de firma:
 
 ```bash
-python -m agora cli comercios
-python -m agora cli productos <comercio_id>
-python -m agora cli producto <producto_id>
+python -m agora crear-usuario --nombre-usuario juan
 ```
 
-### 5. Autorizar un medio de pago (una sola vez, "Fase A")
+Muestra el `titular_id` del usuario, que es el que usa la CLI.
 
-Con `AGORA_PASARELA=simulada` esto no toca ninguna cuenta real — genera un
-medio de pago de mentiras al instante. Con `AGORA_PASARELA=wompi` en
-producción, esto le manda un push de verdad a la app Nequi del titular.
-Multi-comercio: `--comercio` es obligatorio — el medio queda vinculado a ESE
-comercio, no a "cualquiera" (ver `docs/flujo-propuesta-mandato.md`, sección 6):
-
-```bash
-python -m agora cli enrolar --telefono 3001234567 --titular tit_demo --comercio <comercio_id>
-python -m agora cli fuentes tit_demo
-```
-
-**También se puede hacer sin la terminal**, desde el navegador: con el
-servidor web corriendo (paso 7), abrí `http://localhost:8002`, poné el
-`titular_id` arriba a la derecha y hacé clic en "Medios de pago". Ahí mismo
-se enrola un medio nuevo (teléfono + correo) y se ven los que ya están
-enrolados para ese titular — funciona igual con `AGORA_PASARELA=simulada`
-que con `wompi` (sandbox o producción, según `AGORA_AMBIENTE`).
-
-### 6. Comprar a mano, desde la terminal
-
-Cuando la misma persona opera la terminal de punta a punta, un solo comando
-arma el carrito y firma el mandato:
-
-```bash
-python -m agora cli emitir <comercio_id> tit_demo --item <producto_id>:1
-python -m agora cli pagar <mandato_id> <carrito_id>
-```
-
-Si el pago queda "esperando confirmación humana" (es habitual: un mandato
-cortado exacto al carrito dispara una señal de revisión), la terminal muestra
-el comando exacto para resolverlo:
-
-```bash
-python -m agora cli retomar <intencion_id> <mandato_id> <carrito_id>
-python -m agora cli estado <intencion_id>
-```
-
-### 7. Chatear con el agente de IA
-
-Necesita una llave de DeepSeek (`DEEPSEEK_API_KEY` en el `.env`). Hay dos
-formas de probarlo:
-
-**Por terminal:**
-
-```bash
-python -m agora cli chat
-```
-
-El agente puede buscar comercios y productos, armar un carrito y pedirte que
-lo pagues — pero cuando llega el momento de autorizar, te va a pasar un
-comando exacto (`firmar <propuesta_id> <titular>`) para que lo corras vos
-mismo, en otra terminal. El agente nunca puede firmar nada.
-
-**Por navegador (recomendado para una demo):**
+### 5. Chatear con el agente (recomendado para una demo)
 
 ```bash
 python -m agora api
 ```
 
-Y abrir `http://localhost:8002` en el navegador. Es una sola página: se
-chatea con el agente y, cuando hay algo que firmar o confirmar, aparece un
-recuadro emergente para que la persona lo resuelva ahí mismo, sin cambiar de
-ventana ni de terminal. El botón "Medios de pago" del encabezado (ver paso 5)
-también vive en esta misma página.
+Abre `http://localhost:8002`, inicia sesión, y en **Medios de pago** enrola
+uno (teléfono + correo) para el comercio donde vas a comprar. Después pídele
+algo al agente: cuando haya una propuesta que firmar o un cobro que
+confirmar, aparece un popup para resolverlo ahí mismo.
 
-### 8. (Solo en producción) Recibir la confirmación de Wompi
-
-Los cobros contra Wompi real no se confirman al instante: llegan por webhook.
-**Sin este paso, cualquier compra por Nequi se queda mostrando "pendiente"
-para siempre en el chat**, aunque Wompi ya la haya aprobado del lado del
-banco — el dinero sale igual, pero esta app nunca se entera. Es un proceso
-aparte del chat (paso 7), así que hacen falta dos terminales corriendo al
-mismo tiempo:
-
-**Terminal 2 — arrancar el receptor:**
+### 6. Operar desde la terminal
 
 ```bash
-python -m agora webhook
+python -m agora cli comercios
+python -m agora cli productos <comercio_id>
+python -m agora cli enrolar --telefono 3001234567 --titular <titular_id> --comercio <comercio_id>
+python -m agora cli emitir <comercio_id> <titular_id> --item <producto_id>:1
+python -m agora cli pagar <mandato_id> <carrito_id>
+python -m agora cli retomar <intencion_id> <mandato_id> <carrito_id>
+python -m agora cli chat
+python -m agora cli trazas --seguir
 ```
 
-Confirmá que responde con `curl http://localhost:8001/salud`.
+`emitir` arma el carrito y firma en un paso (la misma persona opera la
+terminal). Si un cobro queda esperando confirmación humana —habitual con un
+mandato cortado exacto al carrito— la terminal muestra el `retomar` exacto.
+`python -m agora cli --help` lista todos los comandos.
 
-**Terminal 3 — exponerlo a internet** (elegí una opción; ninguna requiere
-tocar el código):
+### 7. Con Wompi real: recibir la confirmación
+
+Contra Wompi los cobros no se confirman al instante: llegan por webhook. Sin
+este paso, una compra por Nequi se queda en "pendiente" en el chat aunque el
+banco ya la haya aprobado. Hacen falta tres terminales:
 
 ```bash
-# Opción A: cloudflared (no pide cuenta para un tunel rapido)
-cloudflared tunnel --url http://localhost:8001
-
-# Opción B: ngrok (pide una cuenta gratuita y un authtoken una sola vez)
-ngrok http 8001
+python -m agora api                          # 1. chat (puerto 8002)
+python -m agora webhook                      # 2. receptor de eventos (puerto 8001)
+ngrok http 8001                              # 3. túnel público (o cloudflared)
 ```
 
-Cualquiera de las dos imprime una URL pública (`https://algo.trycloudflare.com`
-o `https://algo.ngrok-free.app`).
-
-**Panel de Wompi:** Desarrolladores → Dashboard general, pegar la URL completa
-**con la ruta incluida, terminada en el `comercio_id` de ESE comercio**
-(multi-comercio: un solo túnel y un solo puerto sirven para todos los
-comercios, pero cada uno tiene su propia entrada en el panel de Wompi, con
-su propio segmento de URL — ver `AGORA_WOMPI_COMERCIOS` en
-`docs/variables-de-entorno.md`):
-
-```
-https://algo-al-azar.trycloudflare.com/pagos/wompi/transacciones/<comercio_id>
-```
-
-Con las tres terminales corriendo (chat, webhook, túnel), la consola de
-`servir_webhook_wompi.py` va a mostrar `[ok ] APPROVED intencion=...` en
-cuanto Wompi confirme un cobro, y el chat va a mostrar el resultado solo,
-sin que haga falta volver a preguntarle al agente (etapa 9, ver
-`Documentacion.md`).
-
-Con un túnel gratuito la URL cambia cada vez que lo reiniciás — hay que
-volver a pegarla en el panel de Wompi cada vez. Si esto va a quedar
-corriendo por más tiempo, conviene un dominio fijo (ngrok con plan pago, o
-un túnel nombrado de Cloudflare) para no repetir ese paso.
+En el panel de Wompi de **cada** comercio (Desarrolladores → Eventos) pega la
+URL del túnel seguida de `/pagos/wompi/transacciones/<comercio_id>`. Un solo
+túnel sirve para todos los comercios. El recorrido completo, con el
+enrolamiento real y lo que responde Wompi en cada paso, está en
+[`docs/flujo-operativo-de-punta-a-punta.md`](docs/flujo-operativo-de-punta-a-punta.md).
 
 ## El experimento
 
-La pregunta que dio origen al proyecto no es "¿el agente puede pagar?" sino
-"¿cuánto detiene el mandato cuando algo sale mal?". Por eso existe un brazo de
-comparación: se puede pedir que el motor de `agora/` **no** exija el mandato
-(`exigir_mandato=False`) y ver si la pasarela deja pasar igual un cobro que el
-mandato habría bloqueado. La diferencia entre las dos corridas es el efecto
-real del control. (La v1, `boveda/`, tenía el mismo brazo de comparación vía
-`--sin-mandato` en `boveda.cli` — ver `docs/historico/` para esas corridas
-originales.)
+La pregunta no es "¿el agente puede pagar?" sino "¿cuánto detiene el mandato
+cuando algo sale mal?". Por eso existe un brazo de comparación: el motor de
+pagos puede correr sin exigir el mandato (`exigir_mandato=False`) y registrar
+igual las violaciones. La diferencia entre las dos corridas es el efecto real
+del control — y el primer resultado fue un cobro de 15.000 COP aprobado por
+la pasarela contra un mandato que autorizaba 8.000. La bitácora de cobros
+(`agora_datos/recibos.jsonl`) es esa evidencia: nunca se sobreescribe.
 
-Los **topes duros** (ver la tabla de configuración abajo) nunca se pueden
-apagar por parámetro. Si se pudieran, apagar el control que se está midiendo
-apagaría también la protección del dinero real.
-
-## Archivos de configuración
-
-| Archivo | Qué controla |
-|---|---|
-| `.env` (raíz, no versionado) | Todas las credenciales y el modo de arranque. Plantilla completa y comentada en `docs/variables-de-entorno.md`. |
-| `agora_datos/secretos/comercios_wompi.json` (no versionado, ruta en `AGORA_WOMPI_COMERCIOS`) | Multi-comercio: credenciales de Wompi por comercio (`public_key`, `private_key`, `integrity_secret`, `events_secret`), indexadas por el mismo `comercio_id` del catálogo — reemplaza las variables `WOMPI_*` sueltas de un solo comercio. Plantilla en `docs/variables-de-entorno.md`. |
-| `agora/composicion/configuracion.py` | Lee y valida esas variables para `agora/`: valores por defecto, y reglas que impiden arrancar con una combinación insegura (por ejemplo, Wompi real con persistencia en memoria). |
-| `agora/dominio/pago/topes.py` | Los topes duros de `agora/`: **20.000 COP por transacción, 100.000 COP por día**. Son constantes en el código a propósito — si se volvieran configurables, dejarían de ser la protección que permite estudiar el mandato apagándolo. |
-| `.gitignore` | Qué queda fuera del control de versiones: el `.env`, la carpeta `agora_datos/` (bitácora + base SQLite + llave de firma), y los archivos sueltos de fuentes de pago o recibos. |
-| `requirements.txt` | Dependencias de Python (`fastapi`, `httpx`, `uvicorn`, `cryptography`, `pytest`, `python-dotenv`, `openai`). |
-
+Los topes duros nunca se apagan por parámetro: si se pudiera, apagar el
+control que se está midiendo apagaría también la protección del dinero real.
 
 ## Qué prueba esto, y qué no
 
-Prueba que un agente conversacional puede completar una compra sobre
-infraestructura de pagos colombiana real, dentro de límites que una persona
-autorizó explícitamente y que un sistema aparte hace cumplir — y que ese
-sistema efectivamente detiene los casos donde el agente pide más de lo
-autorizado. Con dos comercios reales de Wompi conviviendo en el mismo
-proceso (`AGORA_WOMPI_COMERCIOS`), también ejercita que un mandato firmado
-para un comercio cobra contra las credenciales de ESE comercio, y no las de
-otro.
+Prueba que un agente puede completar una compra sobre infraestructura de
+pagos colombiana real, dentro de límites que una persona autorizó y que un
+sistema aparte hace cumplir — y que ese sistema detiene los casos donde el
+agente pide más de lo autorizado. Con dos comercios reales de Wompi en el
+mismo proceso, también muestra que un mandato firmado para un comercio cobra
+con las credenciales de ese comercio y no de otro.
 
 No prueba una separación criptográfica completa entre comercios: la
-correspondencia entre el medio de pago y el comercio la garantiza
-`EmitirMandato` al firmar (`RepositorioMedios.vinculado_con`), pero no viaja
-dentro de la firma del mandato ni se reverifica al cobrar — una deuda
-técnica documentada a propósito, no un descuido (ver
-`docs/flujo-propuesta-mandato.md`, sección 6).
+correspondencia medio↔comercio la garantiza `EmitirMandatoUseCase` al firmar,
+pero no viaja dentro de la firma ni se reverifica al cobrar — deuda técnica
+documentada a propósito (ADR-8 en [`docs/arquitectura.md`](docs/arquitectura.md)).
+
+## Datos y configuración
+
+| Archivo | Qué es |
+|---|---|
+| `.env` (no versionado) | Modo de arranque y credenciales. Plantilla en `docs/variables-de-entorno.md`. |
+| `agora_datos/agora.db` (no versionado) | SQLite: usuarios y sus llaves, medios de pago, mandatos, consumo, carritos, propuestas y estados. |
+| `agora_datos/recibos.jsonl` · `trazas.jsonl` | Bitácora de cobros (evidencia del experimento) y trazas de cada turno del agente. |
+| `agora_datos/secretos/comercios_wompi.json` | Credenciales de Wompi por comercio (`AGORA_WOMPI_COMERCIOS`). |
+| `model/pago/topes.py` | Los topes duros. Constantes a propósito. |
+| `app_service/config/configuracion.py` | Lee y valida el entorno; impide arrancar con combinaciones inseguras (Wompi en producción con persistencia en memoria). |
 
 ## Documentos
 
-- **`Documentacion.md`** (raíz del repo) — el detalle técnico completo: cada
-  módulo, cada capa, el modelo de mandato, las variables de entorno, y los
-  hallazgos encontrados hasta ahora.
-- `docs/arquitectura-v2.md` (y su resumen visual, `docs/arquitectura-v2.html`)
-  — la arquitectura objetivo y las decisiones detrás de cada una (ADRs).
-- `docs/flujo-propuesta-mandato.md` — el recorrido completo del sistema de
-  mandatos: dónde se guarda cada cosa, la criptografía detrás de la firma,
-  cómo firma la persona, y por qué el agente nunca puede hacerlo él mismo.
-- `docs/flujo-operativo-de-punta-a-punta.md` — que hay que tener
-  corriendo y en que orden para una compra real: los tres procesos, el
-  tunel, el login multiusuario, el enrolamiento, y como responde Wompi
-  (sincrono y por webhook) para cada comercio.
-- `docs/variables-de-entorno.md` — la plantilla comentada del `.env`.
-
+- [`Documentacion.md`](Documentacion.md) — referencia técnica: cada módulo,
+  la API, la CLI, el modelo de mandato, la persistencia y las variables de
+  entorno.
+- [`docs/arquitectura.md`](docs/arquitectura.md) — la forma del sistema y las
+  decisiones (ADRs).
+- [`docs/arquitectura-agentes/`](docs/arquitectura-agentes/) — el módulo de
+  agentes: grafo del turno, agentes especializados, búsqueda en tres peldaños,
+  pausa humana y validación contra modelos reales.
+- [`docs/flujo-propuesta-mandato.md`](docs/flujo-propuesta-mandato.md) — el
+  sistema de mandatos por dentro: dónde vive cada cosa, la criptografía y cómo
+  firma la persona.
+- [`docs/flujo-operativo-de-punta-a-punta.md`](docs/flujo-operativo-de-punta-a-punta.md)
+  — qué tener corriendo, y en qué orden, para una compra real.
+- [`docs/variables-de-entorno.md`](docs/variables-de-entorno.md) — la
+  plantilla comentada del `.env`.
+- [`docs/diagramas/`](docs/diagramas/) — los diagramas en Mermaid.
+- [`docs/utils/`](docs/utils/) — investigación de rieles de pago, el hallazgo
+  del antifraude de Wompi y la viabilidad multi-comercio.
+- [`evolucion-refactor/`](evolucion-refactor/) — la migración a la Clean
+  Architecture de Bancolombia, fase por fase.

@@ -1,8 +1,7 @@
 """`LibroDeConsumoEnMemoria`: reserva atomica, y la condicion de carrera que
 existe para evitar.
 
-`docs/historico/analisis-codigo.md`, hallazgo 2: `Boveda` hace leer -> sumar -> escribir
-sobre TODO el JSON (`nucleo.py:288-292`). Bajo dos cobros simultaneos, los dos
+Con leer -> sumar -> escribir sobre un archivo completo, bajo dos cobros simultaneos, los dos
 leen el mismo `gastado_dia` y el ultimo en escribir gana -- el tope diario
 deja de ser un tope. La prueba de concurrencia de este archivo es la que
 demuestra que el reemplazo no tiene el mismo defecto.
@@ -143,7 +142,7 @@ def test_ambientes_no_comparten_cupo():
 
 
 def test_reserva_atomica_bajo_concurrencia():
-    """El caso que `docs/historico/analisis-codigo.md` marca como el mas caro: dos
+    """El caso mas caro: dos
     cobros compiten por el ultimo tramo del tope diario. Con
     leer->sumar->escribir sobre un JSON completo, los dos podrian pasar. Aqui
     solo puede pasar uno."""

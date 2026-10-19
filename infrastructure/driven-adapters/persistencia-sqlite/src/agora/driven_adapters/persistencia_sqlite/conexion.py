@@ -8,7 +8,7 @@ por operacion es mas lento, pero deja que sea SQLite -- via WAL y
 `busy_timeout`, a nivel de archivo -- quien de verdad serialice el acceso
 concurrente. Es exactamente lo que las pruebas de concurrencia verifican.
 
-`PRAGMA journal_mode=WAL` (ADR-3, `docs/arquitectura-v2.md`): lectores no
+`PRAGMA journal_mode=WAL` (ADR-3, `docs/arquitectura.md`): lectores no
 bloquean escritores. `isolation_level=None` deja el control de transacciones
 en manos de cada adaptador (`BEGIN IMMEDIATE` explicito) en vez del manejo
 implicito de Python, que puede pelear con sentencias `BEGIN` propias.

@@ -19,7 +19,7 @@ class Ambiente(str, Enum):
 
 class Proveedor(str, Enum):
     WOMPI = "wompi"
-    # Ciudadano de primera, no un mock (ADR-2, docs/arquitectura-v2.md).
+    # Ciudadano de primera, no un mock (ADR-2, docs/arquitectura.md).
     # Necesita su propio valor: la simulada y Wompi conviven en el mismo
     # proceso, y un MedioDePagoRef no puede fingir que es de otro proveedor.
     SIMULADA = "simulada"

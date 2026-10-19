@@ -1,4 +1,4 @@
-"""`entradas/webhooks/wompi.py`: HTTP -> `ConciliarEventoUseCase` -> HTTP.
+"""`entry_points/webhook_wompi/wompi.py`: HTTP -> `ConciliarEventoUseCase` -> HTTP.
 
 Dos grupos de pruebas. El primero usa un `ConciliarEventoUseCase` de mentiras (una
 funcion que devuelve un `ResultadoConciliacion` fijo) para verificar solo el

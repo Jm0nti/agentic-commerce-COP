@@ -1,6 +1,6 @@
-"""El unico lugar que conoce tanto `aplicacion/` como `agente/`: arma las
-seis funciones que `agente/herramientas.py:construir_herramientas` convierte
-en `Herramienta`, y con eso arma el `Agente` (`agente/conversacion.py`)
+"""El unico lugar que conoce tanto `usecase/` como `usecase/agente/`: arma las
+seis funciones que `usecase/agente/herramientas.py:construir_herramientas` convierte
+en `Herramienta`, y con eso arma el `Agente` (`usecase/agente/conversacion.py`)
 contra el `ModeloDeLenguaje` real que trae el `Contenedor` -- y, desde la
 etapa 1 de la migracion a agentes, con el clasificador de intencion que pida
 `AGORA_CLASIFICADOR` (`construir_clasificador`, al final de este archivo).
@@ -8,25 +8,25 @@ etapa 1 de la migracion a agentes, con el clasificador de intencion que pida
 Desde la etapa 3, ademas, es el unico lugar que conoce el adaptador de
 LangGraph: `envolver_en_grafo` decide, segun `AGORA_ORQUESTACION`, si lo que
 sale de aca es el `Agente` de siempre o un `AgenteEnGrafo` que corre el mismo
-turno por un grafo. Quien recibe el agente (`entradas/api/`, la CLI) no
+turno por un grafo. Quien recibe el agente (`entry_points/api_rest/`, la CLI) no
 distingue uno del otro: los dos tienen `iniciar`/`turno`.
 
-POR QUE ESTAS FUNCIONES DE UNION VIVEN ACA Y NO EN `agente/`
+POR QUE ESTAS FUNCIONES DE UNION VIVEN ACA Y NO EN `usecase/agente/`
 ----------------------------------------------------------------
-`agente/herramientas.py` no puede importar `aplicacion/` sin arriesgar la
-frontera que `test_fronteras.py` verifica (`docs/arquitectura-v2.md`,
-seccion 2: `agente/` solo importa `dominio/` -tipos- y `puertos/`).
-`composicion/` si puede -- es el unico paquete al que se le permite importar
+`usecase/agente/herramientas.py` no puede importar `usecase/` sin arriesgar la
+frontera que `test_fronteras.py` verifica (`docs/arquitectura.md`,
+seccion 2: `usecase/agente/` solo importa `model/` -tipos- y `model/<agregado>/gateways/`).
+`app_service/config/` si puede -- es el unico paquete al que se le permite importar
 todo. Cada funcion de aca cierra sobre un caso de uso real (`NavegarCatalogoUseCase`,
 `EjecutarIntencionUseCase`, `ConsultarEstadoUseCase`) y devuelve solo dicts/listas de
-dicts, para que `agente/conversacion.py` nunca tenga que saber serializar un
+dicts, para que `usecase/agente/conversacion.py` nunca tenga que saber serializar un
 `Producto` o una `Intencion` -- eso es trabajo de traduccion, no de
 orquestacion de turnos.
 
 `pagar()` no recibe `titular_id`: `mandato_id` y `carrito_id` ya identifican
 todo lo que hace falta para cobrar (`EjecutarIntencionUseCase.obtener` resuelve el
 mandato por su cuenta), asi que agregar un tercer parametro que nadie usa
-seria la abstraccion especulativa que `arquitectura-v2.md` (seccion 9) pide
+seria la abstraccion especulativa que `docs/arquitectura.md` (seccion 9) pide
 evitar.
 """
 
@@ -56,7 +56,7 @@ from .contenedor import Contenedor
 
 def construir_agente(contenedor: Contenedor) -> Agente | AgenteEnGrafo | None:
     """`None` si `contenedor.modelo_lenguaje` no se armo (falta
-    `DEEPSEEK_API_KEY`) -- `entradas/cli/` decide que hacer con eso: avisar
+    `DEEPSEEK_API_KEY`) -- `entry_points/cli/` decide que hacer con eso: avisar
     y seguir sirviendo los comandos que no dependen de un modelo de
     lenguaje (enrolar, emitir, pagar/revocar a mano)."""
     if contenedor.modelo_lenguaje is None:
@@ -131,13 +131,13 @@ def construir_agente(contenedor: Contenedor) -> Agente | AgenteEnGrafo | None:
 
     def pagar(mandato_id: str, carrito_id: str) -> dict[str, Any]:
         # Comercio, monto y `carrito_hash` salen del carrito guardado, nunca
-        # de un argumento del modelo (ver `aplicacion/pagar_carrito.py`).
+        # de un argumento del modelo (ver `usecase/pagar_carrito/pagar_carrito_use_case.py`).
         recibo = contenedor.pagar_carrito(mandato_id, carrito_id)
         intencion = recibo.intencion
         resultado: dict[str, Any] = {
             "intencion_id": intencion.intencion_id,
             # `mandato_id`/`carrito_id` de vuelta en el resultado (no solo
-            # dentro de la "nota"): etapa 7 (`entradas/api/sesiones.py`) los
+            # dentro de la "nota"): etapa 7 (`entry_points/api_rest/sesiones.py`) los
             # necesita para armar el evento `confirmacion_pendiente` sin
             # tener que parsear texto libre -- lo mismo que ya vale para
             # "propuesta" en `armar_carrito`, un poco mas arriba.
@@ -151,7 +151,7 @@ def construir_agente(contenedor: Contenedor) -> Agente | AgenteEnGrafo | None:
             # Igual que `armar_carrito` con `firmar` (etapa 6): el comando
             # EXACTO, no una descripcion. `retomar` nunca es herramienta del
             # agente -- resolver un CONFIRMAR es decision humana, igual que
-            # firmar (`agente/herramientas.py`) -- asi que quien lo corre es
+            # firmar (`usecase/agente/herramientas.py`) -- asi que quien lo corre es
             # siempre la persona, en otra terminal.
             resultado["nota"] = (
                 "Pago SIN CONFIRMAR: quedo esperando confirmacion humana. La "
@@ -195,7 +195,7 @@ def construir_agente(contenedor: Contenedor) -> Agente | AgenteEnGrafo | None:
 
 def envolver_en_grafo(agente: Agente, modo: str) -> Agente | AgenteEnGrafo:
     """Migracion a agentes, etapa 3. `modo` sale de `AGORA_ORQUESTACION`
-    (`composicion/configuracion.py`, que ya lo valido).
+    (`app_service/config/configuracion.py`, que ya lo valido).
 
     El agente de las etapas 1-2 sigue siendo el mismo objeto en los dos
     modos: `grafo` lo envuelve, no lo reemplaza."""
@@ -253,7 +253,7 @@ def construir_clasificador(
     modo: str, modelo: ModeloDeLenguaje
 ) -> ClasificadorDeIntencion | None:
     """Migracion a agentes, etapa 1. `modo` sale de `AGORA_CLASIFICADOR`
-    (`composicion/configuracion.py`, que ya lo valido). El orden de la
+    (`app_service/config/configuracion.py`, que ya lo valido). El orden de la
     cadena es la decision de costo del documento: reglas gratis primero, el
     modelo solo cuando las reglas se abstienen."""
     if modo == "apagado":

@@ -16,7 +16,7 @@ Ver el docstring del puerto para el porque. Aca solo la resolucion:
                            descuido que esta PoC existe para exponer).
 
 Un `comercio_id` presente en `por_comercio` SIEMPRE gana sobre
-`por_defecto`, aunque los dos esten seteados -- hoy `composicion/
+`por_defecto`, aunque los dos esten seteados -- hoy `app_service/config/
 contenedor.py` nunca arma las dos cosas a la vez, pero la prioridad queda
 explicita por si algun dia conviven (por ejemplo, unos comercios reales de
 Wompi y otros todavia simulados en el mismo catalogo).

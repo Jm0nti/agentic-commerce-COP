@@ -3,9 +3,9 @@ probar no es solo que acierte, sino que SE ABSTENGA cuando hay duda -- una
 regla que adivina es peor que no tener regla.
 
 Los avisos del sistema de abajo reproducen el formato de los que arman
-`entradas/api/app.py` (firmar/retomar) y `entradas/api/sesiones.py`
+`entry_points/api_rest/app.py` (firmar/retomar) y `entry_points/api_rest/sesiones.py`
 (webhook). Los reales, generados por las rutas de verdad, ya los cubre
-`tests/test_api_app.py`: ahi `_ModeloProgramable.generar` levanta
+`tests/entry_points/test_api_app.py`: ahi `_ModeloProgramable.generar` levanta
 `AssertionError`, asi que si alguno de esos avisos dejara de resolverse por
 reglas y cayera al clasificador con modelo, esas pruebas fallarian.
 """

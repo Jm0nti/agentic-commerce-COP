@@ -1,20 +1,20 @@
 """El puerto de orquestacion (migracion a agentes, etapa 3).
 
 Un grafo de nodos, dicho sin un solo tipo de LangGraph. Es lo que permite
-que `agente/grafo.py` arme el turno como grafo sin importar la libreria --
+que `usecase/agente/grafo.py` arme el turno como grafo sin importar la libreria --
 la regla de dependencia lo prohibe (`test_fronteras.py`), y con razon: el
 dia que LangGraph cambie de API o se reemplace, el que cambia es el
 adaptador, no el agente.
 
     DefinicionDeGrafo      que nodos hay, por cual se entra, como se conectan
     CompiladorDeGrafos     definicion -> GrafoCompilado   (hoy LangGraph,
-                           `adaptadores/orquestacion/con_langgraph/`)
+                           `driven_adapters/orquestacion_langgraph/`)
     GrafoCompilado         invocar(estado) -> estado
 
 POR QUE EL ESTADO ES UN `TypeVar`
 -----------------------------------
-El estado de un turno (`agente/grafo.py:EstadoDelTurno`) vive en `agente/`,
-y `puertos/` no puede importar `agente/`. Tampoco tendria que: a este puerto
+El estado de un turno (`usecase/agente/grafo.py:EstadoDelTurno`) vive en `usecase/agente/`,
+y `model/<agregado>/gateways/` no puede importar `usecase/agente/`. Tampoco tendria que: a este puerto
 no le importa QUE viaja por el grafo, solo que cada nodo reciba un estado y
 devuelva un estado. Quien usa el puerto fija `E`; el adaptador lo trata como
 una caja cerrada y nunca lo toca.
@@ -26,7 +26,7 @@ vacia. Un grafo mal armado -- un nodo inalcanzable, un nodo sin salida, dos
 salidas para el mismo nodo -- es un error de diseno del turno, no un detalle
 de LangGraph: se tiene que ver igual con cualquier motor detras, y se tiene
 que ver al CONSTRUIR la definicion, no en la primera charla de una persona.
-Mismo criterio que `agente/herramientas.py:validar_asignacion_por_nodo`
+Mismo criterio que `usecase/agente/herramientas.py:validar_asignacion_por_nodo`
 (y por eso tambien `RuntimeError`): si la estructura declarada en codigo es
 incoherente, el proceso no levanta.
 """
@@ -171,7 +171,7 @@ class PausaRequerida(Exception):
     ni estado serializable, ni un `interrupt()` propietario.
 
     `valor` es lo que hay que resolver, en los tipos de quien armo el grafo
-    (`agente/pausa.py:PausaDelTurno`). Este puerto no lo mira.
+    (`usecase/agente/pausa.py:PausaDelTurno`). Este puerto no lo mira.
 
     QUIEN LEVANTA ESTO NO PUEDE HABER HECHO NADA ANTES
     ----------------------------------------------------

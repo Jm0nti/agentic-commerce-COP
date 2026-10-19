@@ -12,10 +12,9 @@ AGORA_PASARELA=wompi        # simulada (default) | wompi
 AGORA_AMBIENTE=produccion   # sandbox (default) | produccion
 
 # --- Persistencia ------------------------------------------------------------ #
-# De aca en adelante, sqlite para cualquier uso real -- ver
-# `docs/limpieza-v1-boveda.md`. `memoria` sigue siendo un valor valido (lo usan
+# sqlite para cualquier uso real. `memoria` sigue siendo un valor valido (lo usan
 # muchas pruebas y sirve para una demo de un solo proceso), pero se pierde al
-# reiniciar y `composicion/configuracion.py` ya prohibe combinarlo con
+# reiniciar y `app_service/config/configuracion.py` ya prohibe combinarlo con
 # AGORA_PASARELA=wompi + AGORA_AMBIENTE=produccion.
 AGORA_PERSISTENCIA=sqlite           # memoria (default) | sqlite
 # AGORA_SQLITE_PATH=agora_datos/agora.db   # opcional, ese es el default
@@ -27,7 +26,7 @@ AGORA_PERSISTENCIA=sqlite           # memoria (default) | sqlite
 # escribir un `.env` con una entrada por comercio de forma practica. En su
 # lugar, `AGORA_PASARELA=wompi` lee un registro JSON, uno por comercio,
 # indexado por el mismo `comercio_id` que usa el catalogo
-# (`agora/adaptadores/catalogo/semilla/datos/catalogo.json`):
+# (`driven_adapters/catalogo_semilla/datos/catalogo.json`):
 #
 #   agora_datos/secretos/comercios_wompi.json   (default; ya en .gitignore
 #                                                 via `agora_datos/`)
@@ -44,15 +43,15 @@ AGORA_PERSISTENCIA=sqlite           # memoria (default) | sqlite
 #
 # `events_secret` es el que valida el X-Event-Checksum de los webhooks
 # (Dashboard > Desarrolladores > Eventos, uno por comercio). Sin el, el
-# comercio queda operativo para cobrar pero `ConciliarEvento` marca sus
+# comercio queda operativo para cobrar pero `ConciliarEventoUseCase` marca sus
 # eventos como invalidos -- webhook sin verificar es una via para
 # inventarle a la app que un cobro paso.
 #
 # Cada comercio real tiene que apuntar su webhook a
 # `<tu-URL-publica>/pagos/wompi/transacciones/<ese comercio_id>` -- un solo
 # tunel, un solo puerto (8001), un segmento de URL por comercio. Ver
-# `docs/viabilidad-multi-comercio-wompi.md` y el docstring de
-# `entradas/webhooks/wompi.py`.
+# `docs/utils/viabilidad-multi-comercio-wompi.md` y el docstring de
+# `entry_points/webhook_wompi/wompi.py`.
 #
 # Para apuntar el registro a otro archivo (por ejemplo, para separar
 # sandbox de produccion):
@@ -64,8 +63,9 @@ AGORA_PERSISTENCIA=sqlite           # memoria (default) | sqlite
 # unico que el motor antifraude de Wompi tiene para decidir si el cobro es
 # legitimo. Vacio, decide a ciegas.
 #
-# El valor por defecto era `boveda+poc@example.com`. `example.com` esta
-# reservado por la RFC 2606: no existe y nunca va a entregar correo.
+# No uses un correo en `example.com` ni en otro dominio reservado por la
+# RFC 2606: no existe, nunca entrega correo, y el antifraude lo lee como
+# fraude (`docs/utils/decline-afe.md`).
 PAGADOR_EMAIL=tu.correo.real@dominio.com
 PAGADOR_NOMBRE=Nombre Apellido
 PAGADOR_TELEFONO=3001234567

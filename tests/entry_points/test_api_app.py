@@ -1,10 +1,10 @@
-"""`entradas/api/app.py` de punta a punta (etapa 7): el chat, el popup de
+"""`entry_points/api_rest/app.py` de punta a punta (etapa 7): el chat, el popup de
 firma y el popup de confirmacion, los tres a traves de HTTP con
 `TestClient` -- sin tocar DeepSeek ni la red.
 
 El grupo grande (`test_flujo_completo_...`) es el que de verdad importa:
 prueba que TODO el camino que antes exigia dos terminales (`chat` +
-`firmar`/`retomar` de `entradas/cli/`, etapa 6) ahora se resuelve con una
+`firmar`/`retomar` de `entry_points/cli/`, etapa 6) ahora se resuelve con una
 sola sesion HTTP -- mensaje de chat, evento SSE de "hay que firmar", POST a
 `/firmar`, evento SSE de "hay que confirmar", POST a `/retomar`, y en cada
 paso el agente se entera y contesta en `respuesta_agente` sin que la
@@ -19,7 +19,7 @@ que no hay forma de dejarlos precargados en una lista fija como hace
 `_ModeloGuionado`.
 
 MULTI-COMERCIO: las rutas de enrolamiento (`/medios/enrolar/...`) ahora
-exigen `comercio_id` -- ver el docstring de `aplicacion/enrolar_medio.py`.
+exigen `comercio_id` -- ver el docstring de `usecase/enrolar_medio/enrolar_medio_use_case.py`.
 Las pruebas de esas rutas usan un `comercio_id` fijo ("com_1"): con la
 pasarela simulada (la que usa `_config`) cualquier comercio_id resuelve a
 la misma pasarela (`RegistroDePasarelas({}, por_defecto=...)`), asi que no
@@ -121,7 +121,7 @@ def _loguear(
     cliente: TestClient, contenedor, nombre_usuario: str = "tit_1", titular_id: str = "tit_1",
 ) -> str:
     """Multi-usuario (4 de septiembre de 2026): registra un usuario de
-    prueba (mismo camino que `scripts/crear_usuario.py`, directo contra el
+    prueba (mismo camino que `app_service/crear_usuario.py`, directo contra el
     `Contenedor`) e inicia sesion con el `TestClient` -- el `TestClient`
     conserva la cookie que deja `POST /auth/iniciar-sesion` para el resto
     de las peticiones que haga, exactamente como un navegador. Devuelve el
@@ -137,7 +137,7 @@ def _loguear(
 
 
 def _producto_barato(contenedor):
-    """Mismo criterio que `tests/test_composicion_agente.py`: cualquier
+    """Mismo criterio que `tests/app_service/test_composicion_agente.py`: cualquier
     producto EN_STOCK por 20.000 COP o menos, para que `pagar()` llegue a
     la politica blanda (`esperando_confirmacion_humana`) en vez de
     rechazarse de una por el tope duro."""
@@ -230,7 +230,7 @@ def test_flujo_completo_por_http_arma_firma_paga_y_confirma(tmp_path):
     comercio_id, producto_id = _producto_barato(contenedor)
     # Multi-comercio: enrolar vincula el medio con ESTE comercio -- se
     # descubre antes de enrolar, no despues (ver el docstring de
-    # aplicacion/enrolar_medio.py).
+    # usecase/enrolar_medio/enrolar_medio_use_case.py).
     contenedor.enrolar_medio("3001234567", "titular@correo.com", "tit_1", comercio_id)
 
     contenedor = replace(contenedor, modelo_lenguaje=_ModeloProgramable(comercio_id, producto_id))
@@ -245,7 +245,7 @@ def test_flujo_completo_por_http_arma_firma_paga_y_confirma(tmp_path):
     sesion_id = cliente.post("/sesiones").json()["sesion_id"]
 
     # 2. La persona escribe -- el agente arma el carrito y deja la
-    #    propuesta SIN FIRMAR (misma logica que `composicion/agente.py:
+    #    propuesta SIN FIRMAR (misma logica que `app_service/config/agente.py:
     #    armar_carrito`, ahora alcanzada por HTTP en vez de por un tool
     #    call de CLI directo).
     respuesta = cliente.post(
@@ -380,7 +380,7 @@ def test_flujo_sse_codifica_un_evento_de_la_cola_como_server_sent_event():
 #
 # Con la pasarela simulada (la que usa `_config` por defecto -- sin
 # `AGORA_PASARELA=wompi`), `preparar_medio` deja el token en "APPROVED" de
-# inmediato (`adaptadores/pasarelas/simulada/adaptador.py`), asi que estas
+# inmediato (`driven_adapters/pasarela_simulada/adaptador.py`), asi que estas
 # pruebas alcanzan el camino "aprobado sin sondeo" de un solo tiro, igual
 # que el bloque `if (datos.estado === "APPROVED")` de `chat.html`. El
 # sondeo en si (`GET /medios/enrolar/{token}/estado` repetido) es
@@ -438,7 +438,7 @@ def test_enrolar_por_http_de_punta_a_punta_con_la_pasarela_simulada(tmp_path):
 def test_revocar_medio_por_http_lo_saca_de_la_lista(tmp_path):
     """`POST /medios/{id_externo}/revocar` -- el boton "Eliminar" del popup
     de medios en `chat.html`. Mismo `RevocarMedioUseCase` que ya usaba
-    `entradas/cli/__main__.py:cmd_revocar`, ahora tambien alcanzable por
+    `entry_points/cli/cli.py:cmd_revocar`, ahora tambien alcanzable por
     HTTP con el titular saliendo de la cookie de sesion."""
     contenedor = construir(leer_configuracion(_config(tmp_path)))
     app = crear_app(None, contenedor)
@@ -469,7 +469,7 @@ def test_revocar_medio_por_http_lo_saca_de_la_lista(tmp_path):
 def test_revocar_medio_de_otro_titular_responde_400_y_no_lo_apaga(tmp_path):
     """`RevocarMedioUseCase` verifica que la referencia sea `vivos()` del titular
     autenticado antes de pedirle la revocacion a la pasarela -- revocar a
-    ciegas podria apagar la fuente equivocada (docstring de `aplicacion/
+    ciegas podria apagar la fuente equivocada (docstring de `usecase/
     revocar_medio.py`). Esta prueba lo ejercita por HTTP: el medio sigue
     vivo despues del intento fallido."""
     contenedor = construir(leer_configuracion(_config(tmp_path)))
@@ -548,8 +548,8 @@ def test_sondeo_resuelve_por_http_un_pago_que_el_webhook_confirma_despues(tmp_pa
     """Reproduce el caso real que motivo la etapa 9: `retomar()` deja el
     cobro en 'PENDING' (Wompi real contra Nequi liquida de forma
     asincronica -- aca se fuerza con el correo magico de la pasarela
-    simulada, ver `adaptadores/pasarelas/simulada/guion.py`), el webhook
-    (en OTRO proceso, `entradas/webhooks/wompi.py`) resuelve el estado mas
+    simulada, ver `driven_adapters/pasarela_simulada/guion.py`), el webhook
+    (en OTRO proceso, `entry_points/webhook_wompi/wompi.py`) resuelve el estado mas
     tarde escribiendolo en el mismo sqlite, y `SondeoDePagosPendientes` --
     corriendo en ESTE proceso, sin ningun hilo real ni `time.sleep`, solo
     `una_pasada()` llamada a mano -- es quien se entera y le avisa a la

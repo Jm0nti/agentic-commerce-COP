@@ -1,11 +1,8 @@
 """Bitacora de auditoria en `.jsonl`, en la convencion del repo.
 
-No es logging: es evidencia. `boveda/recibos.jsonl` documento el hallazgo
-central de la PoC (un cobro de 15.000 COP `APPROVED` contra un mandato que
-autorizaba 8.000) y por eso nunca se sobreescribe ni se rota -- ver
-`docs/mapa-del-proyecto.md`. Este adaptador escribe con el mismo criterio pero
-en un archivo propio de `agora/`: no se toca `boveda/recibos.jsonl` porque esa
-corrida ya paso y sigue siendo la evidencia de la v1.
+No es logging: es evidencia. La bitacora de cobros (`agora_datos/recibos.jsonl`)
+es donde queda registrado el hallazgo central de la PoC -- un cobro `APPROVED`
+pese a violar el mandato -- y por eso nunca se sobreescribe ni se rota.
 
 Cada linea es un evento independiente (`{"ts", "evento", "cuerpo"}`),
 append-only, sin buffer: si el proceso muere a mitad de una corrida, las

@@ -7,9 +7,9 @@ ClasificadorDeIntencion`:
     ClasificadorConModelo   usa `ModeloDeLenguaje.generar`, lee historial
     ClasificadorEnCadena    el primero que decide, gana
 
-Ninguno importa `aplicacion/`, `adaptadores/` ni una libreria de LLM: son
-parte del agente, y `tests/test_fronteras.py` lo verifica igual que para el
-resto de `agente/`.
+Ninguno importa `usecase/`, `driven_adapters/` ni una libreria de LLM: son
+parte del agente, y `tests/arquitectura/test_fronteras.py` lo verifica igual que para el
+resto de `usecase/agente/`.
 """
 
 from __future__ import annotations

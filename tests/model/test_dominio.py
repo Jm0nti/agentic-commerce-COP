@@ -123,7 +123,7 @@ def test_carrito_vacio_no_existe():
 
 
 # --------------------------------------------------------------------------- #
-# Mandato v2
+# Mandato
 # --------------------------------------------------------------------------- #
 
 
@@ -169,7 +169,7 @@ def test_mandato_bien_firmado_no_tiene_violaciones():
 
 
 def test_la_version_va_dentro_de_la_firma():
-    """Sin esto, alguien podria presentar un v1 como v2 sin romper la firma."""
+    """Sin esto, alguien podria presentar una carga firmada bajo otra version como si fuera de esta."""
     sk = Ed25519PrivateKey.generate()
     m = _mandato(sk)
     assert b'"version":2' in m.canonico()

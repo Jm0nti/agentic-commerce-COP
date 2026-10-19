@@ -1,6 +1,6 @@
 """`RepositorioPropuestas` contra SQLite. Ver el comentario de la tabla
 `propuesta` en `esquema.py` para el porque: sin esto, una `PropuestaDeMandato`
-armada durante una charla de `chat` no sobrevive para que `entradas/cli/
+armada durante una charla de `chat` no sobrevive para que `entry_points/cli/
 firmar` la encuentre desde otra terminal -- el mismo problema que la tabla
 `carrito` (etapa 5) resuelve para el carrito.
 """

@@ -1,5 +1,5 @@
 """`RepositorioMandatosSQLite`: la misma guarda de ambiente que
-`RepositorioMandatosEnMemoria` (`tests/test_repositorio_mandatos_memoria.py`),
+`RepositorioMandatosEnMemoria` (`tests/driven_adapters/test_repositorio_mandatos_memoria.py`),
 mas la propiedad que solo SQLite ofrece -- el mandato sobrevive un reinicio.
 """
 

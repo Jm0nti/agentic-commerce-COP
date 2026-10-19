@@ -1,9 +1,7 @@
 """HTTP puro contra la API de Wompi. Sin topes, sin mandato, sin persistencia.
 
-Es la mitad de `boveda/nucleo.py:ClienteWompi` que sobrevive intacta a la
-particion de `Boveda` (`docs/historico/analisis-codigo.md`, hallazgo 1): hablar con
-Wompi. La otra mitad -- resolver mandatos, aplicar topes duros, decidir que
-hacer con el resultado -- ya no esta aqui; vive en `aplicacion/
+Su unico trabajo es hablar con Wompi. Lo demas -- resolver mandatos, aplicar topes duros, decidir que
+hacer con el resultado -- ya no esta aqui; vive en `usecase/
 ejecutar_intencion.py` y en `AdaptadorWompi` (`adaptador.py`, en este mismo
 paquete), que es quien traduce lo que este cliente devuelve a los tipos del
 dominio.
@@ -125,7 +123,7 @@ class ClienteWompi:
         """`pagador` no es cosmetico: un cobro sin `customer_data`, sin IP y
         con un correo de dominio reservado es exactamente el perfil que el
         motor antifraude de Wompi lee como fraude -- ver
-        `docs/hallazgo-afe.md` (memoria del proyecto) y `docs/decline-afe.md`.
+        `docs/utils/decline-afe.md`.
         """
         acc, per = self.aceptaciones()
         cuerpo: dict[str, Any] = {

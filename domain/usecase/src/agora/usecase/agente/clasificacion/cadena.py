@@ -2,7 +2,7 @@
 
 Es la forma del clasificador hibrido del documento (reglas primero, modelo
 despues) sin que ninguno de los dos sepa que el otro existe:
-`composicion/agente.py` decide el orden y cuales entran, segun
+`app_service/config/agente.py` decide el orden y cuales entran, segun
 `AGORA_CLASIFICADOR`.
 """
 

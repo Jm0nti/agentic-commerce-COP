@@ -1,10 +1,9 @@
 """Lectura del entorno. El unico lugar de `agora/` autorizado a hacerlo.
 
-`docs/historico/analisis-codigo.md` (hallazgo 5): hoy `os.environ` se lee dentro de
-`ClienteWompi.__init__` (`boveda/nucleo.py:124-126`), lo que hace imposible
-tener dos configuraciones en el mismo proceso y obliga a las pruebas a usar
-`monkeypatch.setenv`. Aqui se lee una vez, en el composition root, y circula
-despues como objetos inmutables.
+Leer `os.environ` dentro de un adaptador (por ejemplo, en el constructor del
+cliente de Wompi) haria imposible tener dos configuraciones en el mismo proceso
+y obligaria a las pruebas a usar `monkeypatch.setenv`. Aqui se lee una vez, en
+el app-service, y circula despues como objetos inmutables.
 
 Variables reconocidas (ver tambien `docs/variables-de-entorno.md`, que documenta
 las de Wompi):
@@ -19,7 +18,7 @@ las de Wompi):
     AGORA_WOMPI_COMERCIOS
         Multi-comercio (1 de septiembre de 2026): ruta a un JSON con las
         credenciales de CADA comercio real de Wompi, indexado por el mismo
-        `comercio_id` que usa el catalogo (`agora/adaptadores/catalogo/
+        `comercio_id` que usa el catalogo (`driven_adapters/
         semilla/datos/catalogo.json`). Solo se lee si AGORA_PASARELA=wompi.
         Default: agora_datos/secretos/comercios_wompi.json (ya en
         `.gitignore`, igual que el resto de `agora_datos/secretos/`) --
@@ -51,11 +50,11 @@ las de Wompi):
         La URL que cada comercio real tiene que registrar en su propio
         dashboard de Wompi (seccion Eventos) NO vive en este archivo -- se
         arma sola a partir del `comercio_id`: ver el docstring de
-        `entradas/webhooks/wompi.py`.
+        `entry_points/webhook_wompi/wompi.py`.
 
     AGORA_CLASIFICADOR  hibrido | reglas | apagado   (default: hibrido)
-        Migracion a agentes, etapa 1 (`docs/etapa-1-agentes-clasificador-de-
-        intencion.md`): como decide el agente la intencion de cada mensaje
+        Migracion a agentes, etapa 1 (`docs/arquitectura-agentes/etapa-1-agentes-
+        clasificador-de-intencion.md`): como decide el agente la intencion de cada mensaje
         antes de ejecutar el turno.
           hibrido  reglas deterministicas primero; si se abstienen, una
                    llamada extra a DeepSeek para clasificar (con historial).
@@ -79,8 +78,8 @@ las de Wompi):
         Contiene lo que escribio la persona: tratarlo como transcripcion.
 
     AGORA_ORQUESTACION  grafo | directo   (default: grafo)
-        Migracion a agentes, etapa 3 (`docs/etapa-3-agentes-grafo-
-        langgraph.md`): como corre el turno.
+        Migracion a agentes, etapa 3 (`docs/arquitectura-agentes/etapa-3-agentes-
+        grafo-langgraph.md`): como corre el turno.
           grafo    el turno pasa por un grafo de LangGraph (orquestador ->
                    trabajador -> fin). Mismo comportamiento que `directo`:
                    los nodos llaman a los mismos metodos del agente. Exige
@@ -103,9 +102,9 @@ las de Wompi):
         pregunta de una persona.
 
     PAGADOR_EMAIL / PAGADOR_NOMBRE / PAGADOR_TELEFONO / PAGADOR_DOCUMENTO / PAGADOR_TIPO_DOC
-        Igual que `boveda/nucleo.py:perfil_pagador`. Importan de verdad: un
-        cobro sin `customer_data` es el perfil que el antifraude de Wompi lee
-        como fraude (`docs/hallazgo-afe.md`).
+        El `customer_data` de cada cobro. Importan de verdad: un cobro sin
+        `customer_data` es el perfil que el antifraude de Wompi lee como fraude
+        (`docs/utils/decline-afe.md`).
 """
 
 from __future__ import annotations
@@ -146,21 +145,20 @@ SQLITE_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "agora.db"
 COMERCIOS_WOMPI_POR_DEFECTO = RAIZ_REPO / "agora_datos" / "secretos" / "comercios_wompi.json"
 SOPORTE_DOCUMENTOS_POR_DEFECTO = RAIZ_REPO / "docs" / "soporte"
 # Mismo criterio que DEEPSEEK_MODELO_POR_DEFECTO: se repite aca en vez de
-# importarlo de `adaptadores/embeddings/proveedor_openai/config.py`.
+# importarlo de `driven_adapters/embeddings_openai/config.py`.
 EMBEDDINGS_MODELO_POR_DEFECTO = "text-embedding-3-small"
 
-# `deepseek-chat` de nuevo aca, no importado de `adaptadores/llm/deepseek/
-# config.py`: `composicion/` no deberia depender de la forma interna de un
+# `deepseek-chat` de nuevo aca, no importado de `driven_adapters/llm_deepseek/
+# config.py`: `app_service/config/` no deberia depender de la forma interna de un
 # adaptador solo para copiar un default.
 DEEPSEEK_MODELO_POR_DEFECTO = "deepseek-chat"
 
-# A proposito NO en un dominio reservado (a diferencia del viejo default de
-# `boveda/nucleo.py:perfil_pagador`, `boveda+poc@example.com`): ese fue el
-# correo que produjo el rechazo real por antifraude (`docs/hallazgo-afe.md`).
+# A proposito NO en un dominio reservado: un correo en `example.com` fue el
+# que produjo el rechazo real por antifraude (`docs/utils/decline-afe.md`).
 # Un default que reproduce esa senal sin que nadie lo pida haria que la
 # pasarela simulada declinara por defecto y confundiria una primera corrida.
 # Para reproducir el hallazgo a proposito, use un correo en `example.com`
-# (ver `adaptadores/pasarelas/simulada/guion.py`).
+# (ver `driven_adapters/pasarela_simulada/guion.py`).
 CORREO_POR_DEFECTO = "demo@agora.local"
 
 MODOS_CLASIFICADOR = ("hibrido", "reglas", "apagado")
@@ -193,7 +191,7 @@ class ConfiguracionAgora:
     wompi: dict[str, ConfiguracionWompi] = field(default_factory=dict)
     persistencia: str = "memoria"  # "memoria" | "sqlite"
     sqlite_path: Path = SQLITE_POR_DEFECTO
-    # Vacio = sin agente de chat disponible (`entradas/cli/` sigue sirviendo
+    # Vacio = sin agente de chat disponible (`entry_points/cli/` sigue sirviendo
     # para enrolar/revocar/emitir/pagar a mano). A diferencia de las demas
     # variables de este archivo, esta SI puede quedar vacia sin que
     # `leer_configuracion` la rechace: el resto de la app (mandatos, cobros,
@@ -242,10 +240,10 @@ class ConfiguracionAgora:
             # `LibroDeConsumoEnMemoria` pierde el consumo acumulado si el
             # proceso reinicia -- un mandato que se creia agotado vuelve a
             # estar fresco. Contra dinero real (wompi + produccion) eso no es
-            # aceptable (docs/etapa-2-completa.md, "Decision importante").
+            # aceptable.
             # Se aplica al PROCESO completo, no comercio por comercio: los N
             # comercios reales de un mismo proceso comparten la misma
-            # persistencia (`composicion/contenedor.py` arma un solo
+            # persistencia (`app_service/config/contenedor.py` arma un solo
             # `LibroDeConsumo`), asi que si CUALQUIERA de ellos cobra contra
             # produccion, todos necesitan sqlite. No es un guardarrail que
             # se pueda saltar con una bandera: quien necesite reproducir ese
@@ -305,7 +303,7 @@ def leer_configuracion(entorno: Mapping[str, str]) -> ConfiguracionAgora:
     para que quede claro que esta funcion es pura frente a lo que se le pasa,
     y para que una prueba pueda armar un entorno de mentiras con un `dict`
     comun sin `monkeypatch`. Quien orquesta el arranque real (un futuro
-    `entradas/cli/__main__.py`) es quien de verdad lee `os.environ` y se lo
+    `entry_points/cli/cli.py`) es quien de verdad lee `os.environ` y se lo
     pasa aqui.
     """
     ambiente = Ambiente(entorno.get("AGORA_AMBIENTE", "sandbox"))

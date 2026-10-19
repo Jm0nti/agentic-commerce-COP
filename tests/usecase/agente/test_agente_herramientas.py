@@ -1,5 +1,5 @@
 """`construir_herramientas`: las seis funciones que le llegan (ya cerradas
-sobre sus dependencias por `composicion/agente.py`, aca solo dobles) se
+sobre sus dependencias por `app_service/config/agente.py`, aca solo dobles) se
 convierten en el catalogo autorizado, con los esquemas correctos, y siguen
 pasando `validar_catalogo`."""
 

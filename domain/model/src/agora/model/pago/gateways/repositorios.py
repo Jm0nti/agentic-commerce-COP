@@ -1,6 +1,6 @@
 """Persistencia de los medios de pago y del estado de cada intencion.
 
-Salio de `puertos/repositorios.py` (Fase 2 del refactor a la Clean
+Salio de `model/<agregado>/gateways/repositorios.py` (Fase 2 del refactor a la Clean
 Architecture de Bancolombia): cada agregado tiene sus gateways.
 """
 
@@ -32,8 +32,8 @@ class RepositorioMedios(Protocol):
         """El medio vivo mas reciente que este titular ya vinculo con este
         comercio, o `None` si nunca enrolo uno para el -- en ese caso hace
         falta un enrolamiento nuevo, dirigido a `comercio_id`
-        (`aplicacion/enrolar_medio.py`), antes de poder firmar un mandato
-        contra el (`aplicacion/emitir_mandato.py`)."""
+        (`usecase/enrolar_medio/enrolar_medio_use_case.py`), antes de poder firmar un mandato
+        contra el (`usecase/emitir_mandato/emitir_mandato_use_case.py`)."""
         ...
 
     def comercio_de(self, ref: MedioDePagoRef) -> str | None:
@@ -53,7 +53,7 @@ class RegistroDeEstados(Protocol):
     resolvio en `APROBADO` o en `RECHAZADO`. `consultar_estado` (la
     herramienta del agente) necesita esa distincion, y ni `LibroDeConsumo`
     ni `Bitacora` -- que es auditoria de solo escritura, no estado de
-    aplicacion (`puertos/sistema.py`) -- estan pensados para contestarla.
+    aplicacion (`model/commons/gateways/sistema.py`) -- estan pensados para contestarla.
 
     `EjecutarIntencionUseCase` y `ConciliarEventoUseCase` escriben aqui en cada uno de sus
     puntos de decision ya existentes (parametro opcional, `None` por

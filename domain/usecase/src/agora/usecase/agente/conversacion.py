@@ -1,4 +1,4 @@
-"""El loop de turnos. `docs/arquitectura-v2.md`, seccion 4: `responder(mensajes,
+"""El loop de turnos. `docs/arquitectura.md`, seccion 4: `responder(mensajes,
 herramientas) -> RespuestaModelo`, corrido hasta que el modelo conteste con
 texto y sin mas llamadas pendientes -- o hasta `MAX_TURNOS_POR_CONVERSACION`
 (`politica.py`).
@@ -13,9 +13,9 @@ texto y sin mas llamadas pendientes -- o hasta `MAX_TURNOS_POR_CONVERSACION`
                        volver a llamar a responder -----'
                  no -> devolver el contenido de texto
 
-No hay async ni streaming aqui a proposito (`arquitectura-v2.md`, seccion 9:
+No hay async ni streaming aqui a proposito (`docs/arquitectura.md`, seccion 9:
 "no hagas el agente asincrono todavia" -- un turno de chat es secuencial por
-naturaleza). `entradas/cli/` llama a `Agente.turno` una vez por linea que
+naturaleza). `entry_points/cli/` llama a `Agente.turno` una vez por linea que
 escribe la persona.
 
 DECIDIR, DESPUES EJECUTAR (migracion a agentes, etapa 1)
@@ -23,7 +23,7 @@ DECIDIR, DESPUES EJECUTAR (migracion a agentes, etapa 1)
 Con un `ClasificadorDeIntencion`, cada turno tiene dos pasos explicitos:
 
     1. decidir   clasificador -> `ClasificacionDeIntencion` -> `Ruta`
-                 (`agente/nodos.py`): que nodos actuan este turno y, por lo
+                 (`usecase/agente/nodos.py`): que nodos actuan este turno y, por lo
                  tanto, que herramientas ve el modelo.
     2. ejecutar  el mismo loop de siempre, pero anunciando SOLO las
                  herramientas de la ruta, con una instruccion corta del
@@ -48,7 +48,7 @@ herramientas completas, sin instruccion extra, sin clasificaciones.
 CONTEXTO POR NODO (migracion a agentes, etapa 2)
 --------------------------------------------------
 Ademas de herramientas, un nodo puede inyectar contexto en su turno
-(`agente/contexto.py`): hoy, soporte agrega documentacion recuperada. Se
+(`model/agente/contexto.py`): hoy, soporte agrega documentacion recuperada. Se
 pide una sola vez por turno -- despues de decidir la ruta y antes del loop --
 solo para los nodos de esa ruta, y se pega a la instruccion del orquestador
 (misma vista, mismo "no se guarda en `mensajes`"). Lo que se inyecto queda
@@ -66,11 +66,11 @@ EL TURNO, EN CUATRO PASOS PUBLICOS (migracion a agentes, etapa 3)
     ejecutar_turno           -> el loop de herramientas, texto final
 
 Eran privados hasta la etapa 3. Se volvieron publicos porque
-`agente/grafo.py` los reparte entre los nodos de un grafo (`AgenteEnGrafo`),
+`usecase/agente/grafo.py` los reparte entre los nodos de un grafo (`AgenteEnGrafo`),
 y la alternativa -- duplicar la logica alla, o llamar metodos privados desde
 afuera -- deja dos caminos que pueden divergir en silencio. Asi hay un solo
 comportamiento y dos formas de recorrerlo: en fila (este `turno()`) o por el
-grafo. `tests/test_agente_grafo_equivalencia.py` verifica que dan lo mismo.
+grafo. `tests/usecase/agente/test_agente_grafo_equivalencia.py` verifica que dan lo mismo.
 """
 
 from __future__ import annotations
@@ -121,7 +121,7 @@ class Conversacion:
     # Para correlacionar los turnos de UNA charla en la bitacora de trazas:
     # sin esto, dos personas chateando a la vez dejan lineas intercaladas que
     # no se pueden separar despues. No identifica a nadie -- es un id de
-    # proceso, no del titular (el `titular_id` vive en `entradas/api/
+    # proceso, no del titular (el `titular_id` vive en `entry_points/api_rest/
     # sesiones.py`, que es quien sabe de identidades).
     conversacion_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     mensajes: list[Mensaje] = field(default_factory=list)
@@ -135,7 +135,7 @@ class Conversacion:
     contextos: list[tuple[str, ContextoInyectado]] = field(default_factory=list)
     # Etapa 5: que quedo esperando a una persona al terminar el ultimo
     # turno, o `None`. Lo pone el grafo al detenerse en `espera_humana` y lo
-    # lee `entradas/api/sesiones.py` para armar el popup -- antes eso se
+    # lee `entry_points/api_rest/sesiones.py` para armar el popup -- antes eso se
     # deducia volviendo a parsear el JSON de los resultados de herramientas.
     pausa: PausaDelTurno | None = None
 
@@ -166,7 +166,7 @@ class Agente:
         self._clasificador = clasificador
         self._contextos = contextos
         # `None` = sin trazabilidad (pruebas que arman un `Agente` a mano).
-        # `composicion/agente.py` siempre la provee.
+        # `app_service/config/agente.py` siempre la provee.
         self._bitacora = bitacora
         self._herramientas = {h.nombre: h for h in herramientas}
         self._definiciones = [
@@ -177,7 +177,7 @@ class Agente:
     @property
     def herramientas(self) -> list[Herramienta]:
         """Las herramientas con las que se armo, para quien necesite
-        validarlas por nodo (`agente/agentes.py`, etapa 4). Una copia de la
+        validarlas por nodo (`usecase/agente/agentes.py`, etapa 4). Una copia de la
         lista: nadie de afuera le agrega una al agente ya construido, que es
         lo que `validar_catalogo` verifica al arrancar y no podria volver a
         verificar despues."""
@@ -193,7 +193,7 @@ class Agente:
         nuevo sigue la misma charla.
 
         Los cuatro pasos son publicos desde la etapa 3 de la migracion a
-        agentes: `agente/grafo.py` los reparte entre los nodos del grafo, y
+        agentes: `usecase/agente/grafo.py` los reparte entre los nodos del grafo, y
         este metodo los corre en fila. La logica esta una sola vez -- la
         version con grafo no reimplementa nada, y nadie de afuera tiene que
         tocar un metodo privado para armar un turno."""
@@ -223,11 +223,11 @@ class Agente:
         Un turno mas -- el aviso entra como un mensaje y el modelo decide
         que hacer -- pero el texto lo arma UNA sola funcion
         (`DecisionHumana.como_aviso`) a partir de datos tipados, en vez de
-        cuatro sitios de `entradas/` armandolo a mano. Esa era la queja
+        cuatro sitios de `entry_points/` armandolo a mano. Esa era la queja
         concreta de la decision 6.
 
         No verifica nada de dinero, y no podria: cuando esto corre, el
-        mandato ya se emitio (o no) en `aplicacion/`, por pedido de la
+        mandato ya se emitio (o no) en `usecase/`, por pedido de la
         persona. Aca solo se entera el modelo."""
         conversacion.pausa = None
         return self.turno(conversacion, decision.como_aviso())
@@ -247,7 +247,7 @@ class Agente:
         """La cadena de decisiones de ESTE turno, a la bitacora de trazas.
 
         Publico como los otros cuatro pasos, y por la misma razon:
-        `agente/grafo.py` corre el turno por el grafo y tiene que poder
+        `usecase/agente/grafo.py` corre el turno por el grafo y tiene que poder
         dejar la misma evidencia sin duplicar como se arma.
 
         Nunca tumba un turno. Una charla que ya se contesto no se puede
@@ -360,7 +360,7 @@ class Agente:
         se traduce a un mensaje de rol "tool" que el modelo puede leer y
         decidir que hacer -- pedir de nuevo con otros argumentos, o
         contarle a la persona que no se pudo. Un `ErrorDeDominio` ya trae
-        `to_json()` pensado para esto (`dominio/comun/errores.py`).
+        `to_json()` pensado para esto (`model/commons/errores.py`).
 
         Una herramienta que existe pero no esta en la ruta de este turno se
         rechaza ANTES de tocar su funcion: es la diferencia entre "no se la

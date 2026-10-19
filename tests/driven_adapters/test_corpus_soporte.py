@@ -1,7 +1,7 @@
 """El corpus real de `docs/soporte/`: lo que el nodo de soporte puede llegar a
 ponerle delante al modelo. Estas pruebas no miran codigo, miran el
 contenido -- es la segunda capa de la regla "ninguna cifra sale de una
-recuperacion" (la primera es `agente/contexto_documental.py:sin_cifras`)."""
+recuperacion" (la primera es `usecase/agente/contexto_documental.py:sin_cifras`)."""
 
 from __future__ import annotations
 

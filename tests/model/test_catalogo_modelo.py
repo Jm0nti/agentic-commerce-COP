@@ -1,4 +1,4 @@
-"""`dominio/catalogo/modelo.py`: los campos nuevos de la etapa 5
+"""`model/catalogo/modelo.py`: los campos nuevos de la etapa 5
 (`Disponibilidad`, `Comercio.descripcion`, `Producto.disponibilidad`).
 
 `Carrito`/`ItemCarrito` ya tienen su propia cobertura en `tests/

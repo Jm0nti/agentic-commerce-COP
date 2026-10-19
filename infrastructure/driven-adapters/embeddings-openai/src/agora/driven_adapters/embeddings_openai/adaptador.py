@@ -1,10 +1,10 @@
 """Implementa `puertos.recuperacion.ProveedorDeEmbeddings` contra la API de
 embeddings de OpenAI, con el SDK `openai` (el mismo que ya usa
-`adaptadores/llm/deepseek/`).
+`driven_adapters/llm_deepseek/`).
 
 Usa el SDK directo y no `langchain_openai.OpenAIEmbeddings`: LangChain entra
 en esta etapa solo donde aporta algo (fragmentar Markdown y el vector store,
-`adaptadores/recuperacion/langchain_en_memoria/`). Envolver un SDK que ya es
+`driven_adapters/recuperacion_langchain/`). Envolver un SDK que ya es
 dependencia del proyecto en otra capa de LangChain sumaria un paquete mas
 sin quitar nada.
 

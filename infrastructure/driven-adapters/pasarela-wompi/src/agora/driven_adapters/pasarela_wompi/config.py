@@ -1,11 +1,10 @@
-"""Configuracion de Wompi, leida UNA vez en `composicion/` y pasada por
+"""Configuracion de Wompi, leida UNA vez en `app_service/config/` y pasada por
 constructor.
 
-En la v1, `ClienteWompi.__init__` leia `os.environ` directo en el
-constructor. Era imposible tener dos configuraciones en el mismo proceso, y
-las pruebas necesitaban `monkeypatch.setenv` para simular credenciales.
-`docs/historico/analisis-codigo.md` (hallazgo 5) llama a esto: el entorno se
-lee en un solo lugar del programa, y este objeto, inmutable, es lo que
+Leer `os.environ` en el constructor del cliente haria imposible tener dos
+configuraciones en el mismo proceso, y las pruebas necesitarian
+`monkeypatch.setenv` para simular credenciales. Por eso el entorno se lee en
+un solo lugar del programa, y este objeto, inmutable, es lo que
 circula despues.
 """
 
@@ -58,10 +57,8 @@ class ConfiguracionWompi:
 
         # El ambiente y el prefijo de la llave tienen que coincidir. Una
         # llave de produccion con ambiente sandbox no falla sola: cobra de
-        # verdad contra un endpoint que el codigo cree de mentiras
-        # (comportamiento heredado de `nucleo.py:131-139`, ahora en la
-        # construccion del objeto en vez de en el constructor del cliente
-        # HTTP).
+        # verdad contra un endpoint que el codigo cree de mentiras. Se valida
+        # al construir el objeto, no en el cliente HTTP.
         esperado = _PREFIJO_PUB_ESPERADO[self.ambiente]
         if not self.llave_publica.startswith(esperado):
             raise ConfiguracionInvalida(

@@ -137,7 +137,7 @@ class BuscadorSemanticoEnMemoria:
         ]
 
     def _indice(self) -> np.ndarray:
-        # Lock por la misma razon que el buscador documental: `entradas/api/`
+        # Lock por la misma razon que el buscador documental: `entry_points/api_rest/`
         # atiende turnos en un threadpool y dos busquedas simultaneas al
         # arrancar no deberian embeber el catalogo dos veces.
         with self._lock:

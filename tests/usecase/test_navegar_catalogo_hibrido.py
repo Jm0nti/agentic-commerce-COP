@@ -201,7 +201,7 @@ def test_el_limite_semantico_se_puede_ajustar():
 
 def test_si_el_proveedor_de_embeddings_esta_caido_la_busqueda_devuelve_vacio():
     """Una busqueda sin resultados es una respuesta valida del catalogo (lo
-    dice `puertos/catalogo.py`), asi que el turno sigue. Lo que NO puede
+    dice `model/catalogo/gateways/catalogo.py`), asi que el turno sigue. Lo que NO puede
     pasar es que una charla se caiga porque OpenAI no contesto."""
     nav = _navegar(semantico=_SemanticoEspia(falla=True))
 

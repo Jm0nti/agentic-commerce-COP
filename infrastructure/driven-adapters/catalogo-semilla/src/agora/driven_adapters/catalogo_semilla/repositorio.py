@@ -2,11 +2,11 @@
 `catalogo.json` estatico -- sin red, sin base de datos.
 
 Simetrico a como la pasarela simulada resuelve pagos sin hablar con Wompi
-(ADR-2 de `docs/arquitectura-v2.md`): el catalogo simulado no necesita un
+(ADR-2 de `docs/arquitectura.md`): el catalogo simulado no necesita un
 servidor detras para que el agente lo navegue, solo datos con la forma
 correcta. La diferencia es de donde salen esos datos -- `AdaptadorSimulado`
 los decide en el momento (`GuionSimulado`), este adaptador los lee de un
-archivo que `scripts/generar_catalogo_semilla.py` fabrico una vez, con
+archivo que `app_service/generar_catalogo_semilla.py` fabrico una vez, con
 DeepSeek, por fuera del camino caliente. Ningun cobro ni ninguna busqueda del
 agente dependen de que DeepSeek este disponible.
 """

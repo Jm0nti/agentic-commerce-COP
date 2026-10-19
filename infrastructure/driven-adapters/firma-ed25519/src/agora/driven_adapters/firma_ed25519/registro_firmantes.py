@@ -1,15 +1,15 @@
 """`RegistroDeFirmantes`: implementa `puertos.firma.SelectorDeFirmante`.
 
-A diferencia de `RegistroDePasarelas` (`adaptadores/pasarelas/registro.py`),
+A diferencia de `RegistroDePasarelas` (`driven_adapters/selector_pasarelas/registro.py`),
 que SI puede resolver cualquier `comercio_id` contra una unica pasarela
 simulada, este registro NUNCA tiene un "por defecto": cada titular tiene
 que tener su propia llave, sin excepcion -- una llave compartida de
 respaldo reproduciria exactamente el problema que esta implementacion
 reemplaza (ver el docstring de `puertos.firma.SelectorDeFirmante` y de
-`composicion/contenedor.py`, seccion MULTI-USUARIO). Un `titular_id` sin
+`app_service/config/contenedor.py`, seccion MULTI-USUARIO). Un `titular_id` sin
 llave levanta `SinLlaveDeFirma`, nunca genera una al vuelo: las llaves solo
-nacen en `aplicacion/autenticacion.py:RegistrarUsuarioUseCase` (y ese, a su vez,
-solo lo llama `scripts/crear_usuario.py`), junto con el usuario que las va
+nacen en `usecase/registrar_usuario/registrar_usuario_use_case.py:RegistrarUsuarioUseCase` (y ese, a su vez,
+solo lo llama `app_service/crear_usuario.py`), junto con el usuario que las va
 a usar -- una decision explicita, no un accidente de implementacion.
 """
 

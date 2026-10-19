@@ -1,11 +1,10 @@
 """`EjecutarIntencionUseCase` de punta a punta, con adaptadores de verdad.
 
-Es lo que hoy es `Boveda.ejecutar` (`boveda/nucleo.py:337-408`), partido en
-caso de uso (`aplicacion/ejecutar_intencion.py`, sin cambios en esta etapa) y
-adaptadores (`adaptadores/pasarelas/simulada/`,
-`adaptadores/persistencia/memoria/`, `adaptadores/sistema/`, todos nuevos).
-Esta prueba es la que demuestra que las piezas encajan igual que encajaban
-dentro de `Boveda` -- mismo orden de controles, mismo resultado.
+El motor de pagos: el caso de uso
+(`usecase/ejecutar_intencion/ejecutar_intencion_use_case.py`) con adaptadores
+reales (`driven_adapters/pasarela_simulada/`, `driven_adapters/persistencia_memoria/`,
+`driven_adapters/sistema/`). Esta prueba demuestra que las piezas encajan: el
+orden de los controles y su resultado.
 """
 
 from __future__ import annotations
@@ -85,7 +84,7 @@ def _intencion(monto_pesos: int, comercio="com_x", **kw) -> Intencion:
 
 
 def _armar(correo: str = "juan@correo-real.com", estados=None):
-    """Wiring manual, sin pasar por `composicion/`: esta prueba quiere
+    """Wiring manual, sin pasar por `app_service/config/`: esta prueba quiere
     controlar cada pieza (el reloj fijo, el mandato exacto) para que los
     escenarios sean deterministas."""
     reloj = _RelojFijo(AHORA)
@@ -148,9 +147,7 @@ def test_tope_duro_por_transaccion_bloquea_antes_de_mirar_el_mandato():
 
 
 def test_tope_diario_agotado_bloquea_y_no_reserva_de_mas():
-    """El tope diario es del ambiente, no del mandato (igual que en la v1,
-    donde `gastado_dia_cop` era compartido -- `docs/historico/analisis-codigo.md`,
-    hallazgo 13). El mandato se emite con mucho margen propio (monto_max y
+    """El tope diario es del ambiente, no del mandato. El mandato se emite con mucho margen propio (monto_max y
     tope_total altos) para que lo unico que se este probando sea el tope
     duro de 100.000/dia, no ninguna senal blanda de la politica."""
     sk = Ed25519PrivateKey.generate()
@@ -306,7 +303,7 @@ def test_retomar_revalida_la_politica_y_bloquea_si_el_mandato_vencio_mientras_es
 
 
 def test_sin_exigir_mandato_deja_pasar_un_cobro_que_el_mandato_no_autorizaba():
-    """Reproduce el hallazgo central de la PoC (`docs/historico/analisis-codigo.md`):
+    """Reproduce el hallazgo central de la PoC:
     un mandato que autoriza 8.000 termina en un cobro `APPROVED` de 15.000,
     con la violacion registrada al lado. Esta vez, con la pasarela simulada,
     el resultado es reproducible en vez de depender de una corrida real."""
@@ -324,10 +321,9 @@ def test_sin_exigir_mandato_deja_pasar_un_cobro_que_el_mandato_no_autorizaba():
 
 
 def test_declinado_por_antifraude_no_consume_el_mandato():
-    """Equivalente a `tests/test_modos.py::test_un_declined_no_consume_el_
-    mandato` en la v1: solo un APROBADO suma usos."""
+    """Solo un APROBADO suma usos."""
     sk = Ed25519PrivateKey.generate()
-    ejecutar, mandatos, consumo, _, _ = _armar(correo="boveda+poc@example.com")
+    ejecutar, mandatos, consumo, _, _ = _armar(correo="comprador+poc@example.com")
     m = _mandato(sk, monto_max=Dinero.de_pesos(20_000), tope_total=Dinero.de_pesos(20_000),
                  usos_max=5)
     mandatos.guardar(m, Ambiente.SANDBOX)
@@ -343,8 +339,7 @@ def test_declinado_por_antifraude_no_consume_el_mandato():
 
 
 def test_pendiente_deja_la_reserva_viva():
-    """El cambio grande de la v2 frente a la v1 (`docs/arquitectura-v2.md`,
-    seccion 6): `EjecutarIntencionUseCase` no espera. Un `PENDING` no se confirma ni
+    """`EjecutarIntencionUseCase` no espera (`docs/arquitectura.md`). Un `PENDING` no se confirma ni
     se libera -- lo cierra `ConciliarEventoUseCase` desde el webhook (etapa 4)."""
     sk = Ed25519PrivateKey.generate()
     ejecutar, mandatos, consumo, _, _ = _armar(correo="cliente.pendiente@correo-real.com")

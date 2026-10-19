@@ -2,7 +2,7 @@
 2026): la tabla `usuario`, uno a uno con `dominio.usuario.modelo.Usuario`.
 
 `nombre_usuario` es UNIQUE en el esquema (`esquema.py`) -- en la practica
-nunca deberia chocar: `RegistrarUsuarioUseCase` (`aplicacion/autenticacion.py`) ya
+nunca deberia chocar: `RegistrarUsuarioUseCase` (`usecase/{registrar_usuario,iniciar_sesion}/`) ya
 verifica `buscar_por_nombre_usuario` antes de llamar a `guardar`.
 """
 

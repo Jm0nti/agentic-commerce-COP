@@ -19,26 +19,26 @@ EL AVISO SE ARMA EN UN SOLO LUGAR
 -----------------------------------
 Antes de esta etapa habia CUATRO sitios que escribian a mano el texto que
 le avisa al modelo que la persona ya decidio: firmar, rechazar y retomar en
-`entradas/api/app.py`, mas el webhook en `entradas/api/sesiones.py`. Cada
+`entry_points/api_rest/app.py`, mas el webhook en `entry_points/api_rest/sesiones.py`. Cada
 uno tenia que acordarse de meter el `mandato_id` y el `carrito_id` con el
 formato correcto, porque del otro lado el modelo los lee del texto. Eso es
 exactamente la "nota con el comando ya armado" que la decision 6 quiere
 sacar. Ahora hay un solo `DecisionHumana.como_aviso()`, y los cuatro
 llamadores pasan datos tipados.
 
-POR QUE VIVE EN `agente/` Y NO EN `entradas/`
+POR QUE VIVE EN `usecase/agente/` Y NO EN `entry_points/`
 -----------------------------------------------
 "El turno quedo esperando una firma" es un estado de la conversacion, no de
 HTTP: la CLI tiene el mismo problema y hoy lo resuelve con el mismo texto.
-`entradas/api/sesiones.py` sigue siendo quien traduce esto a un evento SSE
+`entry_points/api_rest/sesiones.py` sigue siendo quien traduce esto a un evento SSE
 con los items del carrito para el popup -- eso si es presentacion.
 
 LO QUE ESTE MODULO NO DECIDE
 ------------------------------
 Nada de dinero. Arma descripciones de lo que hay que decidir y textos para
 el modelo. Quien emite el mandato y quien cobra siguen siendo
-`aplicacion/emitir_mandato.py` y `aplicacion/ejecutar_intencion.py`,
-llamados por la persona desde `entradas/`. El agente no gana ninguna
+`usecase/emitir_mandato/emitir_mandato_use_case.py` y `usecase/ejecutar_intencion/ejecutar_intencion_use_case.py`,
+llamados por la persona desde `entry_points/`. El agente no gana ninguna
 herramienta nueva: `PROHIBIDAS` sigue negandole `firmar` y `retomar`.
 """
 
@@ -64,7 +64,7 @@ class PausaDelTurno:
     Los ids son opacos y no llevan plata: identifican que firmar o que
     confirmar. El monto viaja solo para que el popup pueda mostrarlo -- la
     verdad del monto sigue siendo el `Carrito` y el `Mandato`, que
-    `entradas/api/sesiones.py` vuelve a buscar por id antes de dibujar
+    `entry_points/api_rest/sesiones.py` vuelve a buscar por id antes de dibujar
     nada."""
 
     tipo: TipoDePausa
@@ -95,7 +95,7 @@ class PausaDelTurno:
 class DecisionHumana:
     """Lo que la persona resolvio, ya hecho: el mandato existe (o no se
     firmo), el cobro se retomó (o se rechazo). Llega DESPUES de que
-    `aplicacion/` hizo el trabajo, nunca antes -- esta clase no autoriza
+    `usecase/` hizo el trabajo, nunca antes -- esta clase no autoriza
     nada, solo cuenta lo que paso para que el modelo se entere."""
 
     tipo: TipoDePausa
@@ -104,7 +104,7 @@ class DecisionHumana:
     carrito_id: str = ""
     intencion_id: str = ""
     mandato_id: str = ""
-    # El desenlace que reporto la boveda al resolver: `estado` es el motivo
+    # El desenlace que reporto el motor de pagos al resolver: `estado` es el motivo
     # de la pasarela ('APPROVED', 'PENDING', 'DECLINED'...) y `ejecutado`,
     # si el cobro salio. Viajan al modelo porque le ahorran una consulta --
     # pero la instruccion le sigue pidiendo confirmar con consultar_estado
@@ -113,7 +113,7 @@ class DecisionHumana:
     estado: str = ""
     ejecutado: bool | None = None
     # `True` cuando nadie hizo click: el webhook de la pasarela resolvio la
-    # intencion en otro proceso y el sondeo se entero (`entradas/api/
+    # intencion en otro proceso y el sondeo se entero (`entry_points/api_rest/
     # sondeo_pagos.py`). Sigue siendo una decision externa al agente.
     automatica: bool = False
 
@@ -167,7 +167,7 @@ def detectar_pausa(mensajes: Sequence[Mensaje]) -> PausaDelTurno | None:
 
     Se lee de lo que devolvieron las herramientas -- los mensajes de rol
     "tool" que el modelo efectivamente recibio -- y no de una bandera que
-    alguien levanto al pasar: mismo criterio que `agente/traza.py`. Si el
+    alguien levanto al pasar: mismo criterio que `usecase/agente/traza.py`. Si el
     turno dejo mas de una cosa pendiente (no pasa hoy), gana la ultima, que
     es la que la persona tiene delante.
 

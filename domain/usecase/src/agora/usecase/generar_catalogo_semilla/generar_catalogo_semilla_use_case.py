@@ -1,16 +1,16 @@
 """Fabrica comercios y productos simulados con un `ModeloDeLenguaje`, para
-alimentar `adaptadores/catalogo/semilla/` (etapa 5).
+alimentar `driven_adapters/catalogo_semilla/` (etapa 5).
 
 POR QUE UN CASO DE USO Y NO SOLO UN SCRIPT
 --------------------------------------------
-`scripts/generar_catalogo_semilla.py` lee `os.environ`, arma el adaptador de
+`app_service/generar_catalogo_semilla.py` lee `os.environ`, arma el adaptador de
 DeepSeek y escribe el archivo -- es el composition root de este comando, igual
 que los demas scripts de una sola corrida en `scripts/`. Pero la parte que
 decide que pedirle al
 modelo y como validar lo que contesta no es ceremonia de arranque: es una
 regla de negocio ("un comercio simulado necesita nombre, categoria y al menos
 un producto disponible") que tiene sentido probar sola, sin tocar red, y sin
-un CLI de por medio. Por eso vive aqui, en `aplicacion/`, detras del puerto
+un CLI de por medio. Por eso vive aqui, en `usecase/`, detras del puerto
 `ModeloDeLenguaje` -- exactamente como `EjecutarIntencionUseCase` vive detras de
 `PasarelaDePagos`.
 
@@ -20,7 +20,7 @@ Si DeepSeek devuelve JSON invalido, o JSON valido con la forma equivocada, o
 un precio negativo, `RespuestaModeloInvalida` se levanta con el motivo exacto
 y el crudo de la respuesta adjunto -- nunca se rellena un campo faltante con
 un default silencioso ni se descarta solo el producto problematico. Es el
-mismo principio que `dominio/mandato/modelo.py` aplica a una firma que no
+mismo principio que `model/mandato/modelo.py` aplica a una firma que no
 valida: categorico, no probabilistico. Datos fabricados a medias son peores
 que ningun dato, porque parecen confiables.
 """

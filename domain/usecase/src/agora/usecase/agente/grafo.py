@@ -117,7 +117,7 @@ def definir_grafo_del_turno(agente: Agente) -> DefinicionDeGrafo[EstadoDelTurno]
     """La definicion de grafo, cerrada sobre `agente`.
 
     Sin un solo tipo de LangGraph: `DefinicionDeGrafo` es del puerto, y quien
-    la compila (`composicion/agente.py`) es el unico que conoce el adaptador.
+    la compila (`app_service/config/agente.py`) es el unico que conoce el adaptador.
 
     `construir_agentes` valida aca la lista blanca de cada agente, nodo por
     nodo: armar el grafo con una tabla incoherente falla al construirlo, no
@@ -215,7 +215,7 @@ def definir_grafo_del_turno(agente: Agente) -> DefinicionDeGrafo[EstadoDelTurno]
 
 class AgenteEnGrafo:
     """Mismo contrato que `Agente` (`iniciar`/`turno`), pero el turno corre
-    por el grafo. `entradas/api/sesiones.py`, `entradas/api/app.py` y la CLI
+    por el grafo. `entry_points/api_rest/sesiones.py`, `entry_points/api_rest/app.py` y la CLI
     lo usan por duck typing, sin cambios.
 
     El grafo se compila UNA vez, al construirse: la topologia no depende del
@@ -283,7 +283,7 @@ class AgenteEnGrafo:
     @property
     def _herramientas(self):
         """La misma superficie que `Agente` para quien llama a una
-        herramienta directo (`tests/test_composicion_agente.py`): envolver el
+        herramienta directo (`tests/app_service/test_composicion_agente.py`): envolver el
         agente en un grafo no tendria que obligar a desenvolverlo para llegar
         a lo que ya era accesible."""
         return self._agente._herramientas

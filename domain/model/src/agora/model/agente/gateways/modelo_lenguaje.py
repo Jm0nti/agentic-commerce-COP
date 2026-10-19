@@ -4,10 +4,10 @@
 `GenerarCatalogoSemillaUseCase` (una sola llamada, sin memoria de turnos, que espera
 JSON de vuelta). El docstring original de este archivo explicaba por que
 `responder(mensajes, herramientas) -> RespuestaModelo` -- el loop de turnos
-con tool-calling que describe `docs/arquitectura-v2.md`, seccion 4 -- todavia
-no existia: construirlo sin un `agente/conversacion.py` real que lo llamara
+con tool-calling que describe `docs/arquitectura.md`, seccion 4 -- todavia
+no existia: construirlo sin un `usecase/agente/conversacion.py` real que lo llamara
 habria sido disenar a ciegas. Esta etapa agrega ese caso de uso real
-(`agente/conversacion.py`), asi que ahora `responder()` se agrega tambien,
+(`usecase/agente/conversacion.py`), asi que ahora `responder()` se agrega tambien,
 contestando las preguntas que antes no tenian con que contestarse:
 
     ¿lleva llamadas a herramientas parciales?     No: una respuesta trae
@@ -17,17 +17,17 @@ contestando las preguntas que antes no tenian con que contestarse:
                                                    llamada a medio construir.
     ¿como se reintenta una que fallo?             No es este puerto: quien
                                                    ejecuta la herramienta
-                                                   (`agente/conversacion.py`)
+                                                   (`usecase/agente/conversacion.py`)
                                                    decide si reintenta,
                                                    armando un nuevo mensaje
                                                    de rol "tool" con el error.
 
 `DefinicionHerramienta` es DELIBERADAMENTE mas angosta que `agente.
 herramientas.Herramienta`: no lleva `ejecutar` (un `Callable`). Este puerto
-no puede importar `agente/` (la regla de dependencia es al reves: `agente/`
-importa `puertos/`, nunca al contrario), asi que solo describe lo que un
+no puede importar `usecase/agente/` (la regla de dependencia es al reves: `usecase/agente/`
+importa `model/<agregado>/gateways/`, nunca al contrario), asi que solo describe lo que un
 proveedor de LLM necesita para anunciar una herramienta -- nombre,
-descripcion, esquema de argumentos -- y `agente/conversacion.py` es quien
+descripcion, esquema de argumentos -- y `usecase/agente/conversacion.py` es quien
 traduce entre las dos formas.
 """
 
@@ -106,7 +106,7 @@ class ModeloDeLenguaje(Protocol):
     def responder(
         self, mensajes: list[Mensaje], herramientas: list[DefinicionHerramienta]
     ) -> RespuestaModelo:
-        """Un turno del loop de conversacion (`agente/conversacion.py`).
+        """Un turno del loop de conversacion (`usecase/agente/conversacion.py`).
         `mensajes` es el historial completo hasta ahora (el proveedor no
         guarda estado entre llamadas); `herramientas` es lo que el modelo
         puede pedir ejecutar en este turno -- vacia es una respuesta valida,

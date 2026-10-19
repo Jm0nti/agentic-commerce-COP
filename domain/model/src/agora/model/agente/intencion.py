@@ -1,24 +1,24 @@
 """La intencion de un mensaje, con schema -- no texto libre.
 
-Migracion a agentes, etapa 1 (`docs/arquitectura-agentes-langgraph.md`,
+Migracion a agentes, etapa 1 (`docs/arquitectura-agentes/arquitectura-agentes-langgraph.md`,
 "Migracion incremental", paso 1): separar DECIDIR a que dominio pertenece un
 mensaje de EJECUTAR el turno. Este modulo es solo el contrato de esa
-decision; quien la toma vive en `agente/clasificacion/`, y que significa
-cada intencion en terminos de herramientas vive en `agente/nodos.py`.
+decision; quien la toma vive en `usecase/agente/clasificacion/`, y que significa
+cada intencion en terminos de herramientas vive en `usecase/agente/nodos.py`.
 
-POR QUE EN `agente/` Y NO EN `dominio/` NI EN `puertos/`
+POR QUE EN `usecase/agente/` Y NO EN `model/` NI EN `model/<agregado>/gateways/`
 ----------------------------------------------------------
 "El mensaje es sobre el estado de un pago" es un concepto de la
 conversacion, no del negocio: un `Mandato` o una `Intencion` de pago
-(`dominio/mandato/modelo.py`) existen igual sin chat. Por eso no va en
-`dominio/`. Tampoco hace falta un puerto nuevo: ninguna libreria externa
+(`model/mandato/modelo.py`) existen igual sin chat. Por eso no va en
+`model/`. Tampoco hace falta un puerto nuevo: ninguna libreria externa
 entra en esta etapa -- el clasificador con modelo usa el puerto que ya
 existe (`ModeloDeLenguaje.generar`), y `ClasificadorDeIntencion` es una
 estrategia interna del agente, igual que el loop de turnos. El puerto que
 aisle LangGraph llega en la etapa 3, cuando LangGraph llegue.
 
 `TipoDeIntencion` y no `Intencion` a secas: `dominio.mandato.modelo.
-Intencion` (una intencion de PAGO) ya existe y `composicion/agente.py`
+Intencion` (una intencion de PAGO) ya existe y `app_service/config/agente.py`
 importa las dos.
 """
 
@@ -48,7 +48,7 @@ class TipoDeIntencion(str, Enum):
 class OrigenDeClasificacion(str, Enum):
     """Quien decidio. `RESPALDO` no es una intencion: es "nadie pudo
     decidir con suficiente certeza", y lleva al turno por la ruta de
-    respaldo (`agente/nodos.py:RUTA_DE_RESPALDO`) -- el comportamiento
+    respaldo (`usecase/agente/nodos.py:RUTA_DE_RESPALDO`) -- el comportamiento
     exacto de antes de esta etapa."""
 
     REGLAS = "reglas"

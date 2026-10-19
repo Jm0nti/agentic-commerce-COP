@@ -1,4 +1,4 @@
-"""El DDL. Cuatro tablas, tal como lo dice `docs/arquitectura-v2.md` (ADR-3):
+"""El DDL. Cuatro tablas, tal como lo dice `docs/arquitectura.md` (ADR-3):
 "Los repositorios son cuatro tablas. SQLAlchemy agrega mas concepto del que
 quita a esta escala." Sin ORM: SQL de verdad, a proposito.
 
@@ -64,9 +64,7 @@ CREATE TABLE IF NOT EXISTS reserva (
 
 CREATE INDEX IF NOT EXISTS idx_reserva_estado ON reserva (estado);
 
--- El tope duro diario es del ambiente, no de un mandato (`nucleo.py:286`,
--- `docs/historico/analisis-codigo.md` hallazgo 13: "gastado_dia_cop compartido entre
--- modos"). Se actualiza en la MISMA transaccion que inserta la reserva
+-- El tope duro diario es del ambiente, no de un mandato. Se actualiza en la MISMA transaccion que inserta la reserva
 -- (`libro_consumo.py:reservar`) -- esa atomicidad es el punto entero de la
 -- etapa 3.
 CREATE TABLE IF NOT EXISTS gastado_dia (
@@ -77,8 +75,7 @@ CREATE TABLE IF NOT EXISTS gastado_dia (
     PRIMARY KEY (ambiente, dia)
 );
 
--- Medios de pago vivos (equivalente a `boveda/secretos/fuentes.json`, que
--- separaba por modo). `estado` no se borra al revocar: se marca, para que
+-- Medios de pago vivos, por ambiente. `estado` no se borra al revocar: se marca, para que
 -- quede la evidencia de que existio.
 --
 -- `comercio_id` (multi-comercio, 1 de septiembre de 2026): un

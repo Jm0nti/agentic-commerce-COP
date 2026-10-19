@@ -10,13 +10,13 @@ Implementa `agente.contexto.ProveedorDeContexto` sobre el puerto
 
 LA REGLA NO NEGOCIABLE, APLICADA EN CODIGO
 -------------------------------------------
-`docs/arquitectura-agentes-langgraph.md`, decision 1: "ningun numero exacto
+`docs/arquitectura-agentes/arquitectura-agentes-langgraph.md`, decision 1: "ningun numero exacto
 (topes, `monto_max` de un mandato, limites) sale nunca de una recuperacion
 semantica". La instruccion del nodo ya se lo pide al modelo en prosa, pero
 un prompt se puede desobedecer. Por eso cada numero de un fragmento se
 reemplaza por `[cifra omitida]` ANTES de llegar al modelo: si la
 documentacion dice un monto -- vigente o desactualizado, que ya paso con el
-tope duro de `boveda/nucleo.py` -- el modelo nunca lo ve, y no lo puede
+tope duro por transaccion -- el modelo nunca lo ve, y no lo puede
 repetir como si tuviera autoridad. Montos, topes y limites de la persona
 salen de su mandato real (la app, `consultar_estado`), nunca de aca.
 

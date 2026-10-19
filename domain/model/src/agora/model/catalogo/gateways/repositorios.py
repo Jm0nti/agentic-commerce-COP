@@ -1,4 +1,4 @@
-"""Persistencia de los carritos. Salio de `puertos/repositorios.py` (Fase 2
+"""Persistencia de los carritos. Salio de `model/<agregado>/gateways/repositorios.py` (Fase 2
 del refactor a la Clean Architecture de Bancolombia).
 """
 

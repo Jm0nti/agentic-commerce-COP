@@ -1,5 +1,5 @@
 """`AGORA_ORQUESTACION` de punta a punta (migracion a agentes, etapa 3): la
-configuracion lo lee y lo valida, `composicion/agente.py` devuelve el agente
+configuracion lo lee y lo valida, `app_service/config/agente.py` devuelve el agente
 envuelto en grafo o el de siempre, y un venv sin `langgraph` falla con un
 mensaje que dice que hacer en vez de un `ImportError` pelado.
 """

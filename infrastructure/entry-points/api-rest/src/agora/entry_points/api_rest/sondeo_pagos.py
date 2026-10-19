@@ -4,12 +4,12 @@ proceso.
 
 EL PROBLEMA QUE RESUELVE
 -------------------------
-`aplicacion/ejecutar_intencion.py:_cobrar` nunca bloquea esperando el
+`usecase/ejecutar_intencion/ejecutar_intencion_use_case.py:_cobrar` nunca bloquea esperando el
 desenlace de un cobro real contra Wompi -- devuelve 'PENDING' de inmediato,
-y el desenlace final lo asienta despues `aplicacion/conciliar_evento.py`,
-llamado desde el receptor HTTP del webhook (`entradas/webhooks/wompi.py`,
-`scripts/servir_webhook_wompi.py`). Ese receptor corre en OTRO PROCESO que
-el de este chat (`scripts/servir_api.py`) -- dos composition roots
+y el desenlace final lo asienta despues `usecase/conciliar_evento/conciliar_evento_use_case.py`,
+llamado desde el receptor HTTP del webhook (`entry_points/webhook_wompi/wompi.py`,
+`app_service/servir_webhook_wompi.py`). Ese receptor corre en OTRO PROCESO que
+el de este chat (`app_service/servir_api.py`) -- dos composition roots
 deliberadamente separados (ver el docstring de `servir_webhook_wompi.py`).
 Sin este modulo, la sesion de chat nunca se entera de que el webhook ya
 resolvio nada: el agente le dijo a la persona "quedo pendiente" y ahi se
@@ -17,7 +17,7 @@ queda, hasta que alguien vuelva a escribirle.
 
 COMO LO RESUELVE
 -----------------
-`aplicacion/consultar_estado.py:ConsultarEstadoUseCase` ya lee el mismo sqlite que
+`usecase/consultar_estado/consultar_estado_use_case.py:ConsultarEstadoUseCase` ya lee el mismo sqlite que
 `ConciliarEventoUseCase` escribe -- el estado SI esta compartido entre los dos
 procesos, solo que nadie de este lado volvia a preguntar. Esta clase corre
 en un hilo de fondo dentro del proceso del chat, sondea (a intervalos, sin
@@ -37,10 +37,10 @@ sondeo es la opcion mas simple: el estado ya esta compartido, alcanza con
 volver a preguntar. El costo es la demora del intervalo (`intervalo_seg`),
 aceptable para esta PoC.
 
-POR QUE NO VIVE ADENTRO DE `crear_app` (`entradas/api/app.py`)
+POR QUE NO VIVE ADENTRO DE `crear_app` (`entry_points/api_rest/app.py`)
 ------------------------------------------------------------------
 `crear_app` es una factoria pura que tambien arma un `TestClient` en las
-pruebas (`tests/test_api_app.py`) -- si arrancara un hilo de fondo ahi, cada
+pruebas (`tests/entry_points/test_api_app.py`) -- si arrancara un hilo de fondo ahi, cada
 prueba que construye una app dejaria un hilo real corriendo con un
 temporizador real. Por eso el composition root real (`scripts/
 servir_api.py`) es quien decide si arrancar el sondeo, despues de llamar a
@@ -98,7 +98,7 @@ class SondeoDePagosPendientes:
         probarla sin hilos ni `time.sleep` real (ver `tests/
         test_sondeo_pagos.py`). Una intencion que revienta no debe tumbar
         el sondeo de las demas -- mismo criterio de tolerancia que
-        `entradas/webhooks/wompi.py` ("WOMPI ESPERA UN 200, SIEMPRE"): un
+        `entry_points/webhook_wompi/wompi.py` ("WOMPI ESPERA UN 200, SIEMPRE"): un
         hilo de fondo que muere en silencio por una excepcion no atrapada
         es peor que uno que se salta un item y sigue."""
         for intencion_id in self._sesiones.pendientes():

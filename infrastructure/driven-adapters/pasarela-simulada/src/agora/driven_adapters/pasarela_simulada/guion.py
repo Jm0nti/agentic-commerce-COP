@@ -1,17 +1,16 @@
 """Los cuatro desenlaces de un cobro, y como se elige uno.
 
-`docs/arquitectura-v2.md` (ADR-2) es explicito: la simulada no es un mock de
+`docs/arquitectura.md` (ADR-2) es explicito: la simulada no es un mock de
 pruebas, es un adaptador de produccion para el modo demo, y por eso tiene que
 poder reproducir los mismos desenlaces que Wompi real -- aprobado, declinado,
 declinado por antifraude y pendiente -- **a voluntad**, sin depender de que
 Wompi coopere el dia de una presentacion.
 
-La convencion para elegir uno es la misma que ya usa `wompi_lab/lab.py`: un
-valor "magico" en la entrada selecciona el desenlace (alli son numeros de
-tarjeta y de Nequi; `OrdenDeCobro` no carga ningun campo libre para eso, asi
-que aqui el marcador es el correo del pagador). El desenlace de antifraude por
+La convencion para elegir uno es un valor "magico" en la entrada
+(`OrdenDeCobro` no carga ningun campo libre para eso, asi que el marcador es
+el correo del pagador). El desenlace de antifraude por
 defecto no es arbitrario: reproduce la corrida real documentada en
-`docs/decline-afe.md` (19 de agosto de 2026), donde Wompi declino un cobro de
+`docs/utils/decline-afe.md` (19 de agosto de 2026), donde Wompi declino un cobro de
 2.000 COP con `afe_decision: DECLINE` porque el correo del pagador estaba en
 `example.com` -- un dominio reservado por la RFC 2606 que nunca entrega
 correo, y que un motor antifraude no tiene por que distinguir de uno

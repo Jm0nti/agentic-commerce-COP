@@ -19,7 +19,7 @@ túnel:
 | Proceso | Comando | Puerto | Para qué sirve | ¿Hace falta siempre? |
 |---|---|---|---|---|
 | API + chat web | `python -m agora api` | 8002 | Login, chat con el agente, firma/confirmación por popup, alta de medios de pago — todo en una sola pestaña | Sí (o su equivalente por CLI) |
-| Webhook de Wompi | `python -m agora webhook` | 8001 | Recibe la confirmación asíncrona de un cobro (`ConciliarEvento`) | Solo con `AGORA_PASARELA=wompi` |
+| Webhook de Wompi | `python -m agora webhook` | 8001 | Recibe la confirmación asíncrona de un cobro (`ConciliarEventoUseCase`) | Solo con `AGORA_PASARELA=wompi` |
 | Túnel (ngrok / cloudflared) | `ngrok http --url https://<dominio>.ngrok-free.dev 8001` | — | Le da al puerto 8001 una URL pública para que Wompi le pueda pegar | Solo con `AGORA_PASARELA=wompi` |
 | CLI | `python -m agora cli ...` | — | Alternativa a la web: enrolar, emitir, pagar, retomar, chatear, todo desde la terminal | No, es intercambiable con la web |
 
@@ -40,13 +40,13 @@ acumulado al reiniciar permitiría reusar un mandato ya agotado.
 
 ---
 
-## 2. Se sirve la API (`servir_api.py`, puerto 8002)
+## 2. Se sirve la API (`python -m agora api`, puerto 8002)
 
 Es el composition root del punto de entrada web: lee el `.env`, arma el
-`Contenedor` (`composicion/contenedor.py`) y levanta `agora/entradas/api/`
+`Contenedor` (`app_service/config/contenedor.py`) y levanta `entry_points/api_rest/`
 con `uvicorn`. Sirve, en un solo proceso:
 
-- La página estática (`entradas/api/estatico/chat.html`) en `GET /`.
+- La página estática (`entry_points/api_rest/estatico/chat.html`) en `GET /`.
 - Login (`/auth/...`).
 - El chat con el agente (`/sesiones/...`).
 - Firma y confirmación humana (`/propuestas/{id}/firmar`,
@@ -56,10 +56,9 @@ con `uvicorn`. Sirve, en un solo proceso:
 No necesita el túnel ni estar expuesto a internet — corre en
 `localhost:8002` y solo Juan (o quien esté frente al navegador) le habla.
 
-## 3. Se ejecuta el receptor de webhook (`servir_webhook_wompi.py`, puerto 8001)
+## 3. Se ejecuta el receptor de webhook (`python -m agora webhook`, puerto 8001)
 
-Es un composition root aparte, deliberadamente separado del anterior — ver
-`docs/etapa-4-webhook-y-retomo.md`. Levanta `agora/entradas/webhooks/
+Es un composition root aparte, deliberadamente separado del anterior. Levanta `entry_points/webhook_wompi/
 wompi.py` con `uvicorn`, y expone `POST
 /pagos/wompi/transacciones/{comercio_id}`: la ruta a la que Wompi golpea
 cuando confirma o rechaza un cobro que había quedado `PENDING`. También sirve
@@ -119,7 +118,7 @@ medios de pago). Ahora hay una pantalla de login real:
    quien al momento de firmar (ver sección 7).
 
 2. En el navegador, `POST /auth/iniciar-sesion` recibe usuario + contraseña,
-   los verifica (`IniciarSesion`, que compara el hash — el mismo error
+   los verifica (`IniciarSesionUseCase`, que compara el hash — el mismo error
    genérico si el usuario no existe o si la contraseña no coincide, para no
    poder enumerar usuarios válidos probando) y deja una **cookie httponly**
    (`agora_sesion`, 12 horas de duración, en memoria del proceso
@@ -142,7 +141,7 @@ generar una llave nueva sobre la marcha.
 ## 6. Empieza la conversación con el agente
 
 Con sesión iniciada, `POST /sesiones` abre una `Conversacion` nueva
-(`entradas/api/sesiones.py:AlmacenDeSesiones`), atada al `titular_id` que la
+(`entry_points/api_rest/sesiones.py:AlmacenDeSesiones`), atada al `titular_id` que la
 creó. Cada mensaje viaja por `POST /sesiones/{id}/mensajes`.
 
 **La memoria de la conversación no persiste entre sesiones, a propósito** —
@@ -196,7 +195,7 @@ de ningún chat abierto, es un acto del titular en cualquier momento:
    registrada la vinculación con ese comercio puntual.
 4. `GET /medios` lista lo que ya está enrolado para ese titular.
 
-**Desde la CLI**, en un solo comando bloqueante (`EnrolarMedio` orquesta los
+**Desde la CLI**, en un solo comando bloqueante (`EnrolarMedioUseCase` orquesta los
 mismos tres pasos):
 
 ```bash
@@ -223,7 +222,7 @@ firma, Ed25519, por qué el agente no puede firmar ni estructuralmente). Acá
 solo el resumen operativo, con lo que cambió desde que ese documento se
 escribió: **la firma ya no sale de una llave compartida por el proceso, sale
 de la llave propia del titular** (sección 5). `SelectorDeFirmante.
-para(titular_id)` — resuelto por `EmitirMandato` contra `RepositorioLlaves`
+para(titular_id)` — resuelto por `EmitirMandatoUseCase` contra `RepositorioLlaves`
 — reemplazó al `cargar_o_generar_firmante` de una sola llave por proceso.
 Todo lo demás del recorrido (la propuesta sin firma, el tipo de dato
 separado que hace imposible confundirla con un `Mandato`, la verificación
@@ -243,11 +242,11 @@ que cualquier cobro futuro puede verificar.
 
 ---
 
-## 9. La bóveda ejecuta: el cobro contra Wompi
+## 9. El motor de pagos ejecuta: el cobro contra Wompi
 
 Con el `mandato_id` en mano, el agente llama a su herramienta `pagar()`, que
-arma una `Intencion` y la manda a `EjecutarIntencion`
-(`agora/aplicacion/ejecutar_intencion.py`). En orden:
+arma una `Intencion` y la manda a `EjecutarIntencionUseCase`
+(`usecase/ejecutar_intencion/ejecutar_intencion_use_case.py`). En orden:
 
 1. **Topes duros** (20.000 COP por transacción, 100.000 COP por día,
    constantes en código, nunca configurables ni siquiera para el
@@ -265,7 +264,7 @@ arma una `Intencion` y la manda a `EjecutarIntencion`
    internamente la firma de integridad calculada con el `integrity_secret`
    de ese comercio.
 
-`EjecutarIntencion` **nunca se queda esperando** el desenlace final del
+`EjecutarIntencionUseCase` **nunca se queda esperando** el desenlace final del
 cobro. Wompi puede responder de dos formas distintas:
 
 - **Sincrónica**, en la misma respuesta HTTP del POST de cobro: `APPROVED` o
@@ -303,12 +302,12 @@ El recorrido completo de un evento:
    `https://<túnel>/pagos/wompi/transacciones/<comercio_id>`.
 2. El túnel reenvía esa petición a `localhost:8001`, donde
    `servir_webhook_wompi.py` la recibe.
-3. `entradas/webhooks/wompi.py` valida el `X-Event-Checksum` contra el
+3. `entry_points/webhook_wompi/wompi.py` valida el `X-Event-Checksum` contra el
    `events_secret` **de ese comercio puntual** — Wompi no manda ningún
    header confiable de "qué comercio soy" antes de validar el checksum; la
    única forma de saber qué secreto usar es por cuál segmento de URL
    golpearon (por eso hay una ruta por comercio y no una sola compartida).
-4. `ConciliarEvento` traduce el evento (`resultado_desde_evento`, que
+4. `ConciliarEventoUseCase` traduce el evento (`resultado_desde_evento`, que
    reconoce la referencia con el prefijo `agora-` que el propio adaptador le
    puso al cobrar), busca la reserva pendiente por `intencion_id`, y la
    confirma o la libera. Esta ruta **nunca levanta una excepción** — cada
@@ -340,7 +339,7 @@ ESE comercio** (Desarrolladores → Llaves API / Desarrolladores → Eventos):
 | `public_key` | Identifica el comercio en las llamadas que no mueven dinero (tokenizar, crear fuente de pago) |
 | `private_key` | Autentica las llamadas que sí cobran (`POST /v1/transactions`) |
 | `integrity_secret` | Firma la integridad del payload que este sistema le manda a Wompi al cobrar — evita que alguien intercepte y altere un monto en tránsito |
-| `events_secret` | Valida el `X-Event-Checksum` de los webhooks que Wompi manda de vuelta — sin él, `ConciliarEvento` marca los eventos de ese comercio como inválidos, y un cobro real nunca se llegaría a confirmar |
+| `events_secret` | Valida el `X-Event-Checksum` de los webhooks que Wompi manda de vuelta — sin él, `ConciliarEventoUseCase` marca los eventos de ese comercio como inválidos, y un cobro real nunca se llegaría a confirmar |
 
 Estas cuatro llaves **no van en el `.env`** (esas variables `WOMPI_*` sueltas
 solo alcanzaban para un comercio y no escalan a N). En su lugar viven en un
@@ -361,9 +360,9 @@ Ese archivo nunca se versiona ni se fabrica con datos de ejemplo — son
 secretos reales que Juan tiene que crear a mano por comercio antes de correr
 con `AGORA_PASARELA=wompi`.
 
-Al arrancar cualquiera de los tres procesos, `composicion/configuracion.py`
+Al arrancar cualquiera de los tres procesos, `app_service/config/configuracion.py`
 lee ese JSON y arma `ConfiguracionAgora.wompi` como
-`dict[comercio_id, ConfiguracionWompi]`. `composicion/contenedor.py` usa eso
+`dict[comercio_id, ConfiguracionWompi]`. `app_service/config/contenedor.py` usa eso
 para construir un `RegistroDePasarelas` (el `SelectorDePasarela`): con
 `AGORA_PASARELA=wompi`, **un `AdaptadorWompi` completo por cada comercio**
 —cliente HTTP y verificación de checksum totalmente separados, ningún
@@ -373,8 +372,8 @@ simulada` (el default), un único `AdaptadorSimulado` resuelve cualquier
 
 De ahí en adelante, cada caso de uso que necesita cobrar o enrolar deja de
 recibir "la pasarela" fija por constructor y en su lugar recibe el selector,
-resolviendo `selector.para(comercio_id)` en el momento — `EjecutarIntencion`
-al cobrar (sección 9), `ConciliarEvento` al conciliar un evento (sección 10,
+resolviendo `selector.para(comercio_id)` en el momento — `EjecutarIntencionUseCase`
+al cobrar (sección 9), `ConciliarEventoUseCase` al conciliar un evento (sección 10,
 con el `comercio_id` que trae la URL del webhook, porque ahí todavía no hay
 mandato del que sacarlo), y los tres pasos de enrolamiento (sección 7) al
 crear o consultar una fuente de pago — un `payment_source_id` de Wompi queda
@@ -384,7 +383,7 @@ dos usen Wompi.
 **Lo que esto no resuelve** (deuda técnica documentada a propósito, ver
 sección 6 de `docs/flujo-propuesta-mandato.md`): la correspondencia entre un
 medio de pago y el comercio al que está vinculado la garantiza
-`EmitirMandato` en el momento de firmar, pero no viaja dentro de la firma del
+`EmitirMandatoUseCase` en el momento de firmar, pero no viaja dentro de la firma del
 mandato ni se reverifica al cobrar.
 
 ---
@@ -402,16 +401,16 @@ mandato ni se reverifica al cobrar.
   ├──────────────▶│ agente arma carrito ──▶ Carrito + Propuesta ───▶│(no aplica)
   │◀── popup "firmar" (SSE) ───│                                    │
   │  clic "Firmar"                                                  │
-  ├──────────────▶│ EmitirMandato: llave DEL TITULAR ──▶ Mandato ──▶│
+  ├──────────────▶│ EmitirMandatoUseCase: llave DEL TITULAR ──▶ Mandato ──▶│
   │  (el agente pide pagar)                                         │
   │◀── popup "confirmar" (a veces) │                                │
   │  clic "Confirmar"                                                │
-  ├──────────────▶│ EjecutarIntencion ── selector.para(comercio) ──────▶ POST /v1/transactions
+  ├──────────────▶│ EjecutarIntencionUseCase ── selector.para(comercio) ──────▶ POST /v1/transactions
   │                │                                                 │◀── PENDING (Nequi)
   │◀── "esperando confirmación" ──│                                  │
   │                │                                                 │  (banco resuelve)
   │                │◀──────────── servir_webhook_wompi.py ◀── túnel ◀── POST evento
-  │                │  ConciliarEvento: confirma la reserva            │
+  │                │  ConciliarEventoUseCase: confirma la reserva            │
   │◀── resultado final, sin volver a preguntar ──│                    │
 ```
 
@@ -422,12 +421,12 @@ mandato ni se reverifica al cobrar.
 - `docs/flujo-propuesta-mandato.md` — la criptografía detrás de la firma, el
   tipo `PropuestaDeMandato`, y por qué el agente nunca puede firmar (secciones
   3, 5 y 6 en particular).
-- `docs/viabilidad-multi-comercio-wompi.md` — la evaluación y el diseño
+- `docs/utils/viabilidad-multi-comercio-wompi.md` — la evaluación y el diseño
   completo de multi-comercio (por qué una ruta por comercio y no un puerto
   por comercio, la vinculación medio↔comercio).
 - `docs/variables-de-entorno.md` — la plantilla comentada del `.env` y del
   registro `comercios_wompi.json`.
 - `README.md` — el runbook paso a paso para correr los tres procesos desde
   cero, incluidas las dos opciones de túnel.
-- `docs/etapa-7-chat-con-firma-en-una-pestana.md` — el detalle de
-  `entradas/api/`, las rutas HTTP y el mecanismo SSE.
+- `Documentacion.md`, sección 7 — el detalle de
+  `entry_points/api_rest/`, las rutas HTTP y el mecanismo SSE.

@@ -1,16 +1,16 @@
 """De lista de violaciones a dictamen.
 
-Hoy `evaluar()` devuelve violaciones y la politica real -- "cualquier violacion
-bloquea" -- vive implicita en un `if` de `nucleo.py:354`. Con un agente de por
-medio hace falta un tercer desenlace.
+Las violaciones dicen que se rompio; la politica decide que hacer. "Cualquier
+violacion bloquea" no alcanza: con un agente de por medio hace falta un tercer
+desenlace.
 
     PERMITIR   cabe en el mandato. Adelante.
     CONFIRMAR  cabe, pero huele raro. Que lo mire el humano.
     BLOQUEAR   no cabe. Y queda escrito por que.
 
-CONFIRMAR es el interesante y el que no existe hoy. Un agente manipulado que
-compra el producto equivocado a un comercio autorizado no produce ninguna
-violacion -- tu propio `mandato.py:14-24` ya lo dice. Ese caso no lo atrapa el
+CONFIRMAR es el interesante. Un agente manipulado que compra el producto
+equivocado a un comercio autorizado no produce ninguna violacion -- el
+docstring de `modelo.py` ya lo dice. Ese caso no lo atrapa el
 mandato ni debe atraparlo: la respuesta correcta no es si ni no, es preguntar.
 """
 

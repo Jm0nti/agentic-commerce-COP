@@ -16,9 +16,9 @@ la recuperacion del catalogo son tres peldanos, no un RAG unico.
 
 POR QUE UN PUERTO SEPARADO DEL DE SOPORTE
 -------------------------------------------
-`puertos/recuperacion.py:BuscadorDocumental` indexa documentacion; este
+`model/agente/gateways/recuperacion.py:BuscadorDocumental` indexa documentacion; este
 indexa productos. El documento pide dos indices que NUNCA se mezclan
-(decision 1), y `tests/test_fronteras.py` lo verifica. Comparten una sola
+(decision 1), y `tests/arquitectura/test_fronteras.py` lo verifica. Comparten una sola
 cosa a proposito: `ProveedorDeEmbeddings`, que es el puerto de "texto ->
 vector" de la decision 2 y no sabe nada de lo que se este indexando.
 
@@ -50,7 +50,7 @@ class FiltrosDeProducto:
     esconder los agotados por omision cambiaria lo que hoy ve el modelo, y
     que un producto este agotado es informacion util para contestar ("ese
     esta agotado, te muestro otro") aunque no se pueda comprar
-    (`aplicacion/navegar_catalogo.py:armar_carrito` lo rechaza igual)."""
+    (`usecase/navegar_catalogo/navegar_catalogo_use_case.py:armar_carrito` lo rechaza igual)."""
 
     solo_disponibles: bool = False
     precio_min_cop: int | None = None

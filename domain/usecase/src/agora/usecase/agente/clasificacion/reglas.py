@@ -1,11 +1,11 @@
 """El camino rapido: reglas deterministicas para intenciones inequivocas.
 
-`docs/arquitectura-agentes-langgraph.md`, "Riesgos a vigilar": router +
+`docs/arquitectura-agentes/arquitectura-agentes-langgraph.md`, "Riesgos a vigilar": router +
 agente especializado son dos llamadas al LLM por turno en vez de una. Antes
 de pagar la segunda, estas reglas resuelven lo que no necesita un modelo --
 entre otras cosas, TODOS los avisos que el propio sistema le manda a la
-conversacion (`entradas/api/app.py` despues de firmar o retomar desde un
-popup, `entradas/api/sesiones.py:resolver_pendiente` cuando llega un
+conversacion (`entry_points/api_rest/app.py` despues de firmar o retomar desde un
+popup, `entry_points/api_rest/sesiones.py:resolver_pendiente` cuando llega un
 webhook), que siempre traen marcas como `pagar()` o `consultar_estado`.
 
 LA REGLA DE ORO: ABSTENERSE ANTES QUE ADIVINAR
@@ -15,7 +15,7 @@ eligen: devuelven respaldo y dejan que decida el clasificador con modelo (o,
 sin modelo, la ruta de respaldo). La unica excepcion es explicita y esta en
 `_SUBSUME`: una intencion de compra que ademas nombra productos o comercios
 es compra, porque la ruta de `carrito_pago` ya incluye las herramientas de
-catalogo (`agente/nodos.py:RUTAS`) -- elegirla no le quita nada al turno.
+catalogo (`usecase/agente/nodos.py:RUTAS`) -- elegirla no le quita nada al turno.
 
 Que un mensaje "active" una intencion por reglas nunca le da al turno MAS
 de lo que tenia el agente de antes: toda ruta es un subconjunto del catalogo

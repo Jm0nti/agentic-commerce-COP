@@ -1,5 +1,5 @@
 """`AGORA_CLASIFICADOR` de punta a punta: la configuracion lo lee y lo valida,
-`composicion/agente.py` arma el clasificador que corresponde, y el agente
+`app_service/config/agente.py` arma el clasificador que corresponde, y el agente
 real (herramientas reales, contenedor real) enruta con reglas sin tocar el
 modelo cuando el mensaje es inequivoco."""
 

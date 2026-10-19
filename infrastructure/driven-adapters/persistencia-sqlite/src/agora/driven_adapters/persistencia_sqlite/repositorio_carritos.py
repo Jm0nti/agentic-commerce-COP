@@ -1,5 +1,5 @@
 """`RepositorioCarritos` contra SQLite. Ver el comentario de la tabla
-`carrito` en `esquema.py` para el porque: sin esto, `entradas/cli/` (donde
+`carrito` en `esquema.py` para el porque: sin esto, `entry_points/cli/` (donde
 "armar y firmar" y "pagar" son comandos separados, cada uno su propio
 proceso) nunca podria completar una compra con `AGORA_PERSISTENCIA=sqlite`
 -- el adaptador en memoria pierde el carrito apenas termina el proceso que

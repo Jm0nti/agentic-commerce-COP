@@ -8,23 +8,13 @@ __pycache__/
 .env
 .env.*
 
-# Llave de firma del titular, estado de consumo y fuentes de pago vivas.
-boveda/secretos/
 
-# Artefactos de corrida: fuentes de pago, recibos, ledgers.
-wompi_lab/source.json
-wompi_lab/ledger*.jsonl
-boveda/recibos.jsonl
-boveda/ledger_mandatos.jsonl
-boveda/mnd-*.json
-
-# Cache de fuentes fuera de la boveda. Un payment_source_id de produccion
+# Cache local de fuentes de pago. Un payment_source_id de produccion
 # es tan sensible como una credencial: quien lo tiene puede cobrar.
 data/private/*.json
 
-# `agora/` (etapa 2+): bitacora .jsonl y, desde la etapa 3, la base SQLite --
-# mandatos, medios de pago y consumo real, igual de sensible que
-# `boveda/secretos/`.
+# Datos de agora: trazas .jsonl, la base SQLite (mandatos, medios de pago y
+# consumo real) y las llaves de firma en `agora_datos/secretos/`.
 agora_datos/
 *.db
 *.db-wal
@@ -33,7 +23,6 @@ agora_datos/
 
 
 docs/poc-documentation/
-docs/historico/
 docs/diagramas/
 docs/poc-documentation/
 docs/utils/
@@ -43,7 +32,6 @@ docs/arquitectura-agentes/
 
 
 
-Claude outputs/
 # pip install -e .
 *.egg-info/
 build/

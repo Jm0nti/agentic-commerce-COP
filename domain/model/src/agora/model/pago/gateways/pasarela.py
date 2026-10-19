@@ -1,7 +1,7 @@
 """El puerto de pagos. Dos implementaciones desde el dia uno.
 
-`adaptadores/pasarelas/wompi/` mueve dinero real.
-`adaptadores/pasarelas/simulada/` no, y no es un mock de pruebas: es un
+`driven_adapters/pasarela_wompi/` mueve dinero real.
+`driven_adapters/pasarela_simulada/` no, y no es un mock de pruebas: es un
 adaptador de produccion para el modo demo.
 
 La simulada tiene que poder reproducir los cuatro desenlaces, incluido el
@@ -61,9 +61,8 @@ class EstadoMedio:
 class PasarelaDePagos(Protocol):
     """Ningun metodo bloquea esperando un estado final.
 
-    `esperar()` con 40 iteraciones de `time.sleep(1.5)` (nucleo.py:214) es
-    aceptable en un CLI y es inviable en una app: ocupa un worker hasta 60
-    segundos por compra. El desenlace llega por webhook; el sondeo queda como
+    Sondear con `time.sleep` hasta un estado final es aceptable en un CLI e
+    inviable en una app: ocuparia un worker hasta 60 segundos por compra. El desenlace llega por webhook; el sondeo queda como
     respaldo, no como camino principal.
     """
 
@@ -101,7 +100,7 @@ class PasarelaDePagos(Protocol):
         `validar_evento`, la forma del evento es propia de cada pasarela (la
         manera de recuperar el `intencion_id` a partir de la referencia que
         Wompi devuelve, por ejemplo), asi que la traduccion vive aqui y no en
-        `aplicacion/`.
+        `usecase/`.
         """
         ...
 
@@ -110,7 +109,7 @@ class PasarelaDePagos(Protocol):
 class SelectorDePasarela(Protocol):
     """Resuelve que `PasarelaDePagos` usar para un comercio dado.
 
-    Antes de multi-comercio, `composicion/contenedor.py` armaba UNA sola
+    Antes de multi-comercio, `app_service/config/contenedor.py` armaba UNA sola
     `PasarelaDePagos` por proceso y la inyectaba fija en el constructor de
     cada caso de uso (`EjecutarIntencionUseCase`, `ConciliarEventoUseCase`, `EnrolarMedioUseCase`
     y sus tres pasos, `RevocarMedioUseCase`). Eso alcanzaba mientras solo existiera

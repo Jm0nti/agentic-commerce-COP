@@ -1,15 +1,12 @@
 """`AdaptadorWompi`: el `PasarelaDePagos` que mueve dinero real.
 
-Junto con `EjecutarIntencionUseCase` (`aplicacion/ejecutar_intencion.py`), es en lo
-que se parte `Boveda.ejecutar` (`boveda/nucleo.py:337-408`). Este archivo es
-la traduccion: recibe tipos del dominio (`OrdenDeCobro`, `MedioDePagoRef`),
+Junto con `EjecutarIntencionUseCase` (`usecase/ejecutar_intencion/ejecutar_intencion_use_case.py`), forma el
+motor de pagos contra Wompi. Este archivo es la traduccion: recibe tipos del dominio (`OrdenDeCobro`, `MedioDePagoRef`),
 llama al `ClienteWompi` HTTP puro (`cliente.py`), y devuelve `ResultadoCobro`.
 
-Nunca bloquea esperando un estado final -- a diferencia de
-`ClienteWompi.esperar()` en la v1 (`nucleo.py:214-225`, hasta 60s de
-`time.sleep`). `cobrar()` devuelve lo que Wompi contesto al crear la
+Nunca bloquea esperando un estado final. `cobrar()` devuelve lo que Wompi contesto al crear la
 transaccion (tipicamente `PENDING`); el desenlace lo resuelve
-`consultar_cobro()` o -- el camino principal en la v2 -- el webhook.
+`consultar_cobro()` o -- el camino principal -- el webhook.
 """
 
 from __future__ import annotations
@@ -45,9 +42,8 @@ def _estado_cobro(bruto: str) -> EstadoCobro:
 
 
 # ADR-6: la referencia sale de `intencion_id`. El prefijo es propio de este
-# adaptador -- la v1 (`boveda/nucleo.py:364`) nunca lo uso -- asi que tambien
-# es lo que separa un evento de `agora/` de uno viejo de `boveda/` si algun
-# dia los dos comparten el mismo webhook de Wompi.
+# adaptador, asi que tambien es lo que separa un evento de `agora` de uno de
+# cualquier otro sistema que comparta el mismo webhook de Wompi.
 _PREFIJO_REFERENCIA = "agora-"
 
 
@@ -65,8 +61,7 @@ class AdaptadorWompi:
     # -- enrolamiento ----------------------------------------------------------- #
 
     def preparar_medio(self, solicitud: SolicitudEnrolamiento) -> MedioEnProceso:
-        """Solo el paso 1 de `boveda/enrolamiento.py:enrolar_nequi` (crear el
-        token). El sondeo hasta que el titular acepta el push (paso 2, hasta
+        """Solo el paso 1 del enrolamiento (crear el token). El sondeo hasta que el titular acepta el push (paso 2, hasta
         300s) ya no vive aqui: bloquear un adaptador esperando a un humano es
         el mismo problema que `esperar()` en el cobro. Quien orqueste el
         enrolamiento sondea `estado_medio_por_token` a su propio ritmo.
@@ -86,8 +81,8 @@ class AdaptadorWompi:
     def revocar_medio(self, ref: MedioDePagoRef) -> EstadoMedio:
         """Wompi documenta `PUT /payment_sources/{id}/void` solo para
         DaviPlata y Bancolombia (`docs.wompi.co/.../fuentes-de-pago/`) --
-        Nequi, el unico riel que usa esta app (`docs/rieles-pago-
-        colombia.md`), no aparece ahi. Contra produccion real (7 sept 2026,
+        Nequi, el unico riel que usa esta app (`docs/utils/informe-viabilidad-
+        pagos-agenticos-co.md`), no aparece ahi. Contra produccion real (7 sept 2026,
         Juan) Wompi lo confirma en runtime: 422, `"Unicamente se pueden
         anular fuentes de pago con el tipo de operacion financiera
         'PREAUTHORIZATION'"` -- una fuente Nequi no nace con ese tipo de
@@ -148,7 +143,7 @@ class AdaptadorWompi:
                 f"'{orden.medio.proveedor.value}'"
             )
         # ADR-6: la referencia sale de `intencion_id`, no de un uuid nuevo en
-        # cada intento (`nucleo.py:364` generaba uno por llamada). Reintentar
+        # cada intento. Reintentar
         # deja de poder duplicar un cobro: si el POST llega a Wompi pero la
         # respuesta se pierde, el reintento reusa la misma referencia y Wompi
         # rechaza el duplicado en vez de cobrar dos veces.
@@ -174,7 +169,7 @@ class AdaptadorWompi:
             id_externo=str(data.get("id", "")),
             referencia=referencia,
             status_message=data.get("status_message") or "",
-            # El dato mas valioso de toda la corrida real (docs/hallazgo-afe.md):
+            # El dato mas valioso de toda la corrida real (docs/utils/decline-afe.md):
             # el motor antifraude de Wompi es el unico control del flujo que
             # el comercio no puede ver, configurar ni explicarle al titular.
             afe_decision=metodo.get("afe_decision") or "",
@@ -184,13 +179,13 @@ class AdaptadorWompi:
     # -- eventos ----------------------------------------------------------- #
 
     def validar_evento(self, cuerpo: bytes, cabeceras: dict[str, str]) -> dict[str, Any]:
-        """Puerto a puerto con `boveda/eventos.py`, pero como funcion pura:
+        """Como funcion pura:
         sin FastAPI, sin `os.environ` (el secreto ya viene en `config`), y
         devolviendo el evento en vez de escribirlo a un `.jsonl` -- eso lo
         decide quien llame.
 
-        Validar el checksum no es opcional (docs de `boveda/eventos.py`): sin
-        esto, cualquiera que sepa la URL puede inventarle a la boveda un
+        Validar el checksum no es opcional: sin esto, cualquiera que sepa la
+        URL puede inventarle al motor de pagos un
         `transaction.updated` con `APPROVED` que nunca paso. Levanta si no
         valida; no hay un "evento invalido pero seguimos".
         """
@@ -238,11 +233,9 @@ class AdaptadorWompi:
 
         Solo traduce `transaction.updated` con una referencia que empiece con
         `agora-` -- el prefijo que `cobrar()` le puso. Cualquier otra cosa
-        (otro tipo de evento, o una referencia sin ese prefijo -- por ejemplo
-        de la v1, que nunca lo uso) no es un cobro de esta app: `None`, no un
-        error. Wompi manda todos los eventos de un comercio al mismo webhook,
-        asi que un dia podria convivir trafico de `boveda/` y de `agora/` en
-        el mismo buzon.
+        (otro tipo de evento, o una referencia sin ese prefijo) no es un cobro
+        de esta app: `None`, no un error. Wompi manda todos los eventos de un
+        comercio al mismo webhook, asi que puede llegar trafico ajeno.
         """
         if evento.get("event") != "transaction.updated":
             return None

@@ -1,4 +1,4 @@
-"""`composicion/agente.py`: que las "nota" que ven la persona y el modelo
+"""`app_service/config/agente.py`: que las "nota" que ven la persona y el modelo
 traigan el comando EXACTO a correr (etapa 6), y que el estado de una
 intencion resuelta con `retomar` en OTRO proceso (`Contenedor` separado, la
 misma sqlite) se vea desde `consultar_estado` en el proceso original -- el
@@ -23,7 +23,7 @@ def _producto_barato(contenedor):
     """Cualquier producto EN_STOCK por 20.000 COP o menos -- tiene que caber
     bajo `TopesDuros.por_transaccion` para que `pagar()` llegue hasta la
     politica blanda (`esperando_confirmacion_humana`) en vez de rechazarse
-    de una por el tope duro. Mismo criterio que `tests/test_composicion.py`.
+    de una por el tope duro. Mismo criterio que `tests/app_service/test_composicion.py`.
     """
     from agora.model.catalogo.modelo import Disponibilidad
 
@@ -44,10 +44,10 @@ def _contenedor_con_agente(tmp_path):
     contenedor = construir(config)
     # Multi-usuario: "tit_1" necesita un usuario (y su llave) creado de
     # antemano para que `emitir_mandato` pueda resolverle un Firmante --
-    # igual que exigiria `scripts/crear_usuario.py` en produccion.
+    # igual que exigiria `app_service/crear_usuario.py` en produccion.
     contenedor.registrar_usuario("tit_1", "clave-de-prueba", titular_id="tit_1")
     # Multi-comercio: enrolar vincula el medio con ESTE comercio (ver el
-    # docstring de aplicacion/enrolar_medio.py) -- el comercio se descubre
+    # docstring de usecase/enrolar_medio/enrolar_medio_use_case.py) -- el comercio se descubre
     # antes de enrolar, no despues, para que quede vinculado con el mismo
     # comercio que usan las pruebas de aca abajo.
     comercio_id, producto_id = _producto_barato(contenedor)
@@ -92,7 +92,7 @@ def test_pagar_le_pasa_a_la_persona_el_comando_retomar_exacto_si_queda_esperando
     )
 
     # `EmitirMandatoUseCase` corta el mandato exacto al carrito -- dispara casi
-    # siempre las senales blandas (ver docs/etapa-5-agente-y-cli.md).
+    # siempre las senales blandas (`model/mandato/politica.py`).
     assert resultado["esperando_confirmacion"] is True
     intencion_id = resultado["intencion_id"]
     esperado = f"retomar {intencion_id} {mandato.mandato_id} {carrito_id}"

@@ -1,7 +1,7 @@
 """`RechazarPropuestaUseCase`: el contrapunto de `EmitirMandatoUseCase` cuando el humano
 NO firma. Decir que no tambien es una decision humana, asi que este caso de
-uso vive del mismo lado que `EmitirMandatoUseCase` (`agente/` nunca lo llama -- no
-esta en `agente/herramientas.py:CATALOGO_DE_HERRAMIENTAS`).
+uso vive del mismo lado que `EmitirMandatoUseCase` (`usecase/agente/` nunca lo llama -- no
+esta en `usecase/agente/herramientas.py:CATALOGO_DE_HERRAMIENTAS`).
 
 POR QUE ESTO NO TOCA `Mandato` NI `Consumo`
 --------------------------------------------
@@ -9,18 +9,18 @@ Rechazar no emite nada: no hay mandato que guardar, no hay reserva que
 liberar (`EmitirMandatoUseCase` todavia no corrio contra esta propuesta, asi que
 `LibroDeConsumo` nunca se entero de ella). Lo unico que hace falta es dejar
 constancia en la bitacora -- que quien pidio el rechazo pueda avisarle a la
-conversacion es trabajo de `entradas/api/app.py`, igual que ya hace con el
+conversacion es trabajo de `entry_points/api_rest/app.py`, igual que ya hace con el
 aviso de `firmar`/`retomar`.
 
 POR QUE NO HAY ESTADO NUEVO EN `PropuestaDeMandato`
 ------------------------------------------------------
 A diferencia de firmar/confirmar, rechazar una propuesta se resuelve
 siempre en el mismo proceso que la armo -- el popup y el chat viven en la
-misma sesion HTTP (`entradas/api/sesiones.py`). No hace falta que la
+misma sesion HTTP (`entry_points/api_rest/sesiones.py`). No hace falta que la
 decision sobreviva a un reinicio ni que otro proceso la vea, asi que no hay
 motivo para una tabla nueva (`RegistroDeEstados` es para el otro caso:
 `retomar` corre SIEMPRE en otro proceso -- ver su docstring en
-`puertos/repositorios.py`)."""
+`model/<agregado>/gateways/repositorios.py`)."""
 
 from __future__ import annotations
 

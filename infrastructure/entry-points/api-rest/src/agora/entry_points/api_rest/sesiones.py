@@ -1,20 +1,20 @@
-"""Sesiones de chat en memoria para `entradas/api/` (etapa 7).
+"""Sesiones de chat en memoria para `entry_points/api_rest/` (etapa 7).
 
 Une en un solo proceso lo que hasta la etapa 6 pasaba por dos terminales
-separadas: cada `_Sesion` guarda la `Conversacion` de `agente/conversacion.py`
+separadas: cada `_Sesion` guarda la `Conversacion` de `usecase/agente/conversacion.py`
 y una cola de eventos de "atencion requerida" (`propuesta_pendiente`,
-`confirmacion_pendiente`) que `entradas/api/app.py` expone por Server-Sent
+`confirmacion_pendiente`) que `entry_points/api_rest/app.py` expone por Server-Sent
 Events. Detectar esos eventos es tarea de este modulo, no de `app.py`: es
 quien tiene el historial de mensajes para poder mirar el resultado JSON que
-`armar_carrito`/`pagar` (`composicion/agente.py`) dejaron en el ultimo
+`armar_carrito`/`pagar` (`app_service/config/agente.py`) dejaron en el ultimo
 mensaje de rol "tool".
 
-POR QUE VIVE EN `entradas/` Y NO EN `composicion/` O `agente/`
+POR QUE VIVE EN `entry_points/` Y NO EN `app_service/config/` O `usecase/agente/`
 ----------------------------------------------------------------
 Sesiones HTTP (un id de sesion por pestana de navegador, una cola de eventos
 por sesion) son un concepto de "como llega la charla por HTTP", no de "como
 funciona el agente" ni de "como se arma el contenedor" -- exactamente lo que
-`docs/arquitectura-v2.md` seccion 2 asigna a `entradas/`. `agente/
+`docs/arquitectura.md` seccion 2 asigna a `entry_points/`. `usecase/agente/
 conversacion.py` sigue sin saber que existe HTTP, SSE, o mas de una charla a
 la vez; este modulo tampoco le agrega nada, solo lo llama una vez por
 sesion en lugar de una vez por proceso.
@@ -26,12 +26,12 @@ de "esta propuesta necesita firma" de la sesion A nunca deberia disparar un
 popup en la sesion B. `queue.Queue` (no `asyncio.Queue`) porque Starlette
 corre generadores sincronos de `StreamingResponse` en un threadpool, asi
 que no hace falta -- ni conviene -- meter async/await en un agente que
-`docs/arquitectura-v2.md` (seccion 9) ya decidio dejar sincrono.
+`docs/arquitectura.md` (seccion 9) ya decidio dejar sincrono.
 
 QUE NO HACE ESTE MODULO
 --------------------------
 No firma propuestas ni resuelve confirmaciones -- eso lo sigue haciendo
-`app.py`, llamando a `EmitirMandatoUseCase`/`PagarCarritoUseCase.retomar`, exactamente como `entradas/cli/__main__.py:
+`app.py`, llamando a `EmitirMandatoUseCase`/`PagarCarritoUseCase.retomar`, exactamente como `entry_points/cli/cli.py:
 cmd_firmar`/`cmd_retomar`. Este modulo solo le avisa despues a la
 conversacion correspondiente (`reanudar`) para que el agente se entere y
 conteste -- la persona sigue siendo quien decide firmar o confirmar, nunca
@@ -42,19 +42,19 @@ LA PAUSA, TIPADA (migracion a agentes, etapa 5)
 Hasta la etapa 4, este modulo deducia "hay algo pendiente" volviendo a
 parsear el JSON que `armar_carrito`/`pagar` habian dejado en un mensaje de
 rol "tool" -- sabia de memoria la forma de esos resultados. Ahora el turno
-se detiene en un nodo explicito del grafo (`agente/grafo.py:espera_humana`)
+se detiene en un nodo explicito del grafo (`usecase/agente/grafo.py:espera_humana`)
 y deja una `PausaDelTurno` tipada en la conversacion; aca solo se la
 enriquece con los items del carrito para el popup, que si es presentacion.
 Y la vuelta -- avisarle al modelo que la persona ya decidio -- va por
 `reanudar(sesion_id, DecisionHumana)`, con el texto armado en un solo lugar
-(`agente/pausa.py`) en vez de en cuatro.
+(`usecase/agente/pausa.py`) en vez de en cuatro.
 
 DUEÑO DE LA SESION (multi-usuario, 4 de septiembre de 2026)
 ------------------------------------------------------------------
 Antes de esta version, una sesion de chat no tenia ningun concepto de
 dueño -- cualquiera que adivinara un `sesion_id` (un UUID, en la practica
 imposible de adivinar, pero igual sin verificacion) podia mandarle
-mensajes. Ahora `crear()` recibe el `titular_id` autenticado (`entradas/
+mensajes. Ahora `crear()` recibe el `titular_id` autenticado (`entry_points/
 api/app.py`, resuelto de la cookie de sesion web, nunca de un campo que
 mande el cliente) y lo guarda en la `_Sesion`; `enviar_mensaje`/`eventos`
 aceptan un `titular_id` opcional para verificarlo, y tratan un titular
@@ -81,7 +81,7 @@ from ...model.catalogo.modelo import Carrito
 class SesionDesconocida(Exception):
     """No existe ninguna sesion con ese id -- el proceso se reinicio, o
     nunca existio. `Conversacion` es en memoria (ver su propio docstring),
-    asi que esto es esperable despues de reiniciar `scripts/servir_api.py`
+    asi que esto es esperable despues de reiniciar `app_service/servir_api.py`
     -- el frontend reacciona pidiendo una sesion nueva."""
 
 
@@ -120,7 +120,7 @@ class AlmacenDeSesiones:
         # de cada `_Sesion`) porque `SondeoDePagosPendientes` necesita
         # poder recorrer TODAS las pendientes de TODAS las sesiones en cada
         # pasada, sin conocer sus ids de antemano -- ver
-        # `entradas/api/sondeo_pagos.py`.
+        # `entry_points/api_rest/sondeo_pagos.py`.
         self._pendientes: dict[str, str] = {}
 
     def crear(self, titular_id: str) -> str:
@@ -170,10 +170,10 @@ class AlmacenDeSesiones:
         return self._obtener(sesion_id, titular_id).eventos
 
     def registrar_pendiente(self, sesion_id: str, intencion_id: str) -> None:
-        """`pagar()` (o `/intenciones/{id}/retomar` en `entradas/api/
+        """`pagar()` (o `/intenciones/{id}/retomar` en `entry_points/api_rest/
         app.py`) devolvio 'PENDING' -- todavia no es un desenlace final, lo
         va a resolver el webhook de la pasarela desde OTRO proceso
-        (`entradas/webhooks/wompi.py`), que no tiene forma de tocar la
+        (`entry_points/webhook_wompi/wompi.py`), que no tiene forma de tocar la
         memoria de este. `SondeoDePagosPendientes` es quien vuelve a
         preguntar por esto a intervalos."""
         with self._lock:
@@ -189,7 +189,7 @@ class AlmacenDeSesiones:
         """La pasarela ya dio un desenlace final para `intencion_id` --
         `SondeoDePagosPendientes` lo supo volviendole a preguntar a
         `consultar_estado`. Le avisa a la conversacion dueña exactamente
-        igual que `_continuar_si_hay_sesion` (`entradas/api/app.py`)
+        igual que `_continuar_si_hay_sesion` (`entry_points/api_rest/app.py`)
         despues de firmar/retomar desde un popup -- mismo mecanismo, solo
         que esta vez nadie hizo click: fue el webhook, en otro proceso, el
         que se entero primero. Ademas encola un evento SSE nuevo
@@ -230,7 +230,7 @@ class AlmacenDeSesiones:
 
     def _escanear_eventos(self, sesion: _Sesion) -> None:
         """Etapa 5: el evento de "atencion requerida" sale de la pausa
-        TIPADA que dejo el turno (`agente/pausa.py`), no de volver a
+        TIPADA que dejo el turno (`usecase/agente/pausa.py`), no de volver a
         parsear el JSON que devolvieron las herramientas. Este modulo ya no
         sabe que forma tiene el resultado de `armar_carrito`: solo lo
         enriquece con los items del carrito, que es presentacion y si es su
@@ -282,7 +282,7 @@ class AlmacenDeSesiones:
         confirmacion_humana`, que tiene su propio evento) y la pasarela
         contesto 'PENDING' -- el caso tipico de Wompi real contra Nequi,
         que liquida de forma asincronica. Sin esto, solo el camino que pasa
-        por `/intenciones/{id}/retomar` (`entradas/api/app.py`) quedaria
+        por `/intenciones/{id}/retomar` (`entry_points/api_rest/app.py`) quedaria
         bajo sondeo."""
         datos = json.loads(contenido_json)
         if datos.get("motivo") == "PENDING":

@@ -4,16 +4,16 @@ pasamanos.
 
 `buscar_comercios`/`buscar_productos`/`ver_producto` delegan directo al
 puerto -- no hay regla de negocio que agregar ahi, solo la forma en que
-`agente/herramientas.py` los expone (etapa 5, misma seccion). La regla vive
+`usecase/agente/herramientas.py` los expone (etapa 5, misma seccion). La regla vive
 en `armar_carrito`: ahi es donde un producto `AGOTADO` no puede convertirse
-en un `ItemCarrito` (el docstring de `Disponibilidad` en `dominio/catalogo/
+en un `ItemCarrito` (el docstring de `Disponibilidad` en `model/catalogo/
 modelo.py` ya lo anuncia), y donde un carrito con productos de mas de un
 comercio no se deja formar -- un `Mandato` autoriza a un solo comercio
 (`comercio_id`), asi que un carrito mixto no podria representarse despues.
 
 Etapa 6: `armar_carrito` tambien guarda la `PropuestaDeMandato` que
 devuelve (via `RepositorioPropuestas`), no solo el `Carrito`. Es lo que
-permite que `entradas/cli/firmar` la encuentre por `propuesta_id` desde
+permite que `entry_points/cli/firmar` la encuentre por `propuesta_id` desde
 OTRO proceso -- por ejemplo, cuando quien arma el carrito es el agente en
 una charla de `chat` y quien firma es el titular en una terminal aparte.
 
@@ -84,7 +84,7 @@ class NavegarCatalogoUseCase:
         # Opcional por retrocompatibilidad con pruebas que arman
         # `NavegarCatalogoUseCase` sin este puerto y nunca ejercitan `armar_carrito`
         # (`buscar_comercios`/`buscar_productos`/`ver_producto` no lo tocan).
-        # `composicion/contenedor.py` siempre lo provee.
+        # `app_service/config/contenedor.py` siempre lo provee.
         self._propuestas = propuestas
         # Etapa 4. `None` = sin peldano semantico (no hay OPENAI_API_KEY):
         # el catalogo se navega con el match estructurado de siempre.
@@ -126,7 +126,7 @@ class NavegarCatalogoUseCase:
             # del catalogo (el puerto lo dice), asi que el turno sigue con
             # lo estructurado -- vacio -- en vez de caerse. Cualquier otra
             # excepcion es un bug y sube, mismo criterio que
-            # `agente/contexto_documental.py`.
+            # `usecase/agente/contexto_documental.py`.
             return []
 
     def ver_producto(self, producto_id: str) -> Producto:
@@ -152,9 +152,8 @@ class NavegarCatalogoUseCase:
     ) -> tuple[Carrito, PropuestaDeMandato]:
         """Devuelve el carrito guardado y una propuesta de mandato SIN
         FIRMAR, con `monto_max` igual al total del carrito y un solo uso --
-        los mismos defaults estrechos de la v1 (`boveda/mandato.py:emitir`):
-        un mandato amplio deberia costar escribirlo, no ser lo que sale por
-        omision. Firmarla es del humano (`aplicacion/emitir_mandato.py`).
+        defaults estrechos a proposito: un mandato amplio deberia costar escribirlo, no ser lo que sale por
+        omision. Firmarla es del humano (`usecase/emitir_mandato/emitir_mandato_use_case.py`).
         """
         item_carrito: list[ItemCarrito] = []
         for pedido in items:
@@ -196,7 +195,7 @@ class NavegarCatalogoUseCase:
             justificacion=justificacion,
         )
         # Persistida igual que el carrito, y por el mismo motivo (docstring
-        # de `puertos/repositorios.py:RepositorioPropuestas`): sin esto,
+        # de `model/mandato/gateways/repositorios.py:RepositorioPropuestas`): sin esto,
         # nada fuera de ESTE proceso podria volver a encontrar la propuesta
         # para firmarla -- `EmitirMandatoUseCase` la busca por `propuesta_id`, nunca
         # confia en una que le llegue por parametro.

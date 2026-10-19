@@ -27,7 +27,7 @@ arma la propuesta:
   2. El agente arma la propuesta en una charla de `chat` (otro proceso) y
      el titular la autoriza el mismo, en su propia terminal, con `firmar`
      -- el `propuesta_id` que hace falta ya se lo mostro el agente
-     (`composicion/agente.py:armar_carrito`, etapa 6):
+     (`app_service/config/agente.py:armar_carrito`, etapa 6):
 
          python -m agora cli firmar <propuesta_id> tit_1
 
@@ -40,7 +40,7 @@ En los dos casos, lo que sigue es igual:
 
 `retomar` hace falta seguido: `EmitirMandatoUseCase` corta el mandato exacto al
 carrito (un solo uso, `monto_max` igual al total), y eso dispara casi
-siempre las senales blandas de `dominio/mandato/politica.py` -- `pagar`
+siempre las senales blandas de `model/mandato/politica.py` -- `pagar`
 devuelve `esperando_confirmacion_humana` en vez de aprobar directo.
 
 Chat con el agente (necesita DEEPSEEK_API_KEY)
@@ -48,13 +48,13 @@ Chat con el agente (necesita DEEPSEEK_API_KEY)
     python -m agora cli chat
 
 El chat solo puede PROPONER (`armar_carrito`) y, ya con un mandato_id en
-mano, PAGAR (`pagar`) -- nunca firmar (`agente/herramientas.py`, la
+mano, PAGAR (`pagar`) -- nunca firmar (`usecase/agente/herramientas.py`, la
 frontera). Autorizar la propuesta es el comando `firmar` de arriba, corrido
 por la persona en otra terminal.
 
-Variables de entorno: se leen de `.env` en la raiz del repo si existe
-(`python-dotenv`), y despues de `os.environ` -- mismo orden que
-`boveda/cli.py:cargar_env`. Ver `docs/variables-de-entorno.md`.
+Variables de entorno: el app-service las lee del `.env` de la raiz del repo
+si existe (`python-dotenv`), y despues de `os.environ`. Ver
+`docs/variables-de-entorno.md`.
 
 `estado <intencion_id>` solo encuentra algo entre procesos con
 `AGORA_PERSISTENCIA=sqlite` (etapa 6, segunda parte): `RegistroDeEstados`
@@ -232,7 +232,7 @@ def cmd_emitir(a, dependencias: DependenciasDeLaCli) -> int:
     """Arma el carrito y firma el mandato en un solo comando: quien opera la
     CLI YA es el humano, asi que no hace falta separar "el agente propone"
     de "el humano firma" en dos invocaciones -- esa separacion importa
-    cuando el que propone es un modelo de lenguaje (`agente/`), no una
+    cuando el que propone es un modelo de lenguaje (`usecase/agente/`), no una
     persona escribiendo el comando ella misma."""
     items = [_parsear_item(i) for i in a.item]
     try:
@@ -264,7 +264,7 @@ def cmd_firmar(a, dependencias: DependenciasDeLaCli) -> int:
     """Etapa 6: firma una propuesta que ya armo OTRO proceso -- tipicamente
     el agente, en una charla de `chat` (`armar_carrito` le muestra a la
     persona el `propuesta_id` y este mismo comando ya armado, ver
-    `composicion/agente.py`). A diferencia de `cmd_emitir`, no arma un
+    `app_service/config/agente.py`). A diferencia de `cmd_emitir`, no arma un
     carrito nuevo: `dependencias.emitir_mandato` busca la propuesta y el
     carrito por id contra `RepositorioPropuestas`/`RepositorioCarritos`, asi
     que el `carrito_id` que resulta es el MISMO que ya tiene quien arranco
@@ -319,7 +319,7 @@ def cmd_pagar(a, dependencias: DependenciasDeLaCli) -> int:
 
 def cmd_retomar(a, dependencias: DependenciasDeLaCli) -> int:
     """Resuelve una intencion que `pagar` dejo en `esperando_confirmacion_
-    humana` -- la senal blanda de `dominio/mandato/politica.py` ("agota el
+    humana` -- la senal blanda de `model/mandato/politica.py` ("agota el
     mandato de una sola vez", tipico de un mandato cortado exacto al
     carrito por `EmitirMandatoUseCase`). Pide de nuevo `mandato_id`/`carrito_id`
     porque `EjecutarIntencionUseCase.retomar` vuelve a evaluar la politica completa
@@ -511,7 +511,7 @@ def _armar_parser() -> argparse.ArgumentParser:
     pe.add_argument("--correo", default="titular+demo@agora.local")
     pe.add_argument("--titular", default="tit_demo")
     # Multi-comercio: enrolar vincula el medio con ESTE comercio (ver el
-    # docstring de aplicacion/enrolar_medio.py) -- ya no hay "enrolar"
+    # docstring de usecase/enrolar_medio/enrolar_medio_use_case.py) -- ya no hay "enrolar"
     # generico sin destino.
     pe.add_argument("--comercio", required=True, help="comercio_id con el que vincular el medio")
 

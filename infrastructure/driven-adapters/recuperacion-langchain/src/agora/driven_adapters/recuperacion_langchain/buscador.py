@@ -102,7 +102,7 @@ class BuscadorDocumentalLangChain:
         ]
 
     def _indice(self) -> InMemoryVectorStore:
-        # Lock: `entradas/api/` atiende turnos en un threadpool, y dos
+        # Lock: `entry_points/api_rest/` atiende turnos en un threadpool, y dos
         # preguntas de soporte simultaneas al arrancar no deberian embeber
         # el corpus dos veces.
         with self._lock:

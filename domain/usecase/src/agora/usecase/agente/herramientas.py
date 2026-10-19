@@ -63,7 +63,7 @@ PROHIBIDAS = (
 
 # --------------------------------------------------------------------------- #
 # Lista blanca POR NODO (migracion a agentes, etapa 1 -- docs/arquitectura-
-# agentes-langgraph.md, decision 3). La tabla de los siete agentes, dicha en
+# agentes/arquitectura-agentes-langgraph.md, decision 3). La tabla de los siete agentes, dicha en
 # codigo: cada nodo es dueño de un subconjunto del catalogo autorizado, y
 # ninguna herramienta tiene dos dueños. Asi un nodo nuevo nunca "hereda" una
 # herramienta de otro dominio por accidente: tiene que aparecer aca, en el
@@ -77,7 +77,7 @@ PROHIBIDAS = (
 #                     esos nombres: `PROHIBIDAS` ya los niega).
 #   - soporte         prosa sobre como funciona el sistema. Sin acceso FISICO a
 #                     nada que mueva dinero, aunque el modelo alucine una
-#                     llamada (`agente/conversacion.py` la rechaza al ejecutar).
+#                     llamada (`usecase/agente/conversacion.py` la rechaza al ejecutar).
 #   - riesgo          explicador del dictamen (opcional en el documento); lee
 #                     el `Dictamen`, no llama herramientas. Ninguna ruta de la
 #                     etapa 1 lo usa todavia -- esta en la tabla para que la
@@ -88,8 +88,7 @@ HERRAMIENTAS_POR_NODO: dict[str, tuple[str, ...]] = {
     "orquestador": (),
     "catalogo": ("buscar_comercios", "buscar_productos", "ver_producto"),
     # Juntas a proposito (decision 5 del documento): separarlas reabre el
-    # riesgo de `carrito_id` desincronizado que ya se vivio en la etapa 6
-    # (`docs/etapa-6-conectar-chat-y-firma.md`).
+    # riesgo de `carrito_id` desincronizado entre armar y pagar.
     "carrito_pago": ("armar_carrito", "pagar"),
     "medios_de_pago": (),
     "estado": ("consultar_estado",),
@@ -100,7 +99,7 @@ HERRAMIENTAS_POR_NODO: dict[str, tuple[str, ...]] = {
 # Las herramientas que estan en el camino del dinero: `armar_carrito` produce
 # la propuesta que despues se firma, `pagar` cobra. Solo el nodo de carrito y
 # pago puede tenerlas -- `validar_asignacion_por_nodo` lo verifica, y
-# `tests/test_agente_nodos.py` falla si algun dia soporte (o cualquier otro
+# `tests/usecase/agente/test_agente_nodos.py` falla si algun dia soporte (o cualquier otro
 # nodo) las recibe.
 HERRAMIENTAS_DEL_FLUJO_DE_DINERO = ("armar_carrito", "pagar")
 NODO_DUENO_DEL_FLUJO_DE_DINERO = "carrito_pago"
@@ -182,7 +181,7 @@ def validar_asignacion_por_nodo(
 
 def validar_nodos_con_contexto(nodos: Iterable[str]) -> None:
     """Migracion a agentes, etapa 2: que nodos pueden recibir contexto
-    inyectado (`agente/contexto.py`), por ejemplo documentacion recuperada.
+    inyectado (`model/agente/contexto.py`), por ejemplo documentacion recuperada.
     Cualquier nodo declarado -- menos el dueño del flujo de dinero: prosa
     recuperada al lado de `armar_carrito`/`pagar` es la mezcla que la regla
     "ninguna cifra sale de una recuperacion" quiere evitar."""
@@ -345,14 +344,14 @@ def construir_herramientas(
 ) -> list[Herramienta]:
     """Arma las seis `Herramienta` del catalogo autorizado, atadas a
     funciones ya cerradas sobre sus dependencias reales (closures armadas por
-    `composicion/agente.py`, el unico lugar que conoce tanto `aplicacion/`
-    como `agente/`).
+    `app_service/config/agente.py`, el unico lugar que conoce tanto `usecase/`
+    como `usecase/agente/`).
 
-    Este modulo nunca importa `aplicacion/` para construirlas: recibe seis
+    Este modulo nunca importa `usecase/` para construirlas: recibe seis
     funciones con nombre y forma, nada mas -- ni siquiera sabe que del otro
     lado de `pagar` hay un `EjecutarIntencionUseCase`. Eso es lo que hace que la
     frontera sea estructural y no una convencion: no hace falta disciplina
-    para que `agente/` no vea un `EjecutarIntencionUseCase`, porque no puede
+    para que `usecase/agente/` no vea un `EjecutarIntencionUseCase`, porque no puede
     importarlo (`test_fronteras.py:test_el_agente_no_alcanza_ninguna_pasarela`
     y la regla de dependencia general).
     """

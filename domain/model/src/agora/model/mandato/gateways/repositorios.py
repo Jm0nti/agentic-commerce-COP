@@ -3,8 +3,8 @@
 El cambio que importa esta en `LibroDeConsumo`: reservar antes de cobrar,
 confirmar despues.
 
-Hoy `Boveda` hace leer -> sumar -> escribir sobre un JSON completo
-(`nucleo.py:288-292`). En un CLI de un solo proceso funciona. En una app, dos
+Leer -> sumar -> escribir sobre un archivo completo funciona en un CLI de un
+solo proceso. En una app, dos
 cobros simultaneos leen `gastado_dia = 90.000`, cada uno suma 15.000, y el
 ultimo escribe 105.000. **El tope duro de 100.000 deja de ser un tope.**
 
@@ -88,8 +88,7 @@ class RepositorioMandatos(Protocol):
         """Levanta si el mandato pertenece a otro ambiente.
 
         El ambiente va como parametro y no como filtro opcional para que sea
-        imposible olvidarlo. Es la version tipada de la guarda que hoy vive en
-        `nucleo.py:319-330`.
+        imposible olvidarlo.
         """
         ...
 
@@ -104,9 +103,9 @@ class RepositorioPropuestas(Protocol):
 
     Antes de esta etapa `EmitirMandatoUseCase` recibia el objeto `PropuestaDeMandato`
     directo -- comodo mientras "armar el carrito" y "firmar" corrian en el
-    mismo proceso (`entradas/cli/emitir`, el humano operando la CLI de punta
+    mismo proceso (`entry_points/cli/emitir`, el humano operando la CLI de punta
     a punta). En cuanto la propuesta la arma el agente en una conversacion de
-    chat y la firma un humano en OTRO proceso (`entradas/cli/firmar`),
+    chat y la firma un humano en OTRO proceso (`entry_points/cli/firmar`),
     aceptar una `PropuestaDeMandato` por parametro significaria confiar en
     cualquier `monto_max`/`usos_max`/`categorias` que ese segundo proceso
     diga tener -- el mismo hueco que `carrito_hash` existe para cerrar del

@@ -1,8 +1,6 @@
 """`RepositorioMandatos` en memoria.
 
-La guarda de ambiente es la version tipada de `nucleo.py:319-330`: alli un
-mandato de sandbox se distinguia de uno de produccion revisando un `dict`
-`modos` aparte, a mano, en cada `obtener`. Aqui el ambiente en el que se
+La guarda de ambiente, tipada: el ambiente en el que se
 guardo el mandato viaja junto con el, y `obtener` no deja construir la
 pregunta sin contestarla -- es un parametro obligatorio, no un filtro
 opcional que alguien puede olvidar.

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Crea un usuario nuevo -- multi-usuario (4 de septiembre de 2026): el
 UNICO camino de produccion para dar de alta a alguien. No hay ruta HTTP de
-auto-registro (`entradas/api/app.py` solo expone `/auth/iniciar-sesion` y
+auto-registro (`entry_points/api_rest/app.py` solo expone `/auth/iniciar-sesion` y
 `/auth/cerrar-sesion` sobre usuarios que ya existen): crear un usuario
 siempre pasa por alguien con acceso a la terminal del servidor.
 
-Este script solo lee el `.env`, arma el `Contenedor` (`composicion/
+Este script solo lee el `.env`, arma el `Contenedor` (`app_service/config/
 contenedor.py:construir`) y le delega TODO el trabajo a `contenedor.
-registrar_usuario` (`aplicacion/autenticacion.py:RegistrarUsuarioUseCase`): hashea
+registrar_usuario` (`usecase/registrar_usuario/registrar_usuario_use_case.py:RegistrarUsuarioUseCase`): hashea
 la contrasena, genera un par de llaves ed25519 nuevo, y guarda las dos
 cosas (tabla `usuario`, tabla `llave_firma`) segun `AGORA_PERSISTENCIA` --
 mismo patron de composition root que `python -m agora api`.
@@ -16,7 +16,7 @@ mismo patron de composition root que `python -m agora api`.
     python -m agora crear-usuario --nombre-usuario juan --contrasena **** --titular tit_juan
 
 Sin `--titular`, se genera uno nuevo (prefijo `tit_`, igual que cualquier
-otro `TitularId` -- `dominio/comun/identidad.py`). Con `--titular`, se usa
+otro `TitularId` -- `model/commons/identidad.py`). Con `--titular`, se usa
 ese id exacto -- util para dar de alta un usuario sobre un `titular_id` que
 ya tiene medios de pago o mandatos de antes de que existiera el login
 (migrando una demo vieja, por ejemplo).
@@ -24,7 +24,7 @@ ya tiene medios de pago o mandatos de antes de que existiera el login
 IMPORTANTE: correrlo con `AGORA_PERSISTENCIA=sqlite` (o con la variable ya
 puesta en el `.env`) -- con `memoria` (el default sin `.env`) el usuario y
 su llave desaparecen en cuanto el proceso de este script termina, y
-`python -m agora api`/`entradas/cli/` nunca los verian.
+`python -m agora api`/`entry_points/cli/` nunca los verian.
 """
 
 from __future__ import annotations

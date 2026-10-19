@@ -1,4 +1,4 @@
-"""`entradas/cli/__main__.py`: no reimplementa `argparse` en la prueba --
+"""`entry_points/cli/cli.py`: no reimplementa `argparse` en la prueba --
 llama a las funciones `cmd_*` directo, con un `Contenedor` real (`sqlite`,
 para que carritos/mandatos sobrevivan como lo harian entre dos invocaciones
 separadas de la CLI) y un `Namespace` armado a mano en vez de parsear texto.
@@ -46,7 +46,7 @@ def _contenedor(tmp_path):
     contenedor = construir(leer_configuracion(_config(tmp_path)))
     # Multi-usuario: "tit_1" (el titular que usan las pruebas de aca abajo)
     # necesita un usuario -- y por lo tanto una llave de firma -- creado de
-    # antemano, igual que exigiria `scripts/crear_usuario.py` en
+    # antemano, igual que exigiria `app_service/crear_usuario.py` en
     # produccion.
     contenedor.registrar_usuario("tit_1", "clave-de-prueba", titular_id="tit_1")
     return contenedor
@@ -108,7 +108,7 @@ def test_flujo_completo_enrolar_emitir_pagar_retomar(tmp_path, capsys):
 
 def test_chat_arma_propuesta_y_titular_la_firma_en_otro_proceso(tmp_path, capsys):
     """Etapa 6, el bug que motivo el cambio: el carrito que arma
-    `NavegarCatalogoUseCase.armar_carrito` (lo que hace el chat, `composicion/
+    `NavegarCatalogoUseCase.armar_carrito` (lo que hace el chat, `app_service/config/
     agente.py:armar_carrito`) tiene que poder firmarse desde un `Contenedor`
     DISTINTO -- otro proceso, otra terminal, la misma sqlite -- y el
     `carrito_id` que resulta tiene que ser el MISMO que ya tiene quien
@@ -118,7 +118,7 @@ def test_chat_arma_propuesta_y_titular_la_firma_en_otro_proceso(tmp_path, capsys
     config = _config(tmp_path)
 
     # Proceso 1: "el chat". Enrola el medio y arma un carrito+propuesta,
-    # exactamente como haria `armar_carrito` de `composicion/agente.py` --
+    # exactamente como haria `armar_carrito` de `app_service/config/agente.py` --
     # sin pasar por `emitir`, que es el camino del humano operando la CLI
     # de punta a punta.
     proceso_chat = construir(leer_configuracion(config))
@@ -129,7 +129,7 @@ def test_chat_arma_propuesta_y_titular_la_firma_en_otro_proceso(tmp_path, capsys
     comercio = proceso_chat.navegar_catalogo.buscar_comercios()[0]
     producto = proceso_chat.navegar_catalogo.buscar_productos(comercio.comercio_id)[0]
     # Multi-comercio: enrolar vincula el medio con ESTE comercio (ver el
-    # docstring de aplicacion/enrolar_medio.py) -- se descubre antes de
+    # docstring de usecase/enrolar_medio/enrolar_medio_use_case.py) -- se descubre antes de
     # enrolar, no despues.
     proceso_chat.enrolar_medio("3001234567", "titular@correo.com", "tit_1", comercio.comercio_id)
     carrito_chat, propuesta = proceso_chat.navegar_catalogo.armar_carrito(
@@ -153,7 +153,7 @@ def test_chat_arma_propuesta_y_titular_la_firma_en_otro_proceso(tmp_path, capsys
     # armo el chat, no uno nuevo.
     assert carrito_id_impreso == carrito_chat.carrito_id
 
-    # Y por eso `pagar` (la herramienta del agente, `composicion/
+    # Y por eso `pagar` (la herramienta del agente, `app_service/config/
     # agente.py:pagar`) puede usar el `carrito_id` que el chat ya tiene --
     # sin que la persona tenga que pasarle uno distinto -- y no choca contra
     # `carrito_alterado`.

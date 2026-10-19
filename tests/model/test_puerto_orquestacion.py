@@ -1,4 +1,4 @@
-"""`puertos/orquestacion.py`: la validacion de topologia, regla por regla.
+"""`model/agente/gateways/orquestacion.py`: la validacion de topologia, regla por regla.
 
 El puerto no corre nada -- compilar y ejecutar son del adaptador. Lo que si
 hace, y es lo que justifica que exista en vez de pasarle un `StateGraph` al

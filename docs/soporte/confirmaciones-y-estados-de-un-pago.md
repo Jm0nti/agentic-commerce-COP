@@ -2,7 +2,7 @@
 
 ## Las tres decisiones posibles
 
-Antes de cobrar, la bóveda revisa el mandato y llega a una de tres decisiones:
+Antes de cobrar, el motor de pagos revisa el mandato y llega a una de tres decisiones:
 
 - **Permitir.** El cobro cabe en el mandato y no tiene nada inusual. Se cobra.
 - **Confirmar.** El cobro cabe en el mandato, pero algo merece una mirada

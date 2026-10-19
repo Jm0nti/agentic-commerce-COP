@@ -1,5 +1,5 @@
-"""Sesiones de LOGIN para `entradas/api/` -- un concepto DISTINTO de
-`entradas/api/sesiones.py:AlmacenDeSesiones`, que modela una charla de chat
+"""Sesiones de LOGIN para `entry_points/api_rest/` -- un concepto DISTINTO de
+`entry_points/api_rest/sesiones.py:AlmacenDeSesiones`, que modela una charla de chat
 (una `Conversacion` por pestana). Esta clase modela otra cosa: que
 `titular_id` esta detras de la cookie que el navegador manda en cada
 peticion, una vez que la persona ya inicio sesion.
@@ -10,15 +10,15 @@ Iniciar sesion no tiene nada que ver con el agente: una persona puede
 iniciar sesion, mirar sus medios de pago (`GET /medios`), y nunca abrir el
 chat. Mezclar los dos conceptos en un solo almacen obligaria a que "iniciar
 sesion" supiera de `Agente`/`Conversacion`, que es exactamente lo que
-`docs/arquitectura-v2.md` (seccion 2) le asigna a `agente/`, no a esta capa
+`docs/arquitectura.md` (seccion 2) le asigna a `usecase/agente/`, no a esta capa
 -- y `AlmacenDeSesiones` ya documenta en su propio docstring que vive en
-`entradas/` por la misma razon.
+`entry_points/` por la misma razon.
 
 POR QUE EN MEMORIA, Y NO EN SQLITE (a diferencia de las llaves de firma)
 ----------------------------------------------------------------------------
 El usuario (4 de septiembre de 2026) decidio explicitamente que las LLAVES
 de firma vivieran en SQLite -- pero una sesion de login es un token efimero
-de UN proceso de `entradas/api/`, no un dato de negocio que tenga que
+de UN proceso de `entry_points/api_rest/`, no un dato de negocio que tenga que
 sobrevivir un reinicio del servidor: si el proceso se reinicia, es
 razonable que todas las sesiones queden invalidadas y cada persona tenga
 que iniciar sesion de nuevo, igual que ya pasa con `AlmacenDeSesiones`
@@ -49,7 +49,7 @@ class _SesionWeb:
 
 class AlmacenDeSesionesWeb:
     """Token opaco (`secrets.token_urlsafe`) -> `(titular_id,
-    nombre_usuario)`, con expiracion. `entradas/api/app.py` lo guarda en una
+    nombre_usuario)`, con expiracion. `entry_points/api_rest/app.py` lo guarda en una
     cookie httponly (`COOKIE_SESION`) y lo resuelve en cada peticion
     protegida via la dependencia `_requiere_titular`."""
 

@@ -1,6 +1,6 @@
 """Listas blancas por nodo (migracion a agentes, etapa 1): `validar_catalogo`
 aplicado por nodo, la coherencia de `HERRAMIENTAS_POR_NODO`, y las rutas de
-`agente/nodos.py`.
+`usecase/agente/nodos.py`.
 
 La prueba mas importante de este archivo es la de soporte: el agente de
 soporte/FAQ nunca puede tener, ni por tabla ni por validacion, una

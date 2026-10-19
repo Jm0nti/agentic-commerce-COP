@@ -1,4 +1,4 @@
-"""`EmitirMandatoUseCase`: donde el humano firma. `docs/arquitectura-v2.md`, seccion
+"""`EmitirMandatoUseCase`: donde el humano firma. `docs/arquitectura.md`, seccion
 5 -- "El paso que no puede automatizarse".
 
     agente -> armar_carrito(...) -> PropuestaDeMandato (sin firmar)
@@ -7,14 +7,14 @@
                                             |
                                        Mandato (ed25519)
 
-`agente/` nunca llama a este caso de uso: no tiene un `SelectorDeFirmante`
+`usecase/agente/` nunca llama a este caso de uso: no tiene un `SelectorDeFirmante`
 (la llave del titular no esta en su proceso -- `test_fronteras.py` lo
-verifica) y no esta en `agente/herramientas.py:CATALOGO_DE_HERRAMIENTAS`.
-Lo llama `entradas/cli/`, del lado del titular, resolviendo el `Firmante`
+verifica) y no esta en `usecase/agente/herramientas.py:CATALOGO_DE_HERRAMIENTAS`.
+Lo llama `entry_points/cli/`, del lado del titular, resolviendo el `Firmante`
 de ESE titular en el momento de firmar (multi-usuario, 4 de septiembre de
-2026: `puertos/firma.py:SelectorDeFirmante`, ya no una llave unica de
-proceso). Puede ser `entradas/cli/emitir` (arma y firma en un solo comando,
-para cuando el que opera la CLI YA es el humano) o `entradas/cli/firmar`
+2026: `model/mandato/gateways/firma.py:SelectorDeFirmante`, ya no una llave unica de
+proceso). Puede ser `entry_points/cli/emitir` (arma y firma en un solo comando,
+para cuando el que opera la CLI YA es el humano) o `entry_points/cli/firmar`
 (etapa 6: firma una propuesta que ya armo OTRO proceso -- tipicamente el
 agente, en una charla de `chat`).
 
@@ -35,7 +35,7 @@ POR QUE VUELVE A BUSCAR EL CARRITO EN VEZ DE RECIBIRLO
 guardo -- y calcula `carrito_hash` desde ahi, nunca desde algo que la
 propuesta traiga por su cuenta. Si `EmitirMandatoUseCase` confiara en un carrito
 que le llega de otro lado, un agente manipulado podria hacer firmar un
-carrito y presentar otro distinto: el Cart Mandate de AP2 (`dominio/catalogo/
+carrito y presentar otro distinto: el Cart Mandate de AP2 (`model/catalogo/
 modelo.py`, docstring de `Carrito.hash_canonico`) protege contra eso solo si
 el hash sale de una fuente que el agente no controla.
 
@@ -117,7 +117,7 @@ class EmitirMandatoUseCase:
         # confiar en una `PropuestaDeMandato` que le llega de afuera
         # permitiria firmar cualquier monto_max/usos_max/categorias que
         # quien llama diga tener. Ver el docstring de `RepositorioPropuestas`
-        # (`puertos/repositorios.py`).
+        # (`model/<agregado>/gateways/repositorios.py`).
         propuesta = self._propuestas.obtener(propuesta_id)
         carrito = self._carritos.obtener(propuesta.carrito_id)
         if carrito.comercio_id != propuesta.comercio_id:
@@ -158,8 +158,7 @@ class EmitirMandatoUseCase:
             medio=medio,
             comercio_id=propuesta.comercio_id,
             monto_max=propuesta.monto_max,
-            # Igual que el default de la v1 (`boveda/mandato.py:emitir`): sin
-            # un tope total propio, el tope total es el monto de una sola
+            # Sin un tope total propio, el tope total es el monto de una sola
             # transaccion. Un carrito ya es una sola compra.
             tope_total=propuesta.monto_max,
             usos_max=propuesta.usos_max,

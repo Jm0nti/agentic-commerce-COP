@@ -2,8 +2,8 @@
 """Fabrica el catalogo de comercios simulados con DeepSeek (etapa 5).
 
 Composition root de este comando: lee `DEEPSEEK_API_KEY` del entorno, arma
-`AdaptadorDeepSeek` y corre `aplicacion/generar_catalogo_semilla.py` una vez
-por cada comercio pedido, escribiendo el resultado en `agora/adaptadores/
+`AdaptadorDeepSeek` y corre `usecase/generar_catalogo_semilla/generar_catalogo_semilla_use_case.py` una vez
+por cada comercio pedido, escribiendo el resultado en `driven_adapters/
 catalogo/semilla/datos/catalogo.json` -- el archivo que
 `RepositorioCatalogoSemilla` lee en tiempo de ejecucion, sin red.
 

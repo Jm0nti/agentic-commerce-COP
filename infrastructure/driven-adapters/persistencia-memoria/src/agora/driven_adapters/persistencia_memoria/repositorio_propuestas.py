@@ -4,7 +4,7 @@ Simetrico a `repositorio_carritos.py` (etapa 5) y por el mismo motivo: un
 `dict` protegido por un lock, sin persistencia entre procesos. Alcanza para
 pruebas y para `AGORA_PERSISTENCIA=memoria` -- ver `repositorio_propuestas.py`
 del paquete `sqlite/` para el caso que si necesita sobrevivir entre procesos
-(`entradas/cli/firmar`, corrido en otra terminal que la que armo el chat).
+(`entry_points/cli/firmar`, corrido en otra terminal que la que armo el chat).
 """
 
 from __future__ import annotations

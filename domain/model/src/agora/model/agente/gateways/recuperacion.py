@@ -1,13 +1,13 @@
 """Los puertos de recuperacion documental (migracion a agentes, etapa 2).
 
-Dos puertos, no uno, por la decision 2 de `docs/arquitectura-agentes-
-langgraph.md` ("embeddings detras de su propio puerto"):
+Dos puertos, no uno, por la decision 2 de `docs/arquitectura-agentes/
+arquitectura-agentes-langgraph.md` ("embeddings detras de su propio puerto"):
 
     ProveedorDeEmbeddings   texto -> vector. Hoy OpenAI
-                            (`adaptadores/embeddings/proveedor_openai/`).
+                            (`driven_adapters/embeddings_openai/`).
     BuscadorDocumental      consulta -> fragmentos de documentacion. Hoy un
                             vector store en memoria de LangChain
-                            (`adaptadores/recuperacion/langchain_en_memoria/`),
+                            (`driven_adapters/recuperacion_langchain/`),
                             que recibe un `ProveedorDeEmbeddings` por
                             constructor.
 
@@ -29,9 +29,9 @@ LO QUE ESTE PUERTO NUNCA DEVUELVE
 ----------------------------------
 Una cifra con autoridad. Un fragmento de documentacion puede decir cualquier
 monto -- y ya paso que la documentacion quedo desactualizada respecto del
-codigo (el tope duro de `boveda/nucleo.py`). Montos, topes y limites salen
+codigo (paso con el tope duro por transaccion). Montos, topes y limites salen
 siempre del objeto de dominio real (`Mandato`, `LibroDeConsumo`); quien
-inyecta fragmentos en un prompt (`agente/contexto_documental.py`) les quita
+inyecta fragmentos en un prompt (`usecase/agente/contexto_documental.py`) les quita
 las cifras antes.
 """
 

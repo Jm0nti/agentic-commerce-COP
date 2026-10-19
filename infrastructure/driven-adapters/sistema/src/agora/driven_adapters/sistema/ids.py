@@ -1,7 +1,7 @@
 """Generador de identificadores real. La unica implementacion que llama `uuid4`.
 
 `GeneradorIds.nuevo(prefijo)` deja el prefijo a cargo de quien pide el id, para
-que coincida con las convenciones de `dominio/comun/identidad.py` (`mnd_`,
+que coincida con las convenciones de `model/commons/identidad.py` (`mnd_`,
 `int_`, `rsv_`, ...) sin que este adaptador tenga que conocerlas todas.
 """
 

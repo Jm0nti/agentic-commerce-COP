@@ -1,12 +1,12 @@
-"""El puerto del catalogo. `docs/arquitectura-v2.md`, seccion 3: una sola
+"""El puerto del catalogo. `docs/arquitectura.md`, seccion 3: una sola
 interfaz, dos formas de servirla -- la de verdad no existe todavia (los
 comercios de esta demo siempre son simulados), la de mentiras es
-`adaptadores/catalogo/semilla/`, que lee un `catalogo.json` fabricado por
-`aplicacion/generar_catalogo_semilla.py`.
+`driven_adapters/catalogo_semilla/`, que lee un `catalogo.json` fabricado por
+`usecase/generar_catalogo_semilla/generar_catalogo_semilla_use_case.py`.
 
 TRES METODOS, NO UNO
 ---------------------
-`arquitectura-v2.md` (seccion 5) le da al agente tres herramientas
+`docs/arquitectura.md` (seccion 5) le da al agente tres herramientas
 separadas -- `buscar_comercios`, `buscar_productos`, `ver_producto` -- en vez
 de una sola `navegar(consulta)` que devuelva de todo. No es apuro: un agente
 que primero elige un comercio y despues busca dentro de el hace preguntas mas

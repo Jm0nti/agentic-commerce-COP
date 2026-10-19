@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Arranca la API HTTP + frontend de una sola pagina (etapa 7): el chat con
 el agente y la firma/confirmacion humana en la misma pestana, en vez de dos
-terminales (`chat` + `firmar`/`retomar` de `entradas/cli/`).
+terminales (`chat` + `firmar`/`retomar` de `entry_points/cli/`).
 
 Composition root de este punto de entrada especifico: lee `os.environ`, arma
 el `Contenedor` con `agora.composicion.contenedor.construir`, arma el
 `Agente` con `agora.composicion.agente.construir_agente`, y le pasa los dos
 a `agora.entradas.api.app.crear_app`. Vive fuera de `agora/`, igual que
-`python -m agora webhook` -- `entradas/api/app.py` se queda como
+`python -m agora webhook` -- `entry_points/api_rest/app.py` se queda como
 una factoria pura precisamente para que este sea el unico lugar que lee
 variables de entorno y llama a `uvicorn.run`.
 
@@ -16,17 +16,16 @@ variables de entorno y llama a `uvicorn.run`.
 Necesita `DEEPSEEK_API_KEY` (`docs/variables-de-entorno.md`) para que
 `POST /sesiones` funcione -- sin ella el servidor igual levanta (`/salud`
 responde, la pagina se sirve), pero `POST /sesiones` devuelve 503, mismo
-criterio que `entradas/cli/__main__.py:cmd_chat`.
+criterio que `entry_points/cli/cli.py:cmd_chat`.
 
 Con `AGORA_PERSISTENCIA=sqlite` (recomendado: sin esto, firmar la propuesta
-desde el popup y despues reiniciar el proceso pierde la propuesta -- ver
-`docs/etapa-6-conectar-chat-y-firma.md`) el mandato y el estado de cada
+desde el popup y despues reiniciar el proceso pierde la propuesta) el mandato y el estado de cada
 intencion sobreviven un reinicio del servidor; la `Conversacion` de cada
 sesion de chat NO sobrevive (es en memoria a proposito, ver
-`entradas/api/sesiones.py`), asi que reiniciar el proceso mid-charla obliga
+`entry_points/api_rest/sesiones.py`), asi que reiniciar el proceso mid-charla obliga
 a recargar la pagina para pedir una sesion nueva.
 
-Variables propias de este script (ademas de las de `composicion/
+Variables propias de este script (ademas de las de `app_service/config/
 configuracion.py`):
 
     AGORA_API_HOST   default 0.0.0.0
@@ -74,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
         # Etapa 9: sin esto, un pago real que Wompi liquida despues de que
         # el agente ya contesto "quedo pendiente" nunca se lo cuenta a la
         # persona -- alguien tendria que volver a escribirle. Ver el
-        # docstring de `agora/entradas/api/sondeo_pagos.py`.
+        # docstring de `entry_points/api_rest/sondeo_pagos.py`.
         sondeo = SondeoDePagosPendientes(app.state.sesiones, contenedor.consultar_estado)
         sondeo.iniciar()
 

@@ -1,16 +1,13 @@
 """`LibroDeConsumo` en memoria: pruebas, y el unico respaldo hasta la etapa 3.
 
-Resuelve el problema 2 de `docs/historico/analisis-codigo.md` (`nucleo.py:288-292` hace
-leer -> sumar -> escribir sobre TODO el JSON) con un lock y una reserva
+Evita el leer -> sumar -> escribir que rompe el tope diario bajo concurrencia,
+con un lock y una reserva
 condicional: el tope diario se comprueba y se aparta en la misma seccion
 critica, asi que dos cobros que compiten por el ultimo tramo del cupo no
 pueden los dos leer "90.000" y escribir "105.000" cada uno por su lado.
 
-Que sea en memoria, y no en SQLite todavia, es la etapa 3 (`docs/arquitectura-
-v2.md`, ADR-3): Postgres/SQLite es infraestructura que la demo no necesita
-hoy, y migrar `boveda/secretos/estado.json` -- que tiene consumo real -- es
-justo lo bastante delicado como para no mezclarlo con partir `Boveda`. Este
-adaptador es el que corre en pruebas para siempre (`adaptadores/persistencia/
+Su par con persistencia real es `persistencia-sqlite`. Este adaptador es el
+que corre en pruebas para siempre (`driven_adapters/persistencia_*/
 memoria/` esta en la estructura objetivo, no es un stub de paso) y el que
 sostiene la demo mientras la 3 no aterriza.
 

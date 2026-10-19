@@ -1,9 +1,9 @@
 """Multi-usuario (4 de septiembre de 2026): el hasher de contrasenas, los
-casos de uso de `aplicacion/autenticacion.py`, `RegistroDeFirmantes`
+casos de uso de `usecase/{registrar_usuario,iniciar_sesion}/`, `RegistroDeFirmantes`
 (`SelectorDeFirmante`), los repositorios de usuarios/llaves (memoria y
-sqlite) y las sesiones de login de `entradas/api/`.
+sqlite) y las sesiones de login de `entry_points/api_rest/`.
 
-`tests/test_composicion.py`, `test_composicion_agente.py`, `test_cli.py` y
+`tests/app_service/test_composicion.py`, `test_composicion_agente.py`, `test_cli.py` y
 `test_api_app.py` ya ejercitan buena parte de esto de punta a punta (via
 `Contenedor.registrar_usuario`/`iniciar_sesion`) -- este archivo agrega la
 cobertura unitaria de cada pieza sola, con dobles de prueba en vez de un
@@ -237,7 +237,7 @@ def test_repositorio_llaves_titular_desconocido_devuelve_none(_repos):
     assert llaves.llave_privada_de("tit_nadie") is None
 
 
-# -- AlmacenDeSesionesWeb (entradas/api/autenticacion.py) --------------------- #
+# -- AlmacenDeSesionesWeb (entry_points/api_rest/autenticacion.py) --------------------- #
 
 
 def _usuario_de_prueba() -> Usuario:

@@ -1,4 +1,4 @@
-"""System prompt y limites del agente. `docs/arquitectura-v2.md`, seccion 5:
+"""System prompt y limites del agente. `docs/arquitectura.md`, seccion 5:
 la decision de que puede y que no puede el agente vive en `herramientas.py`
 (estructural); este archivo es la parte que se le explica al modelo con
 palabras, y por eso es la unica que se puede saltar un modelo desobediente --
@@ -10,7 +10,7 @@ from __future__ import annotations
 # Cuantas rondas de "el modelo pide una herramienta" se toleran en un solo
 # turno antes de cortar. Sin este limite, un modelo que se traba pidiendo
 # herramientas en circulo (o que nunca llega a una respuesta de texto)
-# consumiria cupo de API sin limite -- ver `agente/conversacion.py:
+# consumiria cupo de API sin limite -- ver `usecase/agente/conversacion.py:
 # LimiteDeTurnosExcedido`.
 MAX_TURNOS_POR_CONVERSACION = 20
 

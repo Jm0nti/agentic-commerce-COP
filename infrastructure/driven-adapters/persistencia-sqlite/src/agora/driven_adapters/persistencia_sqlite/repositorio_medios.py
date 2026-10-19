@@ -1,6 +1,5 @@
-"""`RepositorioMedios` contra SQLite. Equivalente a `boveda/secretos/
-fuentes.json`, que ya separaba por modo -- aqui el ambiente es parte de la
-llave primaria en vez de una clave de nivel superior en el JSON.
+"""`RepositorioMedios` contra SQLite. El ambiente es parte de la llave
+primaria: un medio de sandbox nunca se confunde con uno de produccion.
 
 Multi-comercio: `comercio_id` viaja en cada fila -- ver el docstring de
 `puertos.repositorios.RepositorioMedios` y de `esquema.py` (la migracion

@@ -1,12 +1,12 @@
 """`ConsultarEstadoUseCase`: la herramienta que le deja al agente preguntar que paso
 con una intencion sin bloquear -- `pagar()` (etapa 4 en adelante) devuelve de
 inmediato con el cobro en `PENDIENTE`, y el desenlace real llega despues por
-webhook (`aplicacion/conciliar_evento.py`). Sin esta pregunta, el agente no
+webhook (`usecase/conciliar_evento/conciliar_evento_use_case.py`). Sin esta pregunta, el agente no
 tendria como contarle al usuario si la compra se aprobo o no salvo esperando
 a que alguien mas se lo diga.
 
 Envoltorio delgado sobre `RegistroDeEstados` (ver su docstring en
-`puertos/repositorios.py` para el porque no alcanza con `LibroDeConsumo` ni
+`model/<agregado>/gateways/repositorios.py` para el porque no alcanza con `LibroDeConsumo` ni
 con `Bitacora`).
 """
 

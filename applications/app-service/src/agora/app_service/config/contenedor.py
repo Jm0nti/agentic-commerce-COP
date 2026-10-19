@@ -6,8 +6,8 @@ como se construyeron -- ese es el punto de que existan los puertos. Aqui es
 donde se decide, entre otras cosas, la pregunta que le faltaba a la etapa 2
 para estar completa: que pasarela usar.
 
-`docs/arquitectura-v2.md`, tabla de la seccion 2: `composicion/` puede
-importar todo; nadie puede importar a `composicion/`.
+`docs/arquitectura.md`, tabla de la seccion 2: `app_service/config/` puede
+importar todo; nadie puede importar a `app_service/config/`.
 
 MULTI-COMERCIO (1 de septiembre de 2026)
 -----------------------------------------
@@ -18,8 +18,8 @@ propias credenciales -- HTTP y verificacion de checksum de eventos
 completamente separados entre comercios, ni un secreto se mezcla con el de
 otro); con `AGORA_PASARELA=simulada` (el default), un unico `AdaptadorSimulado`
 que resuelve para cualquier `comercio_id` -- no hace falta credenciales por
-comercio para una demo sin dinero real. Ver `docs/viabilidad-multi-comercio-
-wompi.md`.
+comercio para una demo sin dinero real. Ver
+`docs/utils/viabilidad-multi-comercio-wompi.md`.
 
 MULTI-USUARIO (4 de septiembre de 2026)
 ------------------------------------------
@@ -28,10 +28,10 @@ firmante`, sobre un archivo en disco) y `EmitirMandatoUseCase` la recibia fija p
 constructor -- cualquier titular firmaba con esa misma llave. Ahora se arma
 un `SelectorDeFirmante` (`RegistroDeFirmantes`) que resuelve la llave de
 CADA titular contra `RepositorioLlaves`, guardada junto con su `Usuario`
-(`RepositorioUsuarios`) en el momento en que `scripts/crear_usuario.py` lo
-crea (`aplicacion/autenticacion.py:RegistrarUsuarioUseCase`). No hay ruta HTTP de
-auto-registro: `entradas/api/app.py` solo expone `/auth/iniciar-sesion` y
-`/auth/cerrar-sesion` sobre usuarios que ya existen. La CLI (`entradas/
+(`RepositorioUsuarios`) en el momento en que `app_service/crear_usuario.py` lo
+crea (`usecase/registrar_usuario/registrar_usuario_use_case.py:RegistrarUsuarioUseCase`). No hay ruta HTTP de
+auto-registro: `entry_points/api_rest/app.py` solo expone `/auth/iniciar-sesion` y
+`/auth/cerrar-sesion` sobre usuarios que ya existen. La CLI (`entry_points/
 cli/`) sigue sin pedir login -- alcanza con pasar un `titular_id` que ya
 tenga usuario creado; si no lo tiene, `SinLlaveDeFirma` lo dice claro en
 vez de fallar en silencio o generar una llave nueva sobre la marcha.
@@ -121,8 +121,8 @@ from .configuracion import RAIZ_REPO, ConfiguracionAgora
 
 @dataclass(frozen=True)
 class Contenedor:
-    """Todo lo que un punto de entrada (`entradas/`, etapa 4 en adelante) va
-    a necesitar -- `entradas/webhooks/wompi.py` solo usa `conciliar_evento`.
+    """Todo lo que un punto de entrada (`entry_points/`, etapa 4 en adelante) va
+    a necesitar -- `entry_points/webhook_wompi/wompi.py` solo usa `conciliar_evento`.
 
     Se expone como un solo objeto, no como variables sueltas, para que
     agregar una dependencia nueva no obligue a tocar la firma de cada punto
@@ -130,7 +130,7 @@ class Contenedor:
 
     `catalogo` sigue el mismo precedente que `RepositorioMediosSQLite` en la
     etapa 3: el adaptador esta listo y probado antes de que exista el caso de
-    uso que lo llame (`aplicacion/navegar_catalogo.py`, etapa 5) -- no hay
+    uso que lo llame (`usecase/navegar_catalogo/navegar_catalogo_use_case.py`, etapa 5) -- no hay
     ninguna dependencia entre construir el catalogo y construir el resto del
     contenedor, asi que no hay motivo para esperar.
     """
@@ -173,20 +173,20 @@ class Contenedor:
     emitir_mandato: EmitirMandatoUseCase
     # Etapa 10: el contrapunto de `emitir_mandato` cuando el humano rechaza
     # la propuesta en vez de firmarla -- ver el docstring de
-    # `aplicacion/rechazar_propuesta.py`.
+    # `usecase/rechazar_propuesta/rechazar_propuesta_use_case.py`.
     rechazar_propuesta: RechazarPropuestaUseCase
     enrolar_medio: EnrolarMedioUseCase
     # -- etapa 8 (web): los mismos tres pasos que EnrolarMedioUseCase compone,
-    # sueltos para que entradas/api/ pueda sondear el push de Nequi sin
+    # sueltos para que entry_points/api_rest/ pueda sondear el push de Nequi sin
     # bloquear una peticion HTTP hasta 5 minutos (ver el docstring de
-    # aplicacion/enrolar_medio.py).
+    # usecase/enrolar_medio/enrolar_medio_use_case.py).
     iniciar_enrolamiento: IniciarEnrolamientoUseCase
     consultar_enrolamiento: ConsultarEnrolamientoUseCase
     confirmar_enrolamiento: ConfirmarEnrolamientoUseCase
     revocar_medio: RevocarMedioUseCase
     consultar_estado: ConsultarEstadoUseCase
     # -- Fase 1 del refactor a la Clean Architecture de Bancolombia: lo que
-    # `entradas/` antes leia directo de los repositorios de arriba.
+    # `entry_points/` antes leia directo de los repositorios de arriba.
     pagar_carrito: PagarCarritoUseCase
     listar_medios_vivos: ListarMediosVivosUseCase
     listar_mandatos: ListarMandatosUseCase
@@ -281,7 +281,7 @@ def construir(
         selector_pasarela = RegistroDePasarelas({}, por_defecto=unica)
 
     # Etapa 6 (segunda parte): sqlite si `retomar` puede correr en otra
-    # terminal que la del `chat` -- que, con `agente/herramientas.py`
+    # terminal que la del `chat` -- que, con `usecase/agente/herramientas.py`
     # negandole `retomar` al agente a proposito, es SIEMPRE el caso. Ver el
     # comentario de la tabla `estado_intencion` en `esquema.py`.
     estados: RegistroDeEstados
@@ -311,14 +311,14 @@ def construir(
     carritos: RepositorioCarritos
     propuestas: RepositorioPropuestas
     if config.persistencia == "sqlite":
-        # Mismo motivo que `mandatos`/`medios`/`consumo`: `entradas/cli/`
+        # Mismo motivo que `mandatos`/`medios`/`consumo`: `entry_points/cli/`
         # trata "armar y firmar" y "pagar" como comandos separados, cada uno
         # su propio proceso -- sin esto, el carrito nunca sobreviviria entre
         # los dos.
         carritos = RepositorioCarritosSQLite(config.sqlite_path)
         # Etapa 6: mismo argumento, un nivel mas adentro -- la propuesta
         # tiene que sobrevivir entre el proceso que arma el carrito (el
-        # chat) y el que firma (`entradas/cli/firmar`, en otra terminal).
+        # chat) y el que firma (`entry_points/cli/firmar`, en otra terminal).
         propuestas = RepositorioPropuestasSQLite(config.sqlite_path)
         # `estados` ya se armo mas arriba, antes de `ejecutar_intencion` --
         # por eso no aparece aca, aunque logicamente es la misma decision.
@@ -328,7 +328,7 @@ def construir(
     # Multi-usuario: ya no una llave fija cargada de disco -- se resuelve
     # por titular contra `RepositorioLlaves` (`RegistroDeFirmantes`, que
     # levanta `SinLlaveDeFirma` si el titular nunca tuvo un usuario creado
-    # con `scripts/crear_usuario.py`). `agente/` nunca ve nada de esto
+    # con `app_service/crear_usuario.py`). `usecase/agente/` nunca ve nada de esto
     # (test_fronteras.py lo verifica): la firma solo llega a
     # `emitir_mandato`, ya resuelta.
     selector_firmante = RegistroDeFirmantes(llaves)
@@ -354,9 +354,9 @@ def construir(
     enrolar_medio = EnrolarMedioUseCase(
         selector_pasarela=selector_pasarela, medios=medios, bitacora=bitacora, ambiente=config.ambiente,
     )
-    # Mismas dependencias que enrolar_medio, pero sueltas -- entradas/api/
+    # Mismas dependencias que enrolar_medio, pero sueltas -- entry_points/api_rest/
     # las necesita para sondear el push de Nequi desde el navegador sin
-    # bloquear una peticion HTTP (ver el docstring de aplicacion/
+    # bloquear una peticion HTTP (ver el docstring de usecase/
     # enrolar_medio.py).
     iniciar_enrolamiento = IniciarEnrolamientoUseCase(selector_pasarela, config.ambiente)
     consultar_enrolamiento = ConsultarEnrolamientoUseCase(selector_pasarela)
@@ -421,7 +421,7 @@ def _todos_los_productos(catalogo: RepositorioCatalogo) -> list[Producto]:
     """Recorre el catalogo por comercio, que es la unica forma que da el
     puerto (`buscar_productos` siempre pide un `comercio_id`). No es un
     rodeo: esa forma es deliberada -- ver "TRES METODOS, NO UNO" en
-    `puertos/catalogo.py` -- y el catalogo simulado entra entero en memoria."""
+    `model/catalogo/gateways/catalogo.py` -- y el catalogo simulado entra entero en memoria."""
     return [
         producto
         for comercio in catalogo.buscar_comercios()

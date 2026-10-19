@@ -1,7 +1,7 @@
 """`RepositorioPropuestasSQLite`. La prueba que importa es la ultima: una
 propuesta guardada por un `RepositorioPropuestasSQLite` sobrevive a que ese
 objeto se destruya y otro, apuntando al mismo archivo, la vuelva a leer --
-eso es lo que hace falta para que `entradas/cli/firmar`, corrido en otra
+eso es lo que hace falta para que `entry_points/cli/firmar`, corrido en otra
 terminal que la que armo el chat, pueda encontrarla (etapa 6).
 """
 

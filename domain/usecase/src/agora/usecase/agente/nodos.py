@@ -1,7 +1,7 @@
 """Que significa cada intencion en terminos de nodos y herramientas.
 
 Migracion a agentes, etapa 1. Todavia no hay grafo: hay un solo loop de
-turnos (`agente/conversacion.py`) que, en cada turno, actua como los nodos
+turnos (`usecase/agente/conversacion.py`) que, en cada turno, actua como los nodos
 que la RUTA de esa intencion habilita -- con las herramientas de esos nodos
 y nada mas, y con una instruccion corta del orquestador para ese turno.
 

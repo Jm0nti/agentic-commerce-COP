@@ -5,7 +5,7 @@ sequenceDiagram
     participant AG as Agente<br/>DeepSeek V4
     participant CAT as RepositorioCatalogo<br/>comercios simulados
     participant FIR as Firmante<br/>llave del titular
-    participant EJ as EjecutarIntencion
+    participant EJ as EjecutarIntencionUseCase
     participant LC as LibroDeConsumo
     participant PAS as PasarelaDePagos
     participant WO as Wompi / Nequi
@@ -74,7 +74,7 @@ sequenceDiagram
     rect rgb(240, 240, 245)
     Note over WO,UI: CONCILIACION
     WO->>EJ: transaction.updated  (X-Event-Checksum)
-    EJ->>EJ: ConciliarEvento: valida checksum
+    EJ->>EJ: ConciliarEventoUseCase: valida checksum
     alt APPROVED
         EJ->>LC: confirmar(reserva)
     else DECLINED

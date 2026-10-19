@@ -1,20 +1,17 @@
-"""El mandato v2.
+"""El mandato: la autorizacion firmada que limita lo que el agente puede cobrar.
 
-Cambia dos cosas frente a `boveda/mandato.py`:
+Dos decisiones de forma que tocan la carga firmada:
 
-    fuente_pago: int      ->  medio: MedioDePagoRef   (el dominio deja de
-                                                       conocer a Wompi)
-    monto_max_cop: int    ->  monto_max: Dinero       (unidad explicita)
+    medio: MedioDePagoRef     el dominio no conoce a Wompi: una referencia
+                              opaca (proveedor, ambiente, id_externo)
+    monto_max: Dinero         unidad explicita, nunca un int suelto
 
-Las dos tocan la carga firmada, asi que el mandato se versiona -- para que una
-carga firmada nunca se pueda reinterpretar bajo otras reglas, aunque cambie el
-modelo. El verificador de mandatos v1 (`compat.py`) se retiro del repositorio
-junto con `boveda/`: la evidencia experimental v1 (`recibos.jsonl`,
-`estado.json`) no se migro y quedo archivada fuera de este repositorio, no en
-produccion (ver `docs/limpieza-v1-boveda.md`).
+El mandato lleva su `version` DENTRO de la carga firmada (hoy, 2): una carga
+firmada nunca se puede reinterpretar bajo otras reglas, aunque cambie el
+modelo.
 
-LO QUE EL MANDATO PROTEGE Y LO QUE NO -- se mantiene igual que en la v1
-----------------------------------------------------------------------
+LO QUE EL MANDATO PROTEGE Y LO QUE NO
+-------------------------------------
 Protege contra un comercio que cobra distinto de lo pactado y contra un agente
 que intenta gastar de mas.
 
@@ -91,8 +88,8 @@ class Mandato:
     def canonico(self) -> bytes:
         """Serializacion estable. Ordenada, sin la firma, con la version dentro.
 
-        La version va DENTRO de la carga: si no, alguien podria tomar un mandato
-        v1 y presentarlo como v2 sin romper la firma.
+        La version va DENTRO de la carga: si no, alguien podria tomar una carga
+        firmada bajo otra version y presentarla como de esta sin romper la firma.
         """
         d = {
             "version": self.version,
@@ -127,13 +124,9 @@ class Mandato:
     ) -> list[Violacion]:
         """Todas las divergencias verificables. Categorico, no probabilistico.
 
-        `llave_publica` se ignora: un mandato v2 lleva la suya adentro y dentro
-        de la firma, que es lo correcto. El parametro queda en la firma por
-        compatibilidad de la interfaz: existia para que esta firma fuera
-        identica a la del verificador de mandatos v1 (retirado junto con
-        `boveda/`, ver `docs/limpieza-v1-boveda.md`), que si recibia la llave
-        desde afuera. Vestigial hoy -- se puede quitar si en algun momento deja
-        de importar mantener esa forma.
+        `llave_publica` se ignora: el mandato lleva la suya adentro y dentro de
+        la firma, que es lo correcto. El parametro es vestigial -- se puede
+        quitar cuando se toque esta firma.
         """
         v: list[Violacion] = []
         ahora = ahora or datetime.now(self.expira_en.tzinfo)

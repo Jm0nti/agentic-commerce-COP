@@ -311,7 +311,7 @@ def test_el_clasificador_recibe_el_mismo_historial_previo_que_sin_grafo():
 
 
 def test_una_excepcion_del_loop_de_herramientas_sale_del_grafo_sin_envolverse():
-    """`entradas/api/app.py` atrapa `LimiteDeTurnosExcedido` por su tipo: si
+    """`entry_points/api_rest/app.py` atrapa `LimiteDeTurnosExcedido` por su tipo: si
     el grafo la envolviera, ese `except` dejaria de funcionar y el chat
     devolveria un 500 en vez del mensaje que hoy devuelve."""
     ronda = RespuestaModelo(
@@ -337,9 +337,9 @@ def test_iniciar_devuelve_la_misma_conversacion_que_el_agente_directo():
 
 
 def test_el_agente_en_grafo_expone_las_herramientas_del_agente_que_envuelve():
-    """`composicion/agente.py` devuelve un `AgenteEnGrafo` por defecto: quien
+    """`app_service/config/agente.py` devuelve un `AgenteEnGrafo` por defecto: quien
     llamaba una herramienta directo (la CLI de pruebas,
-    `tests/test_composicion_agente.py`) no tendria que desenvolverlo."""
+    `tests/app_service/test_composicion_agente.py`) no tendria que desenvolverlo."""
     agente, _, _, _ = _armar_agente(lambda: [], [], False)
 
     assert _en_grafo(agente)._herramientas is agente._herramientas

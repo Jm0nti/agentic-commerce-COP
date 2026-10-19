@@ -58,7 +58,7 @@ CAPAS: dict[str, str] = {
     "__init__.py": "raiz",
     # Fase 5: `python -m agora` es el arranque del app-service.
     "__main__.py": "app_service",
-    # Fase 2: `dominio/` y `puertos/` se fusionaron en `domain/model`.
+    # Fase 2: `model/` y `model/<agregado>/gateways/` se fusionaron en `domain/model`.
     "model": "model",
     # Fase 3: los casos de uso viven en `domain/usecase`. El agente tambien,
     # pero con capa propia: su regla es mas estricta (no importa ningun otro
@@ -99,9 +99,9 @@ REGLAS: dict[str, tuple[str, ...]] = {
     #
     # `aplicacion` y `entradas` se agregaron en la etapa 1 de la migracion a
     # agentes (16 sep 2026). Hallazgo: el principio documentado ("falla el
-    # build si agente/ importa aplicacion/", `herramientas.py:
+    # build si usecase/agente/ importa usecase/", `herramientas.py:
     # construir_herramientas`) NO estaba en esta tabla -- un modulo de
-    # `agente/` con `from ..aplicacion.ejecutar_intencion import
+    # `usecase/agente/` con `from ..aplicacion.ejecutar_intencion import
     # EjecutarIntencionUseCase` pasaba la suite en verde. Ver
     # `test_el_detector_atrapa_al_agente_importando_un_caso_de_uso`.
     "agente": ("usecase", "driven_adapters", "entry_points", "app_service"),
@@ -128,9 +128,9 @@ PROHIBIDOS_POR_CAPA: dict[str, tuple[str, ...]] = {
     "agente": ("httpx", "sqlite3", "importlib"),
 }
 
-# Migracion a agentes (docs/arquitectura-agentes-langgraph.md, decision 8):
+# Migracion a agentes (docs/arquitectura-agentes/arquitectura-agentes-langgraph.md, decision 8):
 # LangChain, LangGraph y cualquier SDK de LLM entran SOLO detras de un
-# puerto, con su adaptador en `adaptadores/` -- mismo patron que `openai`
+# puerto, con su adaptador en `driven_adapters/` -- mismo patron que `openai`
 # detras de `ModeloDeLenguaje`/`AdaptadorDeepSeek`. Se compara por familia
 # (`langchain_core`, `langchain_community`, `langgraph_checkpoint`...), no
 # por nombre exacto: el ecosistema reparte cada libreria en muchos paquetes.
@@ -228,7 +228,7 @@ def _imports(archivo: Path, raiz: Path | None = None) -> list[str]:
 
 
 def _capa_de(ruta: str) -> str | None:
-    """Capa de un archivo ('agente/grafo.py') o de un modulo importado
+    """Capa de un archivo ('usecase/agente/grafo.py') o de un modulo importado
     ('agora.agente.grafo' o el relativo ya normalizado 'agente.grafo').
     `None` para lo que no es de agora/ (terceros, stdlib)."""
     if not ruta.endswith(".py"):
@@ -478,8 +478,8 @@ def test_embeddings_y_vector_store_solo_se_conocen_por_el_puerto() -> None:
 def test_langgraph_vive_en_un_solo_modulo_de_agora() -> None:
     """La promesa de la etapa 3, medida sobre el codigo real: cambiar de
     motor de grafos toca UN archivo. `test_librerias_de_llm_solo_detras_de_un
-    _adaptador` ya prohibe langgraph fuera de `adaptadores/`; esto ademas
-    exige que dentro de `adaptadores/` tampoco se desparrame."""
+    _adaptador` ya prohibe langgraph fuera de `driven_adapters/`; esto ademas
+    exige que dentro de `driven_adapters/` tampoco se desparrame."""
     con_langgraph = sorted(
         _rel(archivo)
         for archivo in _modulos()
@@ -502,7 +502,7 @@ def test_el_puerto_de_orquestacion_no_conoce_ninguna_libreria_de_grafos() -> Non
 
 
 def test_el_grafo_del_agente_solo_conoce_el_puerto() -> None:
-    """`agente/grafo.py` arma la topologia del turno sin saber quien la
+    """`usecase/agente/grafo.py` arma la topologia del turno sin saber quien la
     compila: recibe el `CompiladorDeGrafos` por constructor."""
     importados = _imports(_archivo("usecase/agente/grafo.py"))
 
@@ -533,7 +533,7 @@ def test_el_indice_de_productos_no_alcanza_el_repositorio_del_catalogo() -> None
 
 def test_el_indice_de_productos_y_el_documental_no_se_conocen() -> None:
     """Dos indices que nunca se mezclan (decision 1). Lo unico que comparten
-    es `puertos/recuperacion.py:ProveedorDeEmbeddings`, que es el puerto de
+    es `model/agente/gateways/recuperacion.py:ProveedorDeEmbeddings`, que es el puerto de
     "texto -> vector" de la decision 2 y no sabe que se esta indexando."""
     ofensas = []
     for archivo in _modulos_bajo("driven_adapters/busqueda_semantica_memoria/"):
@@ -568,7 +568,7 @@ def test_el_puerto_de_busqueda_de_productos_no_conoce_ninguna_libreria() -> None
 
 
 def test_los_agentes_especializados_no_alcanzan_ninguna_pasarela() -> None:
-    """`agente/agentes.py` decide que herramientas ve cada agente: es
+    """`usecase/agente/agentes.py` decide que herramientas ve cada agente: es
     exactamente el modulo donde un import de mas seria peor."""
     ofensas = [
         i for i in _imports(_archivo("usecase/agente/agentes.py"))
@@ -582,7 +582,7 @@ def test_los_agentes_especializados_no_alcanzan_ninguna_pasarela() -> None:
 
 
 def test_la_traza_no_conoce_ningun_adaptador_de_bitacora() -> None:
-    """`agente/traza.py` arma el cuerpo; quien lo escribe es un `Bitacora`
+    """`usecase/agente/traza.py` arma el cuerpo; quien lo escribe es un `Bitacora`
     que llega por constructor. Si conociera el adaptador de .jsonl, cambiar
     el destino de las trazas (a stdout, a otro formato) obligaria a tocar el
     agente."""
@@ -598,9 +598,9 @@ def test_la_traza_no_conoce_ningun_adaptador_de_bitacora() -> None:
 
 
 def test_la_pausa_no_alcanza_ningun_caso_de_uso_ni_pasarela() -> None:
-    """`agente/pausa.py` describe QUE hay que decidir y arma el texto que lee
-    el modelo. Quien firma y quien cobra siguen siendo `aplicacion/`, por
-    pedido de una persona desde `entradas/`. Si este modulo pudiera importar
+    """`usecase/agente/pausa.py` describe QUE hay que decidir y arma el texto que lee
+    el modelo. Quien firma y quien cobra siguen siendo `usecase/`, por
+    pedido de una persona desde `entry_points/`. Si este modulo pudiera importar
     `EmitirMandatoUseCase`, el agente estaria a un import de firmar solo."""
     ofensas = [
         i for i in _imports(_archivo("usecase/agente/pausa.py"))
@@ -705,7 +705,7 @@ def test_el_detector_atrapa_al_puerto_de_orquestacion_importando_langgraph(
 def test_el_detector_atrapa_al_grafo_del_agente_importando_su_adaptador(
     tmp_path: Path,
 ) -> None:
-    """El otro acople de la etapa 3: `agente/grafo.py` importando el
+    """El otro acople de la etapa 3: `usecase/agente/grafo.py` importando el
     compilador concreto en vez de recibirlo por constructor. No lo atrapa la
     regla de librerias (el import no nombra a langgraph), lo atrapa la regla
     de dependencia."""

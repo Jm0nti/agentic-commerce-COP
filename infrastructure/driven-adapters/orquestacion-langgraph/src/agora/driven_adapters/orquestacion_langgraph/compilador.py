@@ -12,7 +12,7 @@ UNA sola clave, `estado`, y mete adentro el objeto del proyecto tal cual.
 
 Con eso, LangGraph nunca inspecciona ni reconstruye el estado del turno:
 lo pasa de un nodo al siguiente como un valor opaco. Verificado (ver
-`tests/test_adaptador_orquestacion_langgraph.py`): el objeto que entra al
+`tests/driven_adapters/test_adaptador_orquestacion_langgraph.py`): el objeto que entra al
 grafo es el MISMO objeto que sale -- `is`, no `==` -- y una excepcion de un
 nodo se propaga sin envolverse. Es lo que permite que `EstadoDelTurno` sea
 un dataclass congelado del proyecto, con una `Conversacion` mutable adentro,
@@ -20,9 +20,9 @@ en vez de un diccionario que haya que serializar y volver a armar.
 
 POR QUE EL PAQUETE SE LLAMA `con_langgraph` Y NO `langgraph`
 --------------------------------------------------------------
-Un paquete `agora/adaptadores/orquestacion/langgraph/` sombrearia a la
+Un paquete `driven_adapters/langgraph/` sombrearia a la
 libreria para cualquier import relativo de adentro. Mismo criterio que
-`adaptadores/recuperacion/langchain_en_memoria/` en la etapa 2.
+`driven_adapters/recuperacion_langchain/` en la etapa 2.
 """
 
 from __future__ import annotations

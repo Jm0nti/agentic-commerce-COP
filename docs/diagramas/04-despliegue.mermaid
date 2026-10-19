@@ -1,51 +1,48 @@
+---
+title: agora · que corre donde (python -m agora api / webhook)
+---
 flowchart LR
-    subgraph NAV["Navegador"]
-        CHAT["Chat<br/>SSE para el desenlace"]
-        FIRMA["Firma del mandato<br/>WebCrypto o PIN"]
+    subgraph NAV["Navegador del titular"]
+        CHAT["chat.html<br/>login · chat · popup de firma<br/>Medios de pago"]
     end
 
-    subgraph PROC["Proceso Python · uvicorn"]
+    subgraph P1["Proceso 1 · python -m agora api · puerto 8002"]
         direction TB
-
-        subgraph WEB["entradas/api"]
-            REST["REST<br/>/conversacion /mandatos /cobros"]
-            SSE["SSE<br/>/eventos/{conversacion_id}"]
-            HOOK["POST /webhooks/wompi<br/>valida X-Event-Checksum"]
-        end
-
-        subgraph NUCLEO["aplicacion + dominio"]
-            CASOS["casos de uso"]
-            TOPES["TopesDuros<br/>20.000/tx · 100.000/dia"]
-        end
-
-        subgraph AGT["agente"]
-            LOOP["loop de turnos"]
-            TOOLS["6 herramientas<br/>ninguna firma ni revela credenciales"]
-        end
+        REST["api-rest<br/>REST + SSE"]
+        AGT["agente<br/>grafo del turno · 6 herramientas"]
+        UC1["casos de uso<br/>motor de pagos · TopesDuros 20.000/tx · 100.000/dia"]
+        SON["sondeo de pagos pendientes<br/>hilo de fondo"]
     end
 
-    DB[("SQLite · WAL<br/>mandatos · consumo<br/>cobros · catalogo")]
+    subgraph P2["Proceso 2 · python -m agora webhook · puerto 8001"]
+        HOOK["webhook-wompi<br/>POST /pagos/wompi/transacciones/{comercio_id}"]
+        UC2["ConciliarEventoUseCase"]
+    end
 
-    subgraph EXT["Fuera"]
-        DS["DeepSeek V4<br/>API compatible con OpenAI"]
-        WOMPI["Wompi<br/>produccion"]
+    TUN["tunel publico<br/>ngrok / cloudflared"]
+
+    DB[("agora_datos/agora.db · SQLite WAL<br/>usuarios · llaves · medios · mandatos<br/>consumo · carritos · propuestas · estados")]
+    LOG[("agora_datos/<br/>recibos.jsonl · trazas.jsonl")]
+
+    subgraph EXT["Servicios externos"]
+        DS["DeepSeek<br/>modelo de lenguaje"]
+        OAI["OpenAI<br/>embeddings (opcional)"]
+        WOMPI["Wompi<br/>credenciales por comercio"]
         NEQUI["Nequi<br/>cuenta real del titular"]
-        SIM["Pasarela simulada<br/>en proceso"]
     end
 
-    CHAT -->|HTTP| REST
-    SSE -->|push| CHAT
-    FIRMA -->|mandato firmado| REST
+    CHAT <-->|HTTP + SSE| REST
     REST --> AGT
-    AGT -->|"mandato_id opacos"| CASOS
-    LOOP -->|puerto ModeloDeLenguaje| DS
-    CASOS --> TOPES
-    CASOS --> DB
-    CASOS -->|"puerto PasarelaDePagos"| WOMPI
-    CASOS -->|"mismo puerto"| SIM
+    AGT -->|"mandato_id opacos"| UC1
+    AGT --> DS
+    AGT --> OAI
+    UC1 --> DB
+    UC1 --> LOG
+    UC1 -->|"cobrar · PENDING"| WOMPI
     WOMPI -->|debita| NEQUI
-    WOMPI -->|transaction.updated| HOOK
-    HOOK --> CASOS
+    WOMPI -->|transaction.updated| TUN --> HOOK
+    HOOK --> UC2 --> DB
+    SON -->|consulta estados| DB
 
     AGT x-.-x|"sin credenciales de pago"| WOMPI
 
@@ -55,8 +52,8 @@ flowchart LR
     classDef ext fill:#3d2f5c,stroke:#9b7fc4,color:#f0e8f8
     classDef datos fill:#5c2f3d,stroke:#d96f8f,color:#f8e8ee
 
-    class CHAT,FIRMA nav
-    class CASOS,TOPES,REST,SSE,HOOK nucleo
-    class LOOP,TOOLS agente
-    class DS,WOMPI,NEQUI,SIM ext
-    class DB datos
+    class CHAT nav
+    class REST,UC1,SON,HOOK,UC2,TUN nucleo
+    class AGT agente
+    class DS,OAI,WOMPI,NEQUI ext
+    class DB,LOG datos

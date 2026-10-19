@@ -1,5 +1,5 @@
-"""Configuracion de los embeddings de OpenAI, leida UNA vez en `composicion/`
-y pasada por constructor -- mismo patron que `adaptadores/llm/deepseek/
+"""Configuracion de los embeddings de OpenAI, leida UNA vez en `app_service/config/`
+y pasada por constructor -- mismo patron que `driven_adapters/llm_deepseek/
 config.py`.
 
 POR QUE `text-embedding-3-small`

@@ -1,7 +1,7 @@
 # El mandato y sus controles
 
 Un mandato es el permiso firmado que la persona le da al sistema para cobrar
-una compra concreta. Es lo único que la bóveda acepta como autorización:
+una compra concreta. Es lo único que el motor de pagos acepta como autorización:
 ningún cobro sale sin un mandato firmado que lo cubra.
 
 ## Qué dice un mandato
@@ -20,7 +20,7 @@ general.
 
 ## Los controles que se revisan antes de cobrar
 
-Cada vez que se intenta un cobro, la bóveda vuelve a revisar el mandato
+Cada vez que se intenta un cobro, el motor de pagos vuelve a revisar el mandato
 completo. Si alguno de estos controles falla, el cobro se bloquea y queda
 registrado el motivo:
 

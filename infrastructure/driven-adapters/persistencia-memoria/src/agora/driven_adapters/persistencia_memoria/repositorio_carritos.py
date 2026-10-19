@@ -3,7 +3,7 @@
 Simetrico a `repositorio_mandatos.py`: un `dict` protegido por un lock, sin
 persistencia entre procesos. Alcanza para esta etapa -- un carrito vive el
 tiempo de una conversacion, y no hay todavia una version SQLite porque nada
-en `docs/arquitectura-v2.md` pide que un carrito sobreviva un reinicio (a
+en `docs/arquitectura.md` pide que un carrito sobreviva un reinicio (a
 diferencia del consumo o los mandatos, que si tienen que hacerlo contra
 dinero real).
 """

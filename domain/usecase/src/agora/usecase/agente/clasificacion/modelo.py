@@ -9,7 +9,7 @@ debe ver herramientas, y no debe dejar rastro en `Conversacion.mensajes`.
 
 EL CONTRATO DE SALIDA ES CERRADO
 ---------------------------------
-Mismo criterio que `RespuestaModeloInvalida` en `dominio/comun/errores.py`:
+Mismo criterio que `RespuestaModeloInvalida` en `model/commons/errores.py`:
 una respuesta que no calza se descarta entera, nunca se repara. Si el
 modelo devuelve una intencion que no existe, una confianza fuera de rango o
 le falta un campo, el resultado es respaldo -- no la intencion "mas
@@ -21,7 +21,7 @@ Lo que escribe la persona entra al prompt como DATO delimitado, no como
 instruccion. Aunque alguien logre que el modelo elija la intencion que
 quiere, la peor consecuencia es un turno por una ruta distinta -- y toda
 ruta es un subconjunto de lo que el agente ya podia hacer antes de esta
-etapa (`agente/nodos.py`), con la firma humana intacta.
+etapa (`usecase/agente/nodos.py`), con la firma humana intacta.
 """
 
 from __future__ import annotations

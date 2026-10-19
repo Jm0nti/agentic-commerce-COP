@@ -111,7 +111,7 @@ def _mensaje_a_openai(m: Mensaje) -> dict[str, Any]:
     Chat Completions. Los campos que no aplican a un rol dado (`tool_calls`
     en algo que no sea "assistant", `tool_call_id`/`name` en algo que no sea
     "tool") simplemente no se ponen -- se confia en que quien arma el
-    `Mensaje` (`agente/conversacion.py`) ya respeto esa forma."""
+    `Mensaje` (`usecase/agente/conversacion.py`) ya respeto esa forma."""
     cuerpo: dict[str, Any] = {"role": m.rol, "content": m.contenido}
     if m.llamadas:
         cuerpo["tool_calls"] = [

@@ -1,7 +1,7 @@
 """`SondeoDePagosPendientes` (etapa 9), aislado de hilos, `time.sleep` real
 y del resto de la app: `una_pasada()` se llama directo, con dobles simples
 en vez de `AlmacenDeSesiones`/`consultar_estado` reales -- lo mismo que
-`tests/test_enrolar_medio.py` hace con `_PasarelaFalsa` para no depender de
+`tests/usecase/test_enrolar_medio.py` hace con `_PasarelaFalsa` para no depender de
 sondeo real contra una pasarela."""
 
 from __future__ import annotations

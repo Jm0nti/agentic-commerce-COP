@@ -1,6 +1,6 @@
 """`ListarMediosVivosUseCase`: los medios de pago vivos de un titular, en el ambiente
 de este proceso. El ambiente lo fija la configuracion del servidor, nunca
-quien pregunta (ver `entradas/api/app.py:listar_medios`)."""
+quien pregunta (ver `entry_points/api_rest/app.py:listar_medios`)."""
 
 from __future__ import annotations
 

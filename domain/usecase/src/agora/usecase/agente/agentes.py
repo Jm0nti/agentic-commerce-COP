@@ -60,7 +60,7 @@ def nodos_por_agente() -> dict[str, tuple[str, ...]]:
 
 def nombre_del_agente(ruta: Ruta) -> str:
     """A que agente le toca ESTA ruta. Es la funcion que decide la arista
-    condicional del grafo (`agente/grafo.py`)."""
+    condicional del grafo (`usecase/agente/grafo.py`)."""
     if ruta.es_respaldo:
         return NOMBRE_DEL_RESPALDO
     assert ruta.clasificacion is not None and ruta.clasificacion.intencion is not None

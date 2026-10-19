@@ -1,21 +1,19 @@
-"""El corazon. Lo que hoy es `Boveda.ejecutar` (nucleo.py:337-408), partido.
+"""El corazon: el motor de pagos.
 
-El orden de los controles no es negociable y es el mismo de la v1:
+El orden de los controles no es negociable:
 
     1. TOPES DUROS     nunca se apagan. Constantes en codigo.
     2. RESERVA         atomica. Si no cabe, no se llama a nadie.
     3. MANDATO         esto SI se puede apagar, y apagarlo es el experimento.
     4. COBRO           devuelve PENDIENTE. No bloquea.
 
-La diferencia frente a la v1 esta en el paso 4: antes se hacian hasta 60
-segundos de `time.sleep` esperando el estado final. Ahora se devuelve de
-inmediato y el desenlace llega por `ConciliarEventoUseCase` desde el webhook -- que ya
-recibias y no leias.
+El paso 4 no espera el estado final: devuelve de inmediato y el desenlace
+llega por `ConciliarEventoUseCase` desde el webhook.
 
 EL PASO 3 TIENE TRES DESENLACES, NO DOS (etapa 4)
 --------------------------------------------------
 `Decision.BLOQUEAR` libera la reserva y se detiene: no cabe, punto.
-`Decision.CONFIRMAR` (`dominio/mandato/politica.py`: "cabe, pero huele raro")
+`Decision.CONFIRMAR` (`model/mandato/politica.py`: "cabe, pero huele raro")
 YA NO se comporta como un bloqueo -- hasta la etapa 3 no existia el mecanismo
 para retomar, asi que el unico desenlace posible era liberar y parar. Ahora
 la reserva se queda viva -- el cupo diario la sigue contando mientras se
@@ -29,8 +27,8 @@ Antes, `_cobrar` llamaba a una `PasarelaDePagos` fija, inyectada por
 constructor -- valido mientras solo hubiera un comercio real por proceso.
 Ahora recibe un `SelectorDePasarela` y resuelve la pasarela correcta en el
 momento del cobro, contra `mandato.comercio_id` -- que ya esta disponible
-ahi, viaja dentro de la carga firmada del mandato desde la v2
-(`dominio/mandato/modelo.py:Mandato.canonico`). No hace falta que
+ahi, viaja dentro de la carga firmada del mandato
+(`model/mandato/modelo.py:Mandato.canonico`). No hace falta que
 `Intencion`/`OrdenDeCobro` carguen el comercio por su cuenta: el mandato ya
 es la fuente de verdad de a que comercio esta autorizado este cobro
 (`Mandato.violaciones_contra` ya lo valida contra `intencion.comercio_id`
@@ -38,12 +36,12 @@ antes de llegar aca).
 
 Deuda tecnica consciente: esto confia en que `mandato.medio` de verdad se
 haya enrolado bajo las credenciales de `mandato.comercio_id` -- nada aca
-(ni en `dominio/mandato/modelo.py`) verifica esa correspondencia de forma
+(ni en `model/mandato/modelo.py`) verifica esa correspondencia de forma
 criptografica. `EmitirMandatoUseCase` es quien la garantiza en la practica (solo
 firma un mandato con un medio que `RepositorioMedios.vinculado_con` ya
 asocio a ese comercio), pero un bug en otra parte del sistema que armara un
 `Mandato` a mano con un medio de OTRO comercio no lo detectaria aca. Ver
-`docs/viabilidad-multi-comercio-wompi.md`, seccion "Amarre medio ->
+`docs/utils/viabilidad-multi-comercio-wompi.md`, seccion "Amarre medio ->
 comercio", por las dos opciones que se evaluaron (esta, mas liviana, y
 meter `comercio_id` dentro de `MedioDePagoRef` con un mandato v3) y por que
 se eligio la liviana para esta iteracion."""
@@ -72,8 +70,8 @@ from ...model.commons.gateways.sistema import Bitacora, Reloj
 class Recibo:
     """Lo que paso, al lado de lo que el mandato decia.
 
-    Se conserva `aprobado_pese_a_violacion` de la v1 sin cambios: es la metrica
-    central de la PoC y ya produjo su primer resultado (un cobro de 15.000
+    `aprobado_pese_a_violacion` es la metrica central de la PoC y ya produjo su
+    primer resultado (un cobro de 15.000
     aprobado contra un mandato que autorizaba 8.000).
     """
 
@@ -139,7 +137,7 @@ class EjecutarIntencionUseCase:
         self, intencion: Intencion, exigir_mandato: bool = True, carrito_hash: str | None = None,
     ) -> Recibo:
         """`carrito_hash` es lo que hace valer el Cart Mandate de AP2 en el
-        momento del cobro (`dominio/catalogo/modelo.py`, docstring de
+        momento del cobro (`model/catalogo/modelo.py`, docstring de
         `Carrito.hash_canonico`): si el `Mandato` se firmo atado a un
         carrito (`carrito_hash` no vacio, obra de `EmitirMandatoUseCase`), quien
         llame a `EjecutarIntencionUseCase` tiene que volver a calcular el hash del

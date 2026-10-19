@@ -1,13 +1,13 @@
 """Identificadores con tipo.
 
 Todos son `str` en tiempo de ejecucion; la diferencia la hace el verificador de
-tipos. Suena a ceremonia hasta que se recuerda de donde viene este proyecto: el
-bug que obligo a agregar la guarda de modos (`nucleo.py:319-330`) fue
-exactamente pasar un identificador de un ambiente donde iba el del otro.
+tipos. Suena a ceremonia hasta que se recuerda el bug que obligo a agregar la
+guarda de ambiente en los repositorios: pasar un identificador de un ambiente
+donde iba el del otro.
 
 `MedioDePagoId` no esta aqui a proposito: un medio de pago no se referencia por
 un `str` suelto sino por `MedioDePagoRef`, que lleva proveedor y ambiente
-consigo. Ver `dominio/pago/modelo.py`.
+consigo. Ver `model/pago/modelo.py`.
 """
 
 from __future__ import annotations

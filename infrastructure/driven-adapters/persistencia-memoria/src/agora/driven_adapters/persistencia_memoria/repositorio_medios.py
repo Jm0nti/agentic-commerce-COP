@@ -2,7 +2,7 @@
 
 No lo usa `EjecutarIntencionUseCase` (que solo necesita el `MedioDePagoRef` que ya
 trae el mandato firmado), pero completa el puerto para cuando
-`aplicacion/enrolar_medio.py` exista (etapa 5) y lo necesite para listar los
+`usecase/enrolar_medio/enrolar_medio_use_case.py` exista (etapa 5) y lo necesite para listar los
 medios vivos de un titular.
 
 Multi-comercio: cada medio guarda tambien bajo que `comercio_id` se enrolo

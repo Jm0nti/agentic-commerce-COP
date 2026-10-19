@@ -1,12 +1,9 @@
 """Errores con tipo, no cadenas formateadas.
 
-Hoy todo es `BovedaError` con un mensaje, y algunos casos vuelven dentro de un
-recibo como `motivo="error_pasarela: Wompi 422: {...}"` (`nucleo.py:377`). En
-`recibos.jsonl` hay una fila exactamente asi.
-
-El problema no es estetico. Un agente que recibe eso no puede decidir que hacer
-sin parsear texto, y "fondos insuficientes" (reintentar mas tarde) y "mandato
-vencido" (pedir uno nuevo) son respuestas opuestas que hoy son la misma cadena.
+Un error que solo es un mensaje (`motivo="error_pasarela: Wompi 422: {...}"`)
+no le sirve a un agente: no puede decidir que hacer sin parsear texto, y
+"fondos insuficientes" (reintentar mas tarde) y "mandato vencido" (pedir uno
+nuevo) son respuestas opuestas que serian la misma cadena.
 
 Cada error lleva `reintentable` porque esa es la pregunta que el agente hace
 primero, y `detalle_proveedor` para no perder el diagnostico crudo -- que fue lo
@@ -81,7 +78,7 @@ class PropuestaDesconocida(ErrorDeMandato):
 class SinMedioDePagoVivo(ErrorDeMandato):
     """`EmitirMandatoUseCase` sin un `MedioDePagoRef` vivo para el titular en este
     ambiente. No hay contra que firmar: primero hay que enrolar
-    (`aplicacion/enrolar_medio.py`)."""
+    (`usecase/enrolar_medio/enrolar_medio_use_case.py`)."""
 
 
 class SinMedioVinculadoAlComercio(ErrorDeMandato):
@@ -92,7 +89,7 @@ class SinMedioVinculadoAlComercio(ErrorDeMandato):
     esta atado al comercio (a la llave publica) que lo creo, no es portable
     entre comercios aunque los tres usen Wompi. Hace falta vincular este
     comercio especifico antes de poder firmar -- un enrolamiento mas,
-    dirigido a `comercio_id` (`aplicacion/enrolar_medio.py`).
+    dirigido a `comercio_id` (`usecase/enrolar_medio/enrolar_medio_use_case.py`).
 
     Se distingue de `SinMedioDePagoVivo` a proposito: el agente (o quien
     reciba el error) necesita saber si hay que enrolar por primera vez o
@@ -155,16 +152,14 @@ class MedioDePagoRevocado(ErrorDePasarela):
 
 class MedioNoAprobado(ErrorDePasarela):
     """El titular no acepto el push a tiempo, o la pasarela no dejo el token
-    en `APPROVED` (etapa 5, `aplicacion/enrolar_medio.py`). Igual que en la
-    v1 (`boveda/enrolamiento.py`: "sin aceptacion del titular no hay fuente
-    de pago"), no es reintentable con los mismos datos: hay que volver a
-    empezar el enrolamiento."""
+    en `APPROVED` (etapa 5, `usecase/enrolar_medio/enrolar_medio_use_case.py`). Sin aceptacion del
+    titular no hay fuente de pago: no es reintentable con los mismos datos,
+    hay que volver a empezar el enrolamiento."""
 
 
 class MedioNoRegistrado(ErrorDePasarela):
     """`RevocarMedioUseCase` con una referencia que `RepositorioMedios.vivos` no
-    reconoce para ese titular. Mismo espiritu que la guarda de
-    `boveda/enrolamiento.py:revocar` -- revocar a ciegas puede apagar la
+    reconoce para ese titular. Revocar a ciegas puede apagar la
     fuente equivocada."""
 
 
@@ -224,7 +219,7 @@ class ProductoDeOtroComercio(ErrorDeCatalogo):
 
 class ProductoNoDisponible(ErrorDeCatalogo):
     """`armar_carrito` con un producto que no esta `EN_STOCK`. Un producto
-    `AGOTADO` nunca deberia llegar a `ItemCarrito` (`dominio/catalogo/
+    `AGOTADO` nunca deberia llegar a `ItemCarrito` (`model/catalogo/
     modelo.py`, docstring de `Disponibilidad`)."""
 
 
@@ -248,14 +243,14 @@ class SinLlaveDeFirma(ErrorDeAutenticacion):
     """El titular no tiene una llave de firma ed25519 asociada.
 
     Antes de esta version (multi-usuario, 4 de septiembre de 2026),
-    `composicion/contenedor.py` armaba UNA sola llave para todo el proceso
+    `app_service/config/contenedor.py` armaba UNA sola llave para todo el proceso
     con `cargar_o_generar_firmante`, generandola sola la primera vez que
     hacia falta -- cualquier `titular_id` firmaba con la misma llave. Ahora
     cada titular tiene la suya, guardada en `RepositorioLlaves`, y
-    `SelectorDeFirmante.para(titular_id)` (`adaptadores/sistema/
+    `SelectorDeFirmante.para(titular_id)` (`driven_adapters/sistema/
     registro_firmantes.py:RegistroDeFirmantes`) NUNCA genera una al vuelo:
     un `titular_id` que llega hasta aca sin llave es siempre un error de
-    operacion -- falta correr `scripts/crear_usuario.py`, no algo que la
+    operacion -- falta correr `app_service/crear_usuario.py`, no algo que la
     app deba resolver en silencio."""
 
 
@@ -263,20 +258,20 @@ class CredencialesInvalidas(ErrorDeAutenticacion):
     """El nombre de usuario no existe, o la contrasena no coincide con el
     hash guardado -- deliberadamente el MISMO error para los dos casos:
     distinguirlos permitiria enumerar nombres de usuario validos probando
-    contra `POST /auth/iniciar-sesion` (`aplicacion/autenticacion.py:
+    contra `POST /auth/iniciar-sesion` (`usecase/{registrar_usuario,iniciar_sesion}/:
     IniciarSesionUseCase`)."""
 
 
 class SesionInvalida(ErrorDeAutenticacion):
-    """La cookie de sesion de `entradas/api/` no corresponde a ninguna
+    """La cookie de sesion de `entry_points/api_rest/` no corresponde a ninguna
     sesion viva -- nunca existio, ya expiro, o la persona cerro sesion.
-    `entradas/api/app.py` la traduce a 401, nunca a 400: no es un dato mal
+    `entry_points/api_rest/app.py` la traduce a 401, nunca a 400: no es un dato mal
     formado en la peticion, es una peticion sin autenticar."""
 
 
 class NombreDeUsuarioYaExiste(ErrorDeAutenticacion):
-    """`aplicacion/autenticacion.py:RegistrarUsuarioUseCase` (el unico camino es
-    `scripts/crear_usuario.py`, no hay registro por HTTP) con un nombre de
+    """`usecase/registrar_usuario/registrar_usuario_use_case.py:RegistrarUsuarioUseCase` (el unico camino es
+    `app_service/crear_usuario.py`, no hay registro por HTTP) con un nombre de
     usuario que ya existe. Se verifica ANTES de generar la llave de firma
     nueva, para no dejar una llave huerfana sin usuario dueño si el nombre
     ya estaba tomado."""
@@ -313,7 +308,7 @@ class ErrorDeRecuperacion(ErrorDeDominio):
 class RecuperacionNoDisponible(ErrorDeRecuperacion):
     """El proveedor de embeddings no respondio (red, timeout, 5xx, llave
     invalida). Igual que `ModeloNoDisponible`: reintentar es razonable, y
-    quien la recibe en un turno de chat (`agente/contexto_documental.py`)
+    quien la recibe en un turno de chat (`usecase/agente/contexto_documental.py`)
     sigue sin documentacion en vez de tumbar el turno."""
 
     reintentable = True

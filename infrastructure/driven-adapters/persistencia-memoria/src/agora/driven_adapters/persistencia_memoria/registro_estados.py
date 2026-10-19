@@ -1,5 +1,5 @@
 """`RegistroDeEstados` en memoria. Ver el docstring del puerto
-(`puertos/repositorios.py`) para el porque existe: sin esto, no hay forma de
+(`model/<agregado>/gateways/repositorios.py`) para el porque existe: sin esto, no hay forma de
 que `consultar_estado` distinga una intencion nunca ejecutada de una que ya
 se resolvio en `RECHAZADO`.
 

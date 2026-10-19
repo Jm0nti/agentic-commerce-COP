@@ -1,7 +1,7 @@
-"""El otro lado del cobro que no bloquea (`aplicacion/ejecutar_intencion.py`,
+"""El otro lado del cobro que no bloquea (`usecase/ejecutar_intencion/ejecutar_intencion_use_case.py`,
 paso 4): cuando `_cobrar` devuelve `PENDIENTE`, la reserva queda viva y el
 desenlace lo cierra este caso de uso, llamado desde el webhook de la
-pasarela (`entradas/webhooks/wompi.py`, etapa 4).
+pasarela (`entry_points/webhook_wompi/wompi.py`, etapa 4).
 
     webhook -> validar_evento -> resultado_desde_evento -> reserva_pendiente_de
                                                                     |
@@ -14,8 +14,7 @@ un evento invalido, uno que no es un cobro de esta app, o uno para una
 intencion sin reserva pendiente son todos desenlaces normales de un webhook
 que -- por diseno -- puede reintentar, llegar duplicado, o llegar para
 trafico ajeno. Por eso `__call__` nunca levanta: devuelve un
-`ResultadoConciliacion` y quien llame (el receptor HTTP) siempre responde 200,
-igual que `boveda/eventos.py`.
+`ResultadoConciliacion` y quien llame (el receptor HTTP) siempre responde 200.
 
 MULTI-COMERCIO (1 de septiembre de 2026)
 -----------------------------------------
@@ -25,7 +24,7 @@ checksum de un evento exige saber CONTRA CUAL. A diferencia de
 cobrar), este caso de uso arranca de un cuerpo HTTP crudo -- no hay mandato
 ni intencion todavia, asi que no hay de donde sacar el comercio del
 CONTENIDO del evento antes de haberlo validado. La unica fuente confiable es
-la URL que lo trajo: `entradas/webhooks/wompi.py` la lee del path
+la URL que lo trajo: `entry_points/webhook_wompi/wompi.py` la lee del path
 (`/pagos/wompi/transacciones/{comercio_id}`, un segmento por cada comercio
 configurado en su propio dashboard de Wompi) y se la pasa a `__call__` como
 parametro nuevo -- por eso, a diferencia de `EjecutarIntencionUseCase`, ac'a el

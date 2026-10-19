@@ -1,23 +1,20 @@
 """Firma y verificacion ed25519 de un mandato.
 
-`VerificadorEd25519` implementa el `Verificador` que `dominio/mandato/
+`VerificadorEd25519` implementa el `Verificador` que `model/mandato/
 modelo.py` define como `Protocol`: recibe la firma, la carga canonica y la
 llave publica, todas en bytes, y devuelve un booleano. El dominio no importa
 `cryptography` -- eso vive aqui, en el unico lugar donde la capa de
-adaptadores toca criptografia. (Hasta que se retiro junto con `boveda/`,
-`dominio/mandato/compat.py` reusaba este mismo protocolo para verificar
-mandatos v1 -- ver `docs/limpieza-v1-boveda.md`.)
+adaptadores toca criptografia.
 
 Antes de este archivo, la misma clase vivia duplicada como test double dentro
-de `tests/test_dominio.py`. Promoverla a adaptador real evita que la unica
+de `tests/model/test_dominio.py`. Promoverla a adaptador real evita que la unica
 implementacion de `Verificador` que existe en el repo sea una de pruebas.
 
 `FirmanteEd25519` + `cargar_o_generar_firmante` son la etapa 5: implementan
-el `Firmante` de `puertos/firma.py`, del lado de quien SI tiene la llave
-privada -- el titular, simulado aqui como un par ed25519 en disco, igual que
-`boveda/cli.py:llaves()`/`cmd_llaves`. Solo `composicion/contenedor.py` llama
-a `cargar_o_generar_firmante`: `agente/` no importa este modulo (lo verifica
-`test_fronteras.py`), y `aplicacion/emitir_mandato.py` recibe un `Firmante`
+el `Firmante` de `model/mandato/gateways/firma.py`, del lado de quien SI tiene la llave
+privada -- el titular, simulado aqui como un par ed25519 en disco. Solo `app_service/config/contenedor.py` llama
+a `cargar_o_generar_firmante`: `usecase/agente/` no importa este modulo (lo verifica
+`test_fronteras.py`), y `usecase/emitir_mandato/emitir_mandato_use_case.py` recibe un `Firmante`
 ya armado por constructor, sin saber que hay un archivo en disco detras.
 """
 
@@ -61,21 +58,18 @@ class FirmanteEd25519:
 
 
 def cargar_o_generar_firmante(ruta_sk: Path, ruta_pk: Path) -> FirmanteEd25519:
-    """Igual que `boveda/cli.py`: `llaves()` lee, `cmd_llaves` genera.
+    """Lee el par de llaves, o lo genera si no existe.
 
-    Aqui las dos cosas se juntan en una sola funcion porque, a diferencia de
-    la v1 (donde `llaves` es un subcomando aparte y `emitir` se niega a
-    correr sin haberlo corrido antes), `entradas/cli/` de esta etapa no tiene
+    Leer y generar van en una sola funcion porque `entry_points/cli/` no tiene
     un flujo de "primero genere sus llaves" -- el titular simulado de una
     demo no deberia tener que saber que existe un paso de bootstrap de
     criptografia antes de poder firmar su primer mandato. Si `ruta_sk` no
-    existe, se genera el par y se escribe sin cifrar (mismo alcance de PoC
-    que la v1); si existe, se lee tal cual.
+    existe, se genera el par y se escribe sin cifrar (alcance de PoC); si existe, se lee tal cual.
 
     No cifrar la llave privada en disco es una decision de alcance, no un
     descuido: `docs/variables-de-entorno.md` ya documenta que este proceso
     guarda otros secretos (credenciales de Wompi) del mismo modo, y
-    `agente/` nunca llega a este archivo -- `test_fronteras.py` lo verifica.
+    `usecase/agente/` nunca llega a este archivo -- `test_fronteras.py` lo verifica.
     """
     if ruta_sk.exists():
         sk = Ed25519PrivateKey.from_private_bytes(ruta_sk.read_bytes())
@@ -121,7 +115,7 @@ def firmante_desde_bytes(llave_privada: bytes) -> FirmanteEd25519:
     """Arma un `FirmanteEd25519` a partir de una llave privada cruda ya
     guardada (multi-usuario: `RepositorioLlaves.llave_privada_de`), sin
     pasar por disco -- a diferencia de `cargar_o_generar_firmante`, que lee
-    o escribe un archivo. Lo usa `adaptadores/sistema/
+    o escribe un archivo. Lo usa `driven_adapters/sistema/
     registro_firmantes.py:RegistroDeFirmantes` para resolver el `Firmante`
     de cada titular en el momento de firmar."""
     return FirmanteEd25519(Ed25519PrivateKey.from_private_bytes(llave_privada))

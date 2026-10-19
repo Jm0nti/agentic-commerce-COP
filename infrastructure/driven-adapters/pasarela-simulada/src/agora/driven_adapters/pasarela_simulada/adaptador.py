@@ -1,14 +1,12 @@
 """La pasarela simulada. Ciudadano de primera, no un mock (ADR-2).
 
-Vive en `adaptadores/pasarelas/simulada/` al lado de `wompi/`, implementa el
-mismo `PasarelaDePagos` y se elige por configuracion en `composicion/`. No
+Vive en `driven_adapters/pasarela_simulada/` al lado de `wompi/`, implementa el
+mismo `PasarelaDePagos` y se elige por configuracion en `app_service/config/`. No
 hace red ni disco propio (mas alla de lo que le pase la bitacora por fuera):
 todo su estado es un par de `dict` en memoria, protegidos por un lock.
 
-Reemplaza a `wompi_lab/lab.py` (`docs/mapa-del-proyecto.md`, seccion "se va
-sola en su etapa"): aquel banco de pruebas hablaba con el sandbox real de
-Wompi; este adaptador no habla con nadie y por eso puede reproducir cualquier
-desenlace sin gastar, sin red y sin que a Wompi le toque cooperar.
+No habla con nadie, y por eso puede reproducir cualquier desenlace sin gastar,
+sin red y sin que a Wompi le toque cooperar.
 """
 
 from __future__ import annotations
@@ -34,7 +32,7 @@ from .guion import Desenlace, GuionSimulado
 
 def _estado_cobro(bruto: str) -> EstadoCobro:
     """Los valores de `EstadoCobro` ya son el mismo vocabulario que usa Wompi
-    (`PENDING`, `APPROVED`, ...) -- ver `dominio/pago/modelo.py`. Un valor
+    (`PENDING`, `APPROVED`, ...) -- ver `model/pago/modelo.py`. Un valor
     que no reconoce es `ERROR`, nunca una excepcion: un evento con un status
     raro no deberia tumbar la conciliacion."""
     try:
@@ -128,8 +126,8 @@ class AdaptadorSimulado:
 
         Convierte un cobro `PENDIENTE` en su desenlace final, imitando el
         webhook `transaction.updated` que en Wompi real cierra el ciclo
-        (`docs/arquitectura-v2.md`, seccion 6, pasos 7d-8). No existe en el
-        `Protocol` -- nada de `aplicacion/` puede depender de este metodo, o
+        (`docs/arquitectura.md`, seccion 6, pasos 7d-8). No existe en el
+        `Protocol` -- nada de `usecase/` puede depender de este metodo, o
         dejaria de funcionar contra `AdaptadorWompi`.
         """
         with self._lock:
@@ -152,7 +150,7 @@ class AdaptadorSimulado:
         cual, sin checksum. **No representa la seguridad de
         `AdaptadorWompi.validar_evento`** -- eso si valida contra un secreto,
         porque contra dinero real un checksum sin validar es la superficie de
-        ataque mas barata del sistema (ver `boveda/eventos.py`)."""
+        ataque mas barata del sistema."""
         return json.loads(cuerpo)
 
     def resultado_desde_evento(self, evento: dict[str, Any]) -> tuple[str, ResultadoCobro] | None:
@@ -175,15 +173,15 @@ class AdaptadorSimulado:
             detalle=tx,
         )
         # ADR-6: a diferencia de Wompi (que antepone "agora-", ver
-        # `adaptadores/pasarelas/wompi/adaptador.py`), `cobrar()` usa
-        # `intencion_id` como referencia tal cual -- la simulada no necesita
-        # distinguir su trafico del de la v1 porque nunca hablo con Wompi.
+        # `driven_adapters/pasarela_wompi/adaptador.py`), `cobrar()` usa
+        # `intencion_id` como referencia tal cual -- la simulada no comparte
+        # buzon de eventos con nadie, no necesita distinguir su trafico.
         return referencia, resultado
 
     def evento_de(self, id_externo: str) -> dict[str, Any]:
         """Empaqueta el cobro actual como el `transaction.updated` que Wompi
         mandaria por webhook, para ejercitar `ConciliarEventoUseCase` o
-        `entradas/webhooks/` en una demo o una prueba sin un servidor de
+        `entry_points/webhook_wompi/` en una demo o una prueba sin un servidor de
         Wompi real. Igual que `resolver_pendiente`: solo para demos y
         pruebas, no existe en el `Protocol`."""
         with self._lock:

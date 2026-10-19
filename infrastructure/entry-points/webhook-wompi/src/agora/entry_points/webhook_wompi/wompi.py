@@ -9,10 +9,10 @@ antes de validar el checksum -- la unica forma de saber que secreto usar es
 por CUAL URL golpearon. Por eso la ruta ahora lleva el `comercio_id` en el
 path: `/pagos/wompi/transacciones/{comercio_id}`. Cada uno de los comercios
 reales apunta su webhook a su propio segmento, bajo la MISMA URL publica
-(un solo tunel, un solo puerto -- `docs/viabilidad-multi-comercio-wompi.md`,
+(un solo tunel, un solo puerto -- `docs/utils/viabilidad-multi-comercio-wompi.md`,
 "Puerto 8001 y el webhook con varios comercios": la alternativa de un
 puerto por comercio se descarto por triplicar la superficie expuesta sin
-necesidad, y por apartarse de ADR-1 de `docs/arquitectura-v2.md` ("un
+necesidad, y por apartarse de ADR-1 de `docs/arquitectura.md` ("un
 proceso, no un servicio aparte") sin necesidad real).
 
 Pese al nombre del modulo -- "wompi" porque asi se llamaba la ruta ya
@@ -22,14 +22,13 @@ sigue sin saber que pasarela hay del otro lado de cada comercio. Recibe un
 que resuelve wompi o simulada segun el `comercio_id` de la URL) y solo
 traduce HTTP hacia adentro y hacia afuera. Nada de `os.environ`, nada de
 construir el `Contenedor`: eso es trabajo del composition root de este
-punto de entrada, `scripts/servir_webhook_wompi.py`. Separar las dos cosas
+punto de entrada, `app_service/servir_webhook_wompi.py`. Separar las dos cosas
 es lo que permite probar esta app con `TestClient` sin ninguna variable de
-entorno (ver `tests/test_webhook_wompi.py`).
+entorno (ver `tests/entry_points/test_webhook_wompi.py`).
 
 WOMPI ESPERA UN 200, SIEMPRE
 -----------------------------
-Mismo argumento que `boveda/eventos.py` y que el docstring de
-`ConciliarEventoUseCase`: un checksum invalido, un evento que no es un cobro de
+Mismo argumento que el docstring de `ConciliarEventoUseCase`: un checksum invalido, un evento que no es un cobro de
 esta app, un `comercio_id` en la URL que no tiene credenciales configuradas,
 o una reserva que ya no existe no son fallos del receptor -- son desenlaces
 normales de un webhook. Reintentar no arregla ninguno, y devolver algo
@@ -66,8 +65,7 @@ def crear_app(conciliar_evento: ConciliarEventoUseCase) -> FastAPI:
         cabeceras = dict(request.headers)
         resultado = conciliar_evento(cuerpo, cabeceras, comercio_id)
 
-        # Visibilidad minima en consola, igual que boveda/eventos.py -- este
-        # proceso normalmente corre desatendido detras de ngrok/cloudflared.
+        # Visibilidad minima en consola -- este proceso normalmente corre desatendido detras de ngrok/cloudflared.
         marca = "ok " if resultado.procesado else "NO "
         print(f"[{marca}] comercio={comercio_id} {resultado.motivo} intencion={resultado.intencion_id}")
 

@@ -1,9 +1,9 @@
-"""Configuracion de DeepSeek, leida UNA vez en `composicion/` (o en el script
+"""Configuracion de DeepSeek, leida UNA vez en `app_service/config/` (o en el script
 que corre la generacion) y pasada por constructor -- mismo patron que
-`adaptadores/pasarelas/wompi/config.py`.
+`driven_adapters/pasarela_wompi/config.py`.
 
 DeepSeek expone una API compatible con Chat Completions de OpenAI
-(`docs/arquitectura-v2.md`, seccion 4), asi que el adaptador usa el SDK
+(`docs/arquitectura.md`, seccion 4), asi que el adaptador usa el SDK
 `openai` apuntado a otro `base_url` en vez de un cliente HTTP a mano.
 """
 
