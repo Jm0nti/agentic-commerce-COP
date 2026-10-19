@@ -1,10 +1,10 @@
 # Flujo operativo, de punta a punta
 
-**9 de septiembre de 2026.** Este documento responde una pregunta distinta a
+Este documento responde una pregunta distinta a
 la de `docs/flujo-propuesta-mandato.md`: ese documento explica **qué es** un
 mandato y por qué el agente nunca puede firmarlo; este explica **qué hay que
 tener corriendo, en qué orden, y por dónde viaja cada mensaje** para que una
-compra real llegue de punta a punta — desde que Juan abre el navegador hasta
+compra real llegue de punta a punta — desde que el usuario abre el navegador hasta
 que Wompi confirma el cobro por webhook. Es el mapa de infraestructura;
 `flujo-propuesta-mandato.md` es el mapa de la criptografía. Se leen mejor
 juntos.
@@ -54,7 +54,7 @@ con `uvicorn`. Sirve, en un solo proceso:
 - Alta de medios de pago (`/medios/...`).
 
 No necesita el túnel ni estar expuesto a internet — corre en
-`localhost:8002` y solo Juan (o quien esté frente al navegador) le habla.
+`localhost:8002` y solo el usuario que ejecute la app le habla.
 
 ## 3. Se ejecuta el receptor de webhook (`python -m agora webhook`, puerto 8001)
 
@@ -72,7 +72,7 @@ momento.
 
 `servir_webhook_wompi.py` escucha en `localhost:8001`, pero el servidor de
 Wompi vive en internet y no tiene forma de llegar a un `localhost` de la
-máquina de Juan. El túnel resuelve exactamente eso: le da al puerto 8001 una
+máquina local. El túnel resuelve exactamente eso: le da al puerto 8001 una
 URL pública (`https://algo.ngrok-free.app` o `https://algo.trycloudflare.com`)
 que reenvía cada petición entrante hacia `localhost:8001`.
 
@@ -95,7 +95,7 @@ internet. Solo el webhook necesita ser alcanzable desde afuera, porque es el
 
 ## 5. El usuario entra a la app: login multiusuario
 
-Desde el 4 de septiembre de 2026 la app dejó de aceptar un `titular_id` como
+La app dejó de aceptar un `titular_id` como
 texto libre (antes era un `<input>` guardado en `localStorage`, sin ninguna
 verificación — cualquiera podía escribir el id de otra persona y ver sus
 medios de pago). Ahora hay una pantalla de login real:
@@ -356,8 +356,8 @@ agora_datos/secretos/comercios_wompi.json     (ruta configurable con AGORA_WOMPI
 }
 ```
 
-Ese archivo nunca se versiona ni se fabrica con datos de ejemplo — son
-secretos reales que Juan tiene que crear a mano por comercio antes de correr
+Ese archivo nunca se versiona ni se fabrica con datos de ejemplo, son
+secretos reales que se tienen que crear a mano por comercio antes de correr
 con `AGORA_PASARELA=wompi`.
 
 Al arrancar cualquiera de los tres procesos, `app_service/config/configuracion.py`
@@ -392,9 +392,9 @@ mandato ni se reverifica al cobrar.
 
 ```
  [arranque]  servir_webhook_wompi.py (8001) ── túnel ngrok/cloudflared ──▶ internet
- [arranque]  servir_api.py (8002)  ◀── Juan, en el navegador
+ [arranque]  servir_api.py (8002)  ◀── usuario maquina local, en el navegador
 
- Juan            servir_api.py                  SQLite            Wompi
+ usuario           servir_api.py                  SQLite            Wompi
   │  login (usuario+contraseña)                                    │
   ├──────────────▶│ cookie httponly                                │
   │  "quiero algo dulce"                                           │
@@ -421,9 +421,6 @@ mandato ni se reverifica al cobrar.
 - `docs/flujo-propuesta-mandato.md` — la criptografía detrás de la firma, el
   tipo `PropuestaDeMandato`, y por qué el agente nunca puede firmar (secciones
   3, 5 y 6 en particular).
-- `docs/utils/viabilidad-multi-comercio-wompi.md` — la evaluación y el diseño
-  completo de multi-comercio (por qué una ruta por comercio y no un puerto
-  por comercio, la vinculación medio↔comercio).
 - `docs/variables-de-entorno.md` — la plantilla comentada del `.env` y del
   registro `comercios_wompi.json`.
 - `README.md` — el runbook paso a paso para correr los tres procesos desde

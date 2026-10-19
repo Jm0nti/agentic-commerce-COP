@@ -22,15 +22,18 @@ agora_datos/
 *.db.bak-*
 
 # Documentacion interna
-docs/poc-documentation/
+docs/poc-documentation/*
 #Info de utilidad para desarrollo
-docs/utils/
+docs/utils/*
 # Info para el agente de soporte. No se versiona
-docs/soporte/ 
+docs/soporte/*
 # Info evolucion de arquitectura. Solo incluir README
 docs/arquitectura-agentes/*
 # #README necesario de arq agentes
-!docs\arquitectura-agentes\README.md
+!docs/arquitectura-agentes/README.md
+
+# evolucion versiones
+evolucion-refactor/*
 
 
 

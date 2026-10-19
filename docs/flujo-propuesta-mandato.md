@@ -1,7 +1,5 @@
 # El sistema de mandatos, de punta a punta
 
-**Actualizado el 3 de septiembre de 2026** (multi-comercio, `agora/` con 2
-comercios reales: Dulcería La Golosina y Papelería El Lápiz Feliz).
 
 > **El agente propone. El humano firma. El motor de pagos ejecuta.**
 > Ninguno de los tres puede hacer el trabajo de otro.
@@ -18,7 +16,7 @@ agente no puede hacerlo él mismo.
 
 ## 1. El recorrido, con un ejemplo real
 
-Juan le pide al agente algo dulce. El agente busca en el catálogo, encuentra
+Pepito le pide al agente algo dulce. El agente busca en el catálogo, encuentra
 `Dulcería La Golosina` (`com_a6066287f648`) y arma un carrito con una
 `Chocolatina Cremosa` (`prd_e4544c48a5f2`, 1.500 COP).
 
@@ -69,7 +67,7 @@ Esto produce dos objetos, y solo uno de los dos importa para lo que sigue:
   mandato amplio debería costar escribirlo a propósito, no ser lo que sale
   por omisión.
 
-El agente le muestra a Juan el `propuesta_id` y, en el chat por terminal, el
+El agente le muestra a Pepito el `propuesta_id` y, en el chat por terminal, el
 comando exacto para firmarla (`app_service/config/agente.py`); en el chat web
 (`entry_points/api_rest/`), un popup se abre solo, empujado por un evento SSE
 (`propuesta_pendiente`).
@@ -99,7 +97,7 @@ invocado por la persona:
    `carrito_hash` desde ahí — nunca desde un dato que la propuesta traiga
    por su cuenta, por el mismo motivo.
 3. **Multi-comercio**: resuelve `RepositorioMedios.vinculado_con(titular_id,
-   propuesta.comercio_id, ambiente)` — el medio de pago que Juan ya vinculó
+   propuesta.comercio_id, ambiente)` — el medio de pago que Pepito ya vinculó
    específicamente con `Dulcería La Golosina`, no "el último medio vivo que
    tenga" (que podría estar vinculado a otro comercio y que Wompi
    rechazaría al cobrar, con las credenciales equivocadas). Ver la sección
@@ -283,7 +281,7 @@ verificación falla y `violaciones_contra` devuelve `firma_invalida`.
 
 Esto es importante para no llevarse una idea equivocada: **en esta demo, no
 hay una billetera de navegador ni una llave que viva literalmente en el
-dispositivo de Juan.** La llave ed25519 se genera una sola vez y se guarda
+dispositivo de Pepito.** La llave ed25519 se genera una sola vez y se guarda
 sin cifrar en disco, del lado del proceso que corre `agora/`
 (`agora_datos/secretos/firma.sk`/`firma.pk`, en `.gitignore`) — simulando
 "la llave del titular". `app_service/config/contenedor.py` la carga (o la
@@ -399,7 +397,7 @@ mandato — importa **con qué comercio** se vinculó ese medio:
 
 Una vez vinculado un comercio, `vinculado_con` sigue encontrándolo en
 compras futuras — no se vuelve a pedir el enrolamiento para ese mismo
-comercio. Es lo que hace posible que Juan compre en `Dulcería La Golosina`
+comercio. Es lo que hace posible que Pepito compre en `Dulcería La Golosina`
 sin re-enrolar cada vez, y que la primera compra en `Papelería El Lápiz
 Feliz` sí le pida vincular ese comercio puntual, aunque ya tenga un Nequi
 enrolado en el otro.

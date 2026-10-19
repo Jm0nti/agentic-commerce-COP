@@ -1,13 +1,11 @@
 # Arquitectura de agora
 
 agora sigue la **Clean Architecture de Bancolombia**
-([Clean Architecture — Aislando los detalles](https://medium.com/bancolombia-tech/clean-architecture-aislando-los-detalles-4f9530f35d7a),
-[Scaffold Clean Architecture](https://github.com/bancolombia/scaffold-clean-architecture)),
+([Clean Architecture — Aislando los detalles](https://medium.com/bancolombia-tech/clean-architecture-aislando-los-detalles-4f9530f35d7a))
 llevada a Python. Este documento explica la forma del sistema y las decisiones
 (ADRs) detrás de cada pieza. El detalle de cada módulo está en
 [`../Documentacion.md`](../Documentacion.md); los diagramas, en
-[`diagramas/`](diagramas/); el recorrido de la migración a esta estructura, en
-[`../evolucion-refactor/`](../evolucion-refactor/).
+[`diagramas/`](diagramas/).
 
 ---
 
@@ -221,7 +219,7 @@ Es el **Cart Mandate** de AP2: lo que el agente propuso, al lado de lo que el
 humano firmó, al lado de lo que la pasarela hizo. Cuando no coinciden, ahí
 está el hallazgo. El grafo del turno se detiene en un nodo dedicado
 (`espera_humana`) y no se sale de ahí sin que una persona haga clic — ver
-[`arquitectura-agentes/`](arquitectura-agentes/).
+[`arquitectura-agentes/`](arquitectura-agentes/README.md).
 
 ---
 
@@ -308,8 +306,7 @@ siguen el scaffold de la organización; el lenguaje de negocio se queda en
 español porque viaja dentro de la firma y de lo que ve el agente. El
 `validateStructure` es `tests/arquitectura/test_fronteras.py`, con una regla
 más estricta que la del scaffold para el agente (no puede llamar a ningún
-otro caso de uso). Decisiones D1–D10 y recorrido en
-[`../evolucion-refactor/roadmap-clean-architecture-bancolombia.md`](../evolucion-refactor/roadmap-clean-architecture-bancolombia.md).
+otro caso de uso).
 
 ---
 
